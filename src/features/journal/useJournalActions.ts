@@ -32,16 +32,7 @@ export function useDeleteEntry() {
   };
 }
 
-/**
- * Moves an entry to a different date/time.
- *
- * The store's `updateJournalEntry` patch type excludes `createdAt`, so the date
- * is written with a narrow local state update (also bumps `updatedAt`).
- * Requested as a shared change: allow `createdAt` in `updateJournalEntry`.
- */
+/** Moves an entry to a different date/time (also bumps `updatedAt`). */
 export function setEntryCreatedAt(id: string, createdAt: number): void {
-  const now = Date.now();
-  useStore.setState((s) => ({
-    journal: s.journal.map((j) => (j.id === id ? { ...j, createdAt, updatedAt: now } : j)),
-  }));
+  useStore.getState().updateJournalEntry(id, { createdAt });
 }

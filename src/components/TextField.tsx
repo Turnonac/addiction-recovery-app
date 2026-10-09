@@ -87,7 +87,8 @@ const styles = StyleSheet.create({
   errorBorder: { borderColor: colors.danger },
   // The field border shows focus; hide the browser's default focus ring.
   webNoOutline: { outlineWidth: 0 },
-  input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: spacing.md },
+  // minWidth 0: on web an <input> otherwise keeps its intrinsic width and pushes a suffix out.
+  input: { flex: 1, minWidth: 0, color: colors.text, fontSize: 16, paddingVertical: spacing.md },
   inputMultiline: { minHeight: 120, textAlignVertical: 'top', paddingVertical: 0 },
   hint: { paddingHorizontal: 2 },
 });

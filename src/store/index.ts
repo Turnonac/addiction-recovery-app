@@ -85,11 +85,12 @@ export interface AppState extends PersistedState {
 
   // Journal
   addJournalEntry: (input: JournalInput) => string;
-  updateJournalEntry: (id: string, patch: Partial<Omit<JournalEntry, 'id' | 'createdAt'>>) => void;
+  updateJournalEntry: (id: string, patch: Partial<Omit<JournalEntry, 'id'>>) => void;
   deleteJournalEntry: (id: string) => void;
 
   // SOS
   logSosSession: (input: SosSessionInput) => string;
+  updateSosSession: (id: string, patch: Partial<Pick<SosSession, 'intensityAfter' | 'durationSec' | 'completed'>>) => void;
 
   // Settings
   updateSettings: (patch: Partial<Settings>) => void;
@@ -298,6 +299,10 @@ export const useStore = create<AppState>()(
         const session: SosSession = { ...input, id: makeId('s_') };
         set({ sosSessions: [...get().sosSessions, session] });
         return session.id;
+      },
+
+      updateSosSession: (id, patch) => {
+        set({ sosSessions: get().sosSessions.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
       },
 
       updateSettings: (patch) => set({ settings: { ...get().settings, ...patch } }),

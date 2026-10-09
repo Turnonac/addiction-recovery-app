@@ -22,6 +22,8 @@ export interface ButtonProps {
   fullWidth?: boolean;
   /** Overrides the background for `accent` variant (e.g. a habit color). */
   color?: string;
+  /** Overrides the label/icon color (e.g. dark text on a bright custom `color`). */
+  labelColor?: string;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   testID?: string;
@@ -49,12 +51,21 @@ export function Button({
   loading,
   fullWidth = true,
   color,
+  labelColor,
   style,
   accessibilityLabel,
   testID,
 }: ButtonProps) {
+  // The SOS gradient is bright, so (like the original) it takes a dark label.
   const fg =
-    variant === 'primary' ? colors.textInverse : variant === 'danger' ? colors.danger : variant === 'ghost' ? colors.textSecondary : colors.text;
+    labelColor ??
+    (variant === 'primary' || variant === 'sos'
+      ? colors.textInverse
+      : variant === 'danger'
+        ? colors.danger
+        : variant === 'ghost'
+          ? colors.textSecondary
+          : colors.text);
   const bg =
     variant === 'primary'
       ? colors.text
