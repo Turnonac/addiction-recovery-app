@@ -10,6 +10,13 @@ describe('format', () => {
     expect(formatCompact(1_250_000)).toBe('1.3M');
   });
 
+  it('rolls over unit boundaries after rounding', () => {
+    expect(formatCompact(999.6)).toBe('1K');
+    expect(formatCompact(999_950)).toBe('1M');
+    expect(formatCompact(999.4)).toBe('999');
+    expect(formatCompact(Number.NaN)).toBe('0');
+  });
+
   it('formats money', () => {
     expect(formatMoney(124.05, 'USD')).toBe('$124.05');
     expect(formatMoney(4800, 'UAH', { compact: true })).toBe('₴4.8K');

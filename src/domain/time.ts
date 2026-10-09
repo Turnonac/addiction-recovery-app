@@ -16,7 +16,7 @@ export interface Breakdown {
 
 /** Split a non-negative duration into whole days / hours / minutes / seconds. */
 export function breakdown(ms: number): Breakdown {
-  const safe = Math.max(0, Math.floor(ms));
+  const safe = Number.isFinite(ms) ? Math.max(0, Math.floor(ms)) : 0;
   const days = Math.floor(safe / DAY);
   const hours = Math.floor((safe % DAY) / HOUR);
   const minutes = Math.floor((safe % HOUR) / MINUTE);
@@ -26,11 +26,13 @@ export function breakdown(ms: number): Breakdown {
 
 /** Whole days contained in a duration (floored, never negative). */
 export function wholeDays(ms: number): number {
+  if (!Number.isFinite(ms)) return 0;
   return Math.max(0, Math.floor(ms / DAY));
 }
 
 /** Fractional days in a duration (never negative). */
 export function fractionalDays(ms: number): number {
+  if (!Number.isFinite(ms)) return 0;
   return Math.max(0, ms / DAY);
 }
 

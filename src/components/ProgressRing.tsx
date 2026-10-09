@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
@@ -10,24 +10,26 @@ export interface ProgressRingProps {
   size?: number;
   strokeWidth?: number;
   color: string;
-  /** Second gradient color for the arc end; defaults to a lighter `color`. */
-  colorEnd?: string;
+  /** Color at the start of the arc (12 o'clock), blending into `color`. Defaults to white. */
+  startColor?: string;
   trackColor?: string;
   children?: ReactNode;
 }
 
 /** Circular progress (SVG). Starts at 12 o'clock and fills clockwise. */
-export function ProgressRing({ progress, size = 240, strokeWidth = 14, color, colorEnd, trackColor, children }: ProgressRingProps) {
+export function ProgressRing({ progress, size = 240, strokeWidth = 14, color, startColor = '#FFFFFF', trackColor, children }: ProgressRingProps) {
   const p = Math.max(0, Math.min(1, progress));
   const r = (size - strokeWidth) / 2;
   const c = 2 * Math.PI * r;
-  const gradId = `ring-${color.replace(/[^a-zA-Z0-9]/g, '')}`;
+  // Unique per instance: on web every stacked screen shares one DOM.
+  const gradId = `ring${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size}>
         <Defs>
-          <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={colorEnd ?? '#FFFFFF'} stopOpacity={0.95} />
+          {/* Coordinates are pre-rotation: after the -90° turn the white end sits at the top. */}
+          <LinearGradient id={gradId} x1="1" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={startColor} stopOpacity={0.95} />
             <Stop offset="1" stopColor={color} stopOpacity={1} />
           </LinearGradient>
         </Defs>

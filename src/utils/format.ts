@@ -28,12 +28,17 @@ export function currencySymbol(code: string): string {
   return CURRENCIES.find((c) => c.code === code)?.symbol ?? code;
 }
 
-/** 4823 -> "4.8K", 1250000 -> "1.3M", 950 -> "950", 12.5 -> "12.5". */
+/**
+ * 4823 -> "4.8K", 1250000 -> "1.3M", 950 -> "950", 12.5 -> "12.5".
+ * Rounds before picking the unit, so 999.6 -> "1K" and 999950 -> "1M".
+ * Non-finite input renders as "0".
+ */
 export function formatCompact(n: number): string {
+  if (!Number.isFinite(n)) return '0';
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
-  if (abs >= 1_000_000) return `${sign}${trim(abs / 1_000_000)}M`;
-  if (abs >= 1_000) return `${sign}${trim(abs / 1_000)}K`;
+  if (abs >= 1_000_000 || Number(trim(abs / 1_000)) >= 1_000) return `${sign}${trim(abs / 1_000_000)}M`;
+  if (abs >= 1_000 || Math.round(abs) >= 1_000) return `${sign}${trim(abs / 1_000)}K`;
   if (abs >= 100) return `${sign}${Math.round(abs)}`;
   return `${sign}${trim(abs)}`;
 }

@@ -9,7 +9,8 @@ export function relapsesFor(habitId: string, relapses: Relapse[]): Relapse[] {
 
 /** Current clean streak in ms. */
 export function currentStreakMs(habit: Habit, now: number): number {
-  return Math.max(0, now - habit.startedAt);
+  const ms = now - habit.startedAt;
+  return Number.isFinite(ms) ? Math.max(0, ms) : 0;
 }
 
 /** Attempt number: 1 for the first try, +1 for every relapse. */
@@ -20,14 +21,14 @@ export function attemptNumber(habitRelapses: Relapse[]): number {
 /** Longest streak ever (ms), including the current one. */
 export function recordStreakMs(habit: Habit, habitRelapses: Relapse[], now: number): number {
   let best = currentStreakMs(habit, now);
-  for (const r of habitRelapses) best = Math.max(best, r.streakMs);
+  for (const r of habitRelapses) if (Number.isFinite(r.streakMs)) best = Math.max(best, r.streakMs);
   return best;
 }
 
 /** Sum of every clean streak (ms): all ended streaks plus the current one. */
 export function totalCleanMs(habit: Habit, habitRelapses: Relapse[], now: number): number {
   let total = currentStreakMs(habit, now);
-  for (const r of habitRelapses) total += Math.max(0, r.streakMs);
+  for (const r of habitRelapses) if (Number.isFinite(r.streakMs)) total += Math.max(0, r.streakMs);
   return total;
 }
 
@@ -90,7 +91,7 @@ export function snapshot(habit: Habit, allRelapses: Relapse[], now: number): Hab
 export function savingsByCurrency(snapshots: HabitSnapshot[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const s of snapshots) {
-    if (s.habit.dailyCost <= 0) continue;
+    if (!(s.habit.dailyCost > 0) || !Number.isFinite(s.moneySaved)) continue;
     out[s.habit.currency] = (out[s.habit.currency] ?? 0) + s.moneySaved;
   }
   return out;
@@ -98,12 +99,12 @@ export function savingsByCurrency(snapshots: HabitSnapshot[]): Record<string, nu
 
 /** Sum of whole clean days across habits (the home summary "CLEAN DAYS"). */
 export function totalCleanDaysAll(snapshots: HabitSnapshot[]): number {
-  return snapshots.reduce((acc, s) => acc + s.totalCleanDays, 0);
+  return snapshots.reduce((acc, s) => acc + (Number.isFinite(s.totalCleanDays) ? s.totalCleanDays : 0), 0);
 }
 
 /** Money saved in the last `days` days (for "+358€" deltas on the home summary). */
 export function recentSavings(habit: Habit, now: number, days: number): number {
   const windowStart = now - days * DAY;
-  const cleanInWindow = Math.max(0, now - Math.max(habit.startedAt, windowStart));
-  return moneySaved(habit, cleanInWindow);
+  const cleanInWindow = now - Math.max(habit.startedAt, windowStart);
+  return Number.isFinite(cleanInWindow) ? moneySaved(habit, Math.max(0, cleanInWindow)) : 0;
 }

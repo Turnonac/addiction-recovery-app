@@ -5,6 +5,7 @@ import { FullWindowOverlay } from 'react-native-screens';
 import { useStore } from '@/store';
 import { authenticate, getLockCapability, type LockCapability } from './biometrics';
 import { LockOverlay } from './LockOverlay';
+import { setLockCovered } from './lockState';
 import { shouldRelock } from './lockLogic';
 import { isSystemPromptActive } from './systemPrompt';
 
@@ -82,6 +83,9 @@ function NativeAppLockGate({ children }: { children: ReactNode }) {
   }, [unlock]);
 
   const show = enabled && (locked || privacy);
+  useEffect(() => {
+    setLockCovered(show);
+  }, [show]);
   const overlay = show ? <LockOverlay mode={locked ? 'locked' : 'privacy'} capability={capability} onUnlock={() => void unlock()} /> : null;
 
   return (

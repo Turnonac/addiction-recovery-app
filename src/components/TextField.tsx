@@ -1,5 +1,5 @@
-import { forwardRef } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { forwardRef, useState } from 'react';
+import { Platform, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { colors, radius, spacing } from '@/theme';
 import { Text } from './Text';
@@ -16,9 +16,10 @@ export interface TextFieldProps extends TextInputProps {
 
 /** Labeled dark input. */
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, hint, error, prefix, suffix, style, multiline, ...rest },
+  { label, hint, error, prefix, suffix, style, multiline, onFocus, onBlur, ...rest },
   ref,
 ) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.wrap}>
       {label ? (
@@ -26,7 +27,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           {label}
         </Text>
       ) : null}
-      <View style={[styles.field, multiline && styles.multiline, error ? styles.errorBorder : null]}>
+      <View style={[styles.field, multiline && styles.multiline, focused && styles.focused, error ? styles.errorBorder : null]}>
         {prefix ? (
           <Text variant="bodyStrong" tone="secondary">
             {prefix}
@@ -37,7 +38,15 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           placeholderTextColor={colors.textTertiary}
           selectionColor={colors.accent}
           multiline={multiline}
-          style={[styles.input, multiline && styles.inputMultiline, style]}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
+          style={[styles.input, multiline && styles.inputMultiline, Platform.OS === 'web' && styles.webNoOutline, style]}
           {...rest}
         />
         {suffix ? (
@@ -74,7 +83,10 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   multiline: { alignItems: 'flex-start', paddingVertical: spacing.md },
+  focused: { borderColor: colors.accent },
   errorBorder: { borderColor: colors.danger },
+  // The field border shows focus; hide the browser's default focus ring.
+  webNoOutline: { outlineWidth: 0 },
   input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: spacing.md },
   inputMultiline: { minHeight: 120, textAlignVertical: 'top', paddingVertical: 0 },
   hint: { paddingHorizontal: 2 },

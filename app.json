@@ -12,7 +12,11 @@
       "bundleIdentifier": "com.example.quit",
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Quit uses Face ID to keep your recovery data private."
+        "NSFaceIDUsageDescription": "Quit uses Face ID to keep your recovery data private.",
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "sms"
+        ]
       }
     },
     "android": {
@@ -42,7 +46,8 @@
       ],
       "expo-sharing",
       "expo-notifications",
-      "expo-local-authentication"
+      "expo-local-authentication",
+      "./plugins/withLinkQueries"
     ],
     "experiments": {
       "typedRoutes": false,

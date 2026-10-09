@@ -20,7 +20,16 @@ export interface StatItem {
  * Card with 2–4 stats separated by thin dividers, each with a tinted icon
  * circle on top (home summary, habit detail "Attempt / Record / Total").
  */
-export function StatGroup({ items, uppercaseLabels = false }: { items: StatItem[]; uppercaseLabels?: boolean }) {
+export function StatGroup({
+  items,
+  uppercaseLabels = false,
+  compactLabels = false,
+}: {
+  items: StatItem[];
+  uppercaseLabels?: boolean;
+  /** Smaller, two-line labels for long texts like "Total clean days". */
+  compactLabels?: boolean;
+}) {
   return (
     <Card padding={spacing.lg}>
       <View style={styles.row}>
@@ -38,8 +47,8 @@ export function StatGroup({ items, uppercaseLabels = false }: { items: StatItem[
                 variant={uppercaseLabels ? 'overline' : 'caption'}
                 tone="secondary"
                 center
-                numberOfLines={1}
-                style={uppercaseLabels ? styles.overline : undefined}
+                numberOfLines={compactLabels ? 2 : 1}
+                style={[uppercaseLabels ? styles.overline : undefined, compactLabels && styles.compactLabel]}
               >
                 {it.label}
               </Text>
@@ -71,4 +80,5 @@ const styles = StyleSheet.create({
   },
   value: { fontSize: 24 },
   overline: { fontSize: 10, letterSpacing: 1.5 },
+  compactLabel: { fontSize: 11 },
 });

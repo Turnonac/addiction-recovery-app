@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import { useLockCover } from '@/features/lock/lockState';
 import { useStore } from '@/store';
 import { LOCK_SETTLE_MS, canInterrupt } from './presenceLogic';
 
@@ -9,12 +10,14 @@ import { LOCK_SETTLE_MS, canInterrupt } from './presenceLogic';
  * settle window after coming back, so the lock screen has taken over first.
  * Achievement banners and milestone celebrations wait while this is false.
  *
- * App lock lives in `AppLockGate`, which doesn't expose whether it is currently
- * locked; this only approximates it (see `LOCK_SETTLE_MS`). The banner is also
- * drawn below the lock window when lock is on, so it can never show over it.
+ * `useLockCover` reports when AppLockGate's lock or privacy cover is up; the
+ * settle window (see `LOCK_SETTLE_MS`) also covers the moment between returning
+ * to the foreground and the gate deciding to re-lock. The banner is drawn below
+ * the lock window when lock is on, so it can never show over it.
  */
 export function useCanInterrupt(): boolean {
   const lockEnabled = useStore((s) => s.settings.appLockEnabled);
+  const covered = useLockCover((s) => s.covered);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   // Bumped each time the app returns to the foreground; restarts the settle window.
   const [activations, setActivations] = useState(0);
@@ -33,5 +36,5 @@ export function useCanInterrupt(): boolean {
     return () => clearTimeout(id);
   }, [activations]);
 
-  return canInterrupt({ appState, lockEnabled, settled: settledFor === activations });
+  return !covered && canInterrupt({ appState, lockEnabled, settled: settledFor === activations });
 }

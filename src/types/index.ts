@@ -66,6 +66,8 @@ export interface Habit {
   /** Why the user wants to quit — shown in SOS and detail screens. */
   reason: string;
   archived: boolean;
+  /** Epoch ms when the habit was archived (null/absent while active). */
+  archivedAt?: number | null;
   /** Sort order on the home screen (ascending). */
   order: number;
 }

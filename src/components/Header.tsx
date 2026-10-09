@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { spacing } from '@/theme';
@@ -21,6 +21,10 @@ export interface HeaderProps {
 
 /** Custom in-screen header (the native stack header is hidden app-wide). */
 export function Header({ title, left = 'back', onLeftPress, right, uppercase, large, subtitle }: HeaderProps) {
+  // Both side slots share the width of the wider one so the title stays centered
+  // while getting as much room as possible on narrow screens.
+  const [rightWidth, setRightWidth] = useState(0);
+  const sideWidth = Math.max(left !== 'none' ? 40 : 0, rightWidth);
   const goBack = () => {
     if (onLeftPress) return onLeftPress();
     if (router.canGoBack()) router.back();
@@ -54,14 +58,22 @@ export function Header({ title, left = 'back', onLeftPress, right, uppercase, la
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.side}>
+      <View style={[styles.side, { width: sideWidth }]}>
         {left !== 'none' && (
           <IconButton icon={left === 'close' ? 'close' : 'chevron-left'} onPress={goBack} accessibilityLabel={left === 'close' ? 'Close' : 'Back'} />
         )}
       </View>
       <View style={styles.center}>
         {title ? (
-          <Text variant="subheading" center numberOfLines={1} style={uppercase ? styles.upper : undefined} accessibilityRole="header">
+          <Text
+            variant="subheading"
+            center
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            style={uppercase ? styles.upper : undefined}
+            accessibilityRole="header"
+          >
             {uppercase ? title.toUpperCase() : title}
           </Text>
         ) : null}
@@ -71,7 +83,11 @@ export function Header({ title, left = 'back', onLeftPress, right, uppercase, la
           </Text>
         ) : null}
       </View>
-      <View style={[styles.side, styles.right]}>{right}</View>
+      <View style={[styles.side, styles.right, { width: sideWidth }]}>
+        <View style={styles.rightInner} onLayout={(e) => setRightWidth(Math.ceil(e.nativeEvent.layout.width))}>
+          {right}
+        </View>
+      </View>
     </View>
   );
 }
@@ -84,8 +100,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     minHeight: 56,
   },
-  side: { width: 88, flexDirection: 'row', alignItems: 'center' },
-  center: { flex: 1, alignItems: 'center' },
+  side: { flexDirection: 'row', alignItems: 'center' },
+  center: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.sm },
+  rightInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   right: { justifyContent: 'flex-end', gap: spacing.sm, flexDirection: 'row', alignItems: 'center' },
   upper: { letterSpacing: 1.5 },
   largeWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },

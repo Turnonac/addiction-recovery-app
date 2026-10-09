@@ -26,7 +26,7 @@ export default function AppLayout() {
       <Stack.Screen name="stats" options={{ presentation: 'modal' }} />
       <Stack.Screen name="achievements" />
       <Stack.Screen name="certificate" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="milestone" options={{ presentation: 'transparentModal', animation: 'fade' }} />
+      <Stack.Screen name="milestone" options={{ presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }} />
       <Stack.Screen name="weekly" />
       <Stack.Screen name="settings/index" />
       <Stack.Screen name="settings/archived" />

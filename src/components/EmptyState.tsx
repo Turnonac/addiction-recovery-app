@@ -29,7 +29,7 @@ export function EmptyState({ icon, title, message, actionLabel, onAction, color 
           {message}
         </Text>
       ) : null}
-      {actionLabel && onAction ? <Button label={actionLabel} onPress={onAction} fullWidth={false} style={{ marginTop: spacing.md }} /> : null}
+      {actionLabel && onAction ? <Button label={actionLabel} onPress={onAction} fullWidth={false} style={styles.action} /> : null}
     </View>
   );
 }
@@ -38,4 +38,5 @@ const styles = StyleSheet.create({
   wrap: { alignItems: 'center', paddingVertical: spacing.xxxl, paddingHorizontal: spacing.xl, gap: spacing.sm },
   circle: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 1, marginBottom: spacing.sm },
   message: { maxWidth: 320 },
+  action: { marginTop: spacing.md, alignSelf: 'center' },
 });

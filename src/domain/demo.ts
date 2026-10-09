@@ -1,7 +1,9 @@
+import { evaluateAll } from '@/domain/achievements';
 import { presetFor } from '@/domain/catalog/habits';
-import { DEFAULT_SETTINGS, STATE_VERSION } from '@/store';
+import { DEFAULT_SETTINGS, STATE_VERSION, celebrationKey } from '@/store';
 import type { Habit, HabitKind, JournalEntry, PersistedState, Relapse, SosSession } from '@/types';
-import { DAY, HOUR, MINUTE } from './time';
+import { milestonesReachedList } from './milestones';
+import { DAY, HOUR, MINUTE, wholeDays } from './time';
 
 /**
  * Deterministic sample data so every screen has something to show. Used by
@@ -100,6 +102,17 @@ export function buildDemoState(now: number): PersistedState {
     s('demo_s4', 20, 'box_breathing', 64, 6, 3, null),
   ];
 
+  // Sample data arrives "already lived": milestones count as celebrated and earned
+  // achievements as unlocked, so loading it doesn't fire a burst of popups.
+  const celebrated: Record<string, true> = {};
+  for (const h of habits) {
+    for (const m of milestonesReachedList(wholeDays(now - h.startedAt))) celebrated[celebrationKey(h.id, h.startedAt, m)] = true;
+  }
+  const achievements: Record<string, number> = {};
+  for (const a of evaluateAll({ habits, relapses, journal, sosSessions, now })) {
+    if (a.unlocked) achievements[a.def.id] = now - DAY;
+  }
+
   return {
     version: STATE_VERSION,
     habits,
@@ -107,6 +120,10 @@ export function buildDemoState(now: number): PersistedState {
     journal,
     sosSessions,
     settings: { ...DEFAULT_SETTINGS, onboardingCompleted: true, userName: 'Alex', defaultCurrency: 'USD' },
-    unlocks: { achievements: {}, certificates: { 'demo_alcohol:7': now - 23 * DAY, 'demo_coffee:7': now - 24 * DAY, 'demo_coffee:30': now - 1 * DAY, 'demo_smoking:7': now - 22 * DAY }, celebrated: {} },
+    unlocks: {
+      achievements,
+      certificates: { 'demo_alcohol:7': now - 23 * DAY, 'demo_coffee:7': now - 24 * DAY, 'demo_coffee:30': now - 1 * DAY, 'demo_smoking:7': now - 22 * DAY },
+      celebrated,
+    },
   };
 }

@@ -119,6 +119,22 @@ export function initialPersistedState(): PersistedState {
   };
 }
 
+/**
+ * Repairs timestamps that can't be used (NaN becomes null in JSON and would make a
+ * habit count from 1970): fall back to the other known dates, then to now.
+ */
+export function sanitizeHabits(habits: Habit[]): Habit[] {
+  const now = Date.now();
+  const ok = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+  return habits.map((h) => {
+    if (ok(h.startedAt) && ok(h.firstStartedAt) && ok(h.createdAt)) return h;
+    const startedAt = ok(h.startedAt) ? h.startedAt : ok(h.firstStartedAt) ? h.firstStartedAt : ok(h.createdAt) ? h.createdAt : now;
+    const firstStartedAt = ok(h.firstStartedAt) ? Math.min(h.firstStartedAt, startedAt) : startedAt;
+    const createdAt = ok(h.createdAt) ? h.createdAt : firstStartedAt;
+    return { ...h, startedAt, firstStartedAt, createdAt };
+  });
+}
+
 /** Certificate key for a habit + milestone. */
 export function certificateKey(habitId: string, days: number): string {
   return `${habitId}:${days}`;
@@ -139,6 +155,7 @@ export const useStore = create<AppState>()(
         const preset = presetFor(input.kind);
         const id = makeId('h_');
         const now = Date.now();
+        const startedAt = Number.isFinite(input.startedAt) ? Math.min(input.startedAt, now) : now;
         const habits = get().habits;
         const habit: Habit = {
           id,
@@ -146,8 +163,8 @@ export const useStore = create<AppState>()(
           name: input.name?.trim() || preset.name,
           color: input.color ?? preset.color,
           icon: input.icon ?? preset.icon,
-          startedAt: input.startedAt,
-          firstStartedAt: input.startedAt,
+          startedAt,
+          firstStartedAt: startedAt,
           createdAt: now,
           dailyCost: Math.max(0, input.dailyCost ?? 0),
           currency: input.currency ?? get().settings.defaultCurrency,
@@ -162,6 +179,7 @@ export const useStore = create<AppState>()(
       },
 
       updateHabit: (id, patch) => {
+        if (patch.startedAt != null && !Number.isFinite(patch.startedAt)) return;
         set({
           habits: get().habits.map((h) => {
             if (h.id !== id) return h;
@@ -195,7 +213,15 @@ export const useStore = create<AppState>()(
       },
 
       setHabitArchived: (id, archived) => {
-        set({ habits: get().habits.map((h) => (h.id === id ? { ...h, archived } : h)) });
+        const now = Date.now();
+        const habits = get().habits;
+        // Restored habits go to the end of the home list.
+        const nextOrder = habits.reduce((m, h) => (h.archived ? m : Math.max(m, h.order)), -1) + 1;
+        set({
+          habits: habits.map((h) =>
+            h.id === id ? { ...h, archived, archivedAt: archived ? now : null, order: archived ? h.order : nextOrder } : h,
+          ),
+        });
       },
 
       reorderHabits: (orderedIds) => {
@@ -227,10 +253,11 @@ export const useStore = create<AppState>()(
       },
 
       undoLastRelapse: (habitId) => {
-        const habitRelapses = get()
-          .relapses.filter((r) => r.habitId === habitId)
-          .sort((a, b) => b.at - a.at);
-        const last = habitRelapses[0];
+        // Most recent by time; on equal timestamps the one stored last wins.
+        let last: Relapse | undefined;
+        for (const r of get().relapses) {
+          if (r.habitId === habitId && (!last || r.at >= last.at)) last = r;
+        }
         if (!last) return;
         set({
           relapses: get().relapses.filter((r) => r.id !== last.id),
@@ -303,7 +330,7 @@ export const useStore = create<AppState>()(
       replaceAll: (data) =>
         set({
           version: STATE_VERSION,
-          habits: data.habits,
+          habits: sanitizeHabits(data.habits),
           relapses: data.relapses,
           journal: data.journal,
           sosSessions: data.sosSessions,
@@ -334,6 +361,7 @@ export const useStore = create<AppState>()(
         return {
           ...current,
           ...p,
+          habits: sanitizeHabits(p.habits ?? []),
           settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
           unlocks: { ...EMPTY_UNLOCKS, ...(p.unlocks ?? {}) },
         };
