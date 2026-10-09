@@ -1,10 +1,5 @@
-import { Header, Screen, Text } from '@/components';
+import { ArchivedScreen } from '@/features/settings/ArchivedScreen';
 
-// STUB — replaced by the feature implementation.
-export default function ArchivedhabitsScreen() {
-  return (
-    <Screen header={<Header title="Archived habits" left="back" />}>
-      <Text tone="secondary">Archived habits — coming soon</Text>
-    </Screen>
-  );
+export default function ArchivedHabitsRoute() {
+  return <ArchivedScreen />;
 }

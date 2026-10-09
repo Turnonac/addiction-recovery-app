@@ -1,10 +1,10 @@
-import { Header, Screen, Text } from '@/components';
+import { useLocalSearchParams } from 'expo-router';
 
-// STUB — replaced by the feature implementation.
+import { StatsScreen } from '@/features/stats/StatsScreen';
+import { parseHabitId, parseTab } from '@/features/stats/scope';
+
+/** /stats?habitId=&tab= — statistics modal (Streaks, Compare, Savings, Triggers, Mood). */
 export default function StatisticsScreen() {
-  return (
-    <Screen header={<Header title="Statistics" left="close" />}>
-      <Text tone="secondary">Statistics — coming soon</Text>
-    </Screen>
-  );
+  const params = useLocalSearchParams<{ habitId?: string; tab?: string }>();
+  return <StatsScreen initialHabitId={parseHabitId(params.habitId)} initialTab={parseTab(params.tab)} />;
 }
