@@ -1,10 +1,5 @@
-import { Header, Screen, Text } from '@/components';
+import { EntryViewScreen } from '@/features/journal/EntryViewScreen';
 
-// STUB — replaced by the feature implementation.
-export default function EntryScreen() {
-  return (
-    <Screen header={<Header title="Entry" left="back" />}>
-      <Text tone="secondary">Entry — coming soon</Text>
-    </Screen>
-  );
+export default function EntryRoute() {
+  return <EntryViewScreen />;
 }

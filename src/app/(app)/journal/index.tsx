@@ -1,10 +1,5 @@
-import { Header, Screen, Text } from '@/components';
+import { JournalListScreen } from '@/features/journal/JournalListScreen';
 
-// STUB — replaced by the feature implementation.
-export default function JournalScreen() {
-  return (
-    <Screen header={<Header title="Journal" left="back" />}>
-      <Text tone="secondary">Journal — coming soon</Text>
-    </Screen>
-  );
+export default function JournalRoute() {
+  return <JournalListScreen />;
 }

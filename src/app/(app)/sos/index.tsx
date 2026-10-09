@@ -1,10 +1,6 @@
-import { Header, Screen, Text } from '@/components';
+import { PickerScreen } from '@/features/sos/PickerScreen';
 
-// STUB — replaced by the feature implementation.
+/** SOS: choose a craving exercise. Presented as a full-screen modal. */
 export default function SOSScreen() {
-  return (
-    <Screen header={<Header title="SOS" left="close" />}>
-      <Text tone="secondary">SOS — coming soon</Text>
-    </Screen>
-  );
+  return <PickerScreen />;
 }
