@@ -1,10 +1,9 @@
-import { Header, Screen, Text } from '@/components';
+import { useLocalSearchParams } from 'expo-router';
 
-// STUB — replaced by the feature implementation.
+import { RelapseScreen as RelapseFlow } from '@/features/relapse/RelapseScreen';
+
+/** /habit/[id]/relapse — log a relapse (modal). */
 export default function RelapseScreen() {
-  return (
-    <Screen header={<Header title="Relapse" left="close" />}>
-      <Text tone="secondary">Relapse — coming soon</Text>
-    </Screen>
-  );
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <RelapseFlow habitId={id} />;
 }

@@ -1,10 +1,9 @@
-import { Header, Screen, Text } from '@/components';
+import { useLocalSearchParams } from 'expo-router';
 
-// STUB — replaced by the feature implementation.
+import { DetailScreen } from '@/features/habit-detail/DetailScreen';
+
+/** /habit/[id] — habit detail. */
 export default function HabitScreen() {
-  return (
-    <Screen header={<Header title="Habit" left="back" />}>
-      <Text tone="secondary">Habit — coming soon</Text>
-    </Screen>
-  );
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <DetailScreen habitId={id} />;
 }

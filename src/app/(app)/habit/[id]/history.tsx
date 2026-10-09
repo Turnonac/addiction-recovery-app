@@ -1,10 +1,9 @@
-import { Header, Screen, Text } from '@/components';
+import { useLocalSearchParams } from 'expo-router';
 
-// STUB — replaced by the feature implementation.
-export default function HistoryScreen() {
-  return (
-    <Screen header={<Header title="History" left="back" />}>
-      <Text tone="secondary">History — coming soon</Text>
-    </Screen>
-  );
+import { HistoryScreen } from '@/features/habit-detail/history/HistoryScreen';
+
+/** /habit/[id]/history — every streak of a habit. */
+export default function StreakHistoryScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <HistoryScreen habitId={id} />;
 }

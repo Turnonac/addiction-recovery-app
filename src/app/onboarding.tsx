@@ -1,10 +1,6 @@
-import { Header, Screen, Text } from '@/components';
+import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow';
 
-// STUB — replaced by the feature implementation.
-export default function WelcomeScreen() {
-  return (
-    <Screen header={<Header title="Welcome" left="none" />}>
-      <Text tone="secondary">Welcome — coming soon</Text>
-    </Screen>
-  );
+/** First-run onboarding (only reachable until onboarding is completed). */
+export default function OnboardingScreen() {
+  return <OnboardingFlow />;
 }

@@ -1,10 +1,5 @@
-import { Header, Screen, Text } from '@/components';
+import { HomeScreen } from '@/features/home/HomeScreen';
 
-// STUB — replaced by the feature implementation.
-export default function HomeScreen() {
-  return (
-    <Screen header={<Header title="Home" left="none" />}>
-      <Text tone="secondary">Home — coming soon</Text>
-    </Screen>
-  );
+export default function HomeRoute() {
+  return <HomeScreen />;
 }
