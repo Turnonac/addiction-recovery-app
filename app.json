@@ -73,6 +73,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "owner": "turnonac",
+    "extra": {
+      "eas": {
+        "projectId": "2dac7fe4-1863-4762-985b-f6e7644a5e4a"
+      }
     }
   }
 }
