@@ -1,0 +1,161 @@
+import type { ReactNode } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useAppTheme } from '@/ui/theme';
+
+export type ScreenEdge = 'top' | 'bottom';
+
+/**
+ * Edges for routes opened with presentation 'modal'. iOS shows them as a sheet
+ * below the status bar, but the stack's safe-area insets still report the full
+ * status-bar height there, so only the bottom inset applies. Android modals are
+ * full screen and need both.
+ */
+export const MODAL_EDGES: readonly ScreenEdge[] =
+  Platform.OS === 'ios' ? ['bottom'] : ['top', 'bottom'];
+
+export interface ScreenProps {
+  children?: ReactNode;
+  /** Scroll the content (default true). */
+  scroll?: boolean;
+  /**
+   * Safe-area edges to pad. Default ['top'], right for tab screens (the tab bar
+   * already clears the home indicator). Use ['top', 'bottom'] for modals and
+   * onboarding without a footer. A `footer` always clears the bottom inset
+   * when 'bottom' is listed.
+   */
+  edges?: readonly ScreenEdge[];
+  /** Pinned bar under the content (save / call buttons), with a top hairline. */
+  footer?: ReactNode;
+  /** Vertical space between children. Default 14. */
+  gap?: number;
+  /** Standard 20pt side padding (default true). */
+  padded?: boolean;
+  /** Wrap in a KeyboardAvoidingView (screens with text fields). */
+  avoidKeyboard?: boolean;
+  /** Extra style for the content container. */
+  contentStyle?: StyleProp<ViewStyle>;
+  testID?: string;
+}
+
+/** Themed page: background, safe-area padding, optional scroll and footer. */
+export function Screen({
+  children,
+  scroll = true,
+  edges = ['top'],
+  footer,
+  gap = 14,
+  padded = true,
+  avoidKeyboard = false,
+  contentStyle,
+  testID,
+}: ScreenProps) {
+  const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const topInset = edges.includes('top') ? insets.top : 0;
+  const bottomInset = edges.includes('bottom') ? insets.bottom : 0;
+
+  const contentPadding: ViewStyle = {
+    gap,
+    paddingTop: topInset + 12,
+    paddingBottom: footer ? 16 : bottomInset + 16,
+    paddingHorizontal: padded ? 20 : 0,
+  };
+
+  const body = scroll ? (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={[contentPadding, contentStyle]}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+    >
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={[{ flex: 1 }, contentPadding, contentStyle]}>{children}</View>
+  );
+
+  const footerView = footer ? (
+    <View
+      style={{
+        gap: 12,
+        paddingTop: 12,
+        paddingHorizontal: 20,
+        paddingBottom: bottomInset > 0 ? bottomInset : 16,
+        backgroundColor: theme.bg,
+        borderTopWidth: 1,
+        borderTopColor: theme.line,
+      }}
+    >
+      {footer}
+    </View>
+  ) : null;
+
+  const rootStyle: ViewStyle = { flex: 1, backgroundColor: theme.bg };
+
+  if (avoidKeyboard) {
+    return (
+      <KeyboardAvoidingView
+        testID={testID}
+        style={rootStyle}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {body}
+        {footerView}
+      </KeyboardAvoidingView>
+    );
+  }
+  return (
+    <View testID={testID} style={rootStyle}>
+      {body}
+      {footerView}
+    </View>
+  );
+}
+
+export interface ScreenHeaderProps {
+  title: string;
+  /** Small line above the title, e.g. the date 'Thursday, October 29'. */
+  eyebrow?: string;
+  /** Muted line under the title. */
+  subtitle?: string;
+  /** 'lg' = 30pt tab-screen title (default); 'md' = 25-28pt modal question. */
+  size?: 'lg' | 'md';
+}
+
+/** Page title block from the mockups (eyebrow, big title, muted subtitle). */
+export function ScreenHeader({ title, eyebrow, subtitle, size = 'lg' }: ScreenHeaderProps) {
+  const theme = useAppTheme();
+  const fontSize = size === 'lg' ? 30 : 26;
+  return (
+    <View style={{ gap: size === 'lg' ? 4 : 6 }}>
+      {eyebrow ? (
+        <Text style={{ color: theme.muted, fontSize: 14, fontWeight: '600' }}>{eyebrow}</Text>
+      ) : null}
+      <Text
+        accessibilityRole="header"
+        style={{
+          color: theme.text,
+          fontSize,
+          lineHeight: Math.round(fontSize * 1.18),
+          fontWeight: '700',
+          letterSpacing: -0.02 * fontSize,
+        }}
+      >
+        {title}
+      </Text>
+      {subtitle ? (
+        <Text style={{ color: theme.muted, fontSize: 15, lineHeight: 21 }}>{subtitle}</Text>
+      ) : null}
+    </View>
+  );
+}
