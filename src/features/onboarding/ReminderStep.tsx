@@ -10,9 +10,22 @@ import {
   type PickerRequest,
 } from '@/features/onboarding/pickers';
 import { StepScreen, TextLink } from '@/features/onboarding/StepLayout';
-import { requestPermission, scheduleDailyReminder } from '@/services/notifications';
+import { cancelDailyReminder, requestPermission, scheduleDailyReminder } from '@/services/notifications';
 import { useAppStore } from '@/state/store';
 import { Button, NotificationPreview, SettingsGroup, SettingsRow } from '@/ui/components';
+
+/**
+ * Removes a reminder scheduled earlier in onboarding (the user can come back to
+ * this step from Done). The root layout does not reconcile until onboarding is
+ * finished and the app next returns to the foreground. Best effort.
+ */
+async function cancelQuietly(): Promise<void> {
+  try {
+    await cancelDailyReminder();
+  } catch {
+    // reconcileReminder cancels it on the next launch / foreground.
+  }
+}
 
 /**
  * Step 6: daily reminder. This page is the pre-prompt: the system permission
@@ -50,6 +63,7 @@ export function ReminderStep({ onNext, onBack }: StepNavProps) {
       const granted = await requestPermission();
       if (!granted) {
         await setReminder({ enabled: false, hour, minute });
+        await cancelQuietly();
         setBusy(false);
         Alert.alert(
           'Reminders are off',
@@ -63,6 +77,7 @@ export function ReminderStep({ onNext, onBack }: StepNavProps) {
         await setReminder({ enabled: true, hour, minute });
       } catch {
         await setReminder({ enabled: false, hour, minute });
+        await cancelQuietly();
         setBusy(false);
         Alert.alert(
           "Couldn't set the reminder",
@@ -83,6 +98,7 @@ export function ReminderStep({ onNext, onBack }: StepNavProps) {
     setBusy(true);
     try {
       await setReminder({ enabled: false, hour, minute });
+      await cancelQuietly();
       onNext();
     } catch {
       setBusy(false);

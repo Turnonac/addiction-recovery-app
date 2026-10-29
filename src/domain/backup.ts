@@ -119,12 +119,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** The later of two ISO instants (compared as instants, so offsets are handled). */
+function laterInstant(a: string, b: string | null): string {
+  return b !== null && Date.parse(b) > Date.parse(a) ? b : a;
+}
+
 /**
  * Validate an imported (already JSON-parsed) value.
  * - not an object, or `format` is not ours → 'not-a-backup'
  * - our format with a schemaVersion above 1 → 'newer-version'
  * - anything else that fails the schema → 'invalid'
  * Day rows with no color and no check-in are dropped (they are never stored).
+ * The file is itself a backup made at `exportedAt` (its settings were saved just
+ * before that export was recorded), so the restored `lastExportAt` is the later
+ * of the two.
  */
 export function parseBackup(input: unknown): ParseBackupResult {
   if (!isRecord(input) || input.format !== BACKUP_FORMAT) {
@@ -140,10 +148,12 @@ export function parseBackup(input: unknown): ParseBackupResult {
 
   const file = result.data;
   const days = copyDays(file.days).filter((d) => d.color !== null || d.checkedIn);
+  const settings = copySettings(file.settings);
+  settings.lastExportAt = laterInstant(file.exportedAt, settings.lastExportAt);
   const snapshot: AppSnapshot = {
     days,
     behaviors: copyBehaviors(file.behaviors),
-    settings: copySettings(file.settings),
+    settings,
   };
   return {
     ok: true,

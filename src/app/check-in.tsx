@@ -8,6 +8,7 @@ import {
   COLOR_NAMES,
   RED,
   type ColorLevel,
+  type LocalDate,
   type SetColorOutcome,
 } from '@/domain/types';
 import { useAppStore } from '@/state/store';
@@ -29,12 +30,35 @@ export default function CheckInScreen() {
   const theme = useAppTheme();
   const params = useLocalSearchParams<{ date?: string | string[]; from?: string | string[] }>();
   const today = useAppStore((s) => s.today);
+  // "Today" as of opening: an open check-in keeps its day when midnight passes.
+  const [openedOn] = useState(() => useAppStore.getState().today);
   const raw = Array.isArray(params.date) ? params.date[0] : params.date;
-  const date = raw && raw.length > 0 ? raw : today;
+  const date = raw && raw.length > 0 ? raw : openedOn;
   const valid = isValidLocalDate(date) && date <= today;
-  const isToday = date === today;
   // Opened from the call screen ("Log it"): return there instead of opening a second one.
   const fromCall = (Array.isArray(params.from) ? params.from[0] : params.from) === 'call';
+
+  // Invalid or future dates cannot be logged: leave right away (once).
+  const left = useRef(false);
+  useEffect(() => {
+    if (valid || left.current) return;
+    left.current = true;
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  }, [valid, router]);
+
+  if (!valid) return <View style={{ flex: 1, backgroundColor: theme.bg }} />;
+
+  // Keyed by date: if this screen is reused for another day (e.g. a reminder tap
+  // while it is open), the selection starts over instead of carrying across days.
+  return <CheckInForm key={date} date={date} fromCall={fromCall} />;
+}
+
+function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean }) {
+  const router = useRouter();
+  const theme = useAppTheme();
+  const today = useAppStore((s) => s.today);
+  const isToday = date === today;
 
   const stored = useAppStore((s) => s.days[date]?.color ?? null);
   const behaviors = useAppStore((s) => s.behaviors);
@@ -55,17 +79,6 @@ export default function CheckInScreen() {
     if (fromCall) close();
     else router.replace('/call');
   };
-
-  // Invalid or future dates cannot be logged: leave right away (once).
-  const left = useRef(false);
-  useEffect(() => {
-    if (valid || left.current) return;
-    left.current = true;
-    if (router.canGoBack()) router.back();
-    else router.replace('/(tabs)');
-  }, [valid, router]);
-
-  if (!valid) return <View style={{ flex: 1, backgroundColor: theme.bg }} />;
 
   const dayWord = isToday ? 'today' : 'that day';
 
@@ -185,6 +198,8 @@ export default function CheckInScreen() {
   );
 }
 
+const GRACE_NOTE_MAX_SCALE = 2;
+
 function GraceNote() {
   const theme = useAppTheme();
   const red = theme.levels[RED];
@@ -199,10 +214,16 @@ function GraceNote() {
         backgroundColor: red.soft,
       }}
     >
-      <Text style={{ color: red.ink, fontSize: 14, lineHeight: 20, fontWeight: '600' }}>
+      {/* Capped so the note leaves room for the Save button at the largest text sizes. */}
+      <Text
+        maxFontSizeMultiplier={GRACE_NOTE_MAX_SCALE}
+        style={{ color: red.ink, fontSize: 14, lineHeight: 20, fontWeight: '600' }}
+      >
         Your counter restarts at 0. Your history and best streak stay.
       </Text>
-      <Text style={{ color: red.ink, fontSize: 13, lineHeight: 18 }}>God&apos;s grace doesn&apos;t reset.</Text>
+      <Text maxFontSizeMultiplier={GRACE_NOTE_MAX_SCALE} style={{ color: red.ink, fontSize: 13, lineHeight: 18 }}>
+        God&apos;s grace doesn&apos;t reset.
+      </Text>
     </View>
   );
 }

@@ -42,6 +42,12 @@ type Busy = 'reminder' | 'export' | 'import' | null;
 const DATA_NOTE =
   "Your data lives on this phone. WalkInLight never sends it anywhere. If iCloud or Google backup is on in your phone's settings, it's included there. You can also export a backup file.";
 
+const RESTORED_MESSAGE = 'The data from your backup file is now on this phone.';
+const DENIED_NOTE =
+  "Reminders are turned off in your phone's settings. Turn on notifications for WalkInLight there to get your daily reminder.";
+const UNDETERMINED_NOTE =
+  'Your daily reminder needs permission to send notifications before it can arrive.';
+
 export default function SettingsScreen() {
   const router = useRouter();
   const theme = useAppTheme();
@@ -80,6 +86,8 @@ export default function SettingsScreen() {
 
   const timeLabel = formatTime(reminder.hour, reminder.minute);
   const showDenied = permission === 'denied' && (reminder.enabled || triedToEnable);
+  // On but never allowed (e.g. restored from a phone backup): nothing can be scheduled yet.
+  const showUndetermined = permission === 'undetermined' && reminder.enabled;
 
   async function toggleReminder(on: boolean) {
     if (busy !== null) return;
@@ -146,11 +154,25 @@ export default function SettingsScreen() {
         exportedAt,
       );
       const shared = await shareBackupFile(file, backupFileName(todayLocal()));
-      if (shared) {
-        await markExported(exportedAt);
-      } else {
+      if (!shared) {
         Alert.alert("Couldn't export", "Sharing isn't available right now. Please try again.");
+        return;
       }
+      // The share sheet closes the same way whether the file was saved or not,
+      // so only a confirmed save counts as a backup (and quiets Today's reminder).
+      Alert.alert(
+        'Did you save the backup file?',
+        'Choose Yes only if you saved or sent it somewhere safe, like Files, a cloud drive or your email.',
+        [
+          { text: 'No', style: 'cancel' },
+          {
+            text: 'Yes, I saved it',
+            onPress: () => {
+              markExported(exportedAt).catch(() => Alert.alert("Couldn't save", 'Please try again.'));
+            },
+          },
+        ],
+      );
     } catch {
       Alert.alert("Couldn't export", 'Something went wrong. Please try again.');
     } finally {
@@ -200,15 +222,45 @@ export default function SettingsScreen() {
     }
   }
 
+  /**
+   * A restored reminder must not show as on while nothing can be scheduled. Asks
+   * for notification permission if needed (the user just chose to restore it);
+   * if it is still not allowed, saves the reminder as off. Never throws.
+   * @returns true if a restored reminder had to be turned off.
+   */
+  async function restoreReminder(): Promise<boolean> {
+    const restored = useAppStore.getState().settings.reminder;
+    if (!restored.enabled || (await requestPermission())) {
+      await reconcileReminder(restored);
+      return false;
+    }
+    const off = { ...restored, enabled: false };
+    try {
+      await setReminder(off);
+    } catch {
+      // Settings still shows the permission note for the reminder.
+    }
+    await reconcileReminder(off);
+    return true;
+  }
+
   async function restore(snapshot: Parameters<typeof replaceAll>[0]) {
     setBusy('import');
     try {
-      await replaceAll(snapshot);
-      await reconcileReminder(useAppStore.getState().settings.reminder);
+      try {
+        await replaceAll(snapshot);
+      } catch {
+        Alert.alert("Couldn't import", 'Nothing was changed. Please try again.');
+        return;
+      }
+      const reminderTurnedOff = await restoreReminder();
       setPermission(await getPermission());
-      Alert.alert('Backup restored', 'The data from your backup file is now on this phone.');
-    } catch {
-      Alert.alert("Couldn't import", 'Nothing was changed. Please try again.');
+      Alert.alert(
+        'Backup restored',
+        reminderTurnedOff
+          ? `${RESTORED_MESSAGE}\n\nNotifications aren't allowed for WalkInLight, so the daily reminder is off. You can turn it on here in Settings.`
+          : RESTORED_MESSAGE,
+      );
     } finally {
       setBusy(null);
     }
@@ -272,7 +324,7 @@ export default function SettingsScreen() {
             accessibilityHint={reminder.enabled ? 'Changes the reminder time' : 'Turn on the reminder first'}
           />
         </SettingsGroup>
-        {showDenied ? (
+        {showDenied || showUndetermined ? (
           <View
             style={{
               gap: 4,
@@ -285,15 +337,24 @@ export default function SettingsScreen() {
             }}
           >
             <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>
-              Reminders are turned off in your phone&apos;s settings. Turn on notifications for
-              WalkInLight there to get your daily reminder.
+              {showDenied ? DENIED_NOTE : UNDETERMINED_NOTE}
             </Text>
-            <Button
-              title="Open phone settings"
-              variant="ghost"
-              onPress={() => void Linking.openSettings().catch(() => undefined)}
-              style={{ alignSelf: 'flex-start', marginLeft: -12 }}
-            />
+            {showDenied ? (
+              <Button
+                title="Open phone settings"
+                variant="ghost"
+                onPress={() => void Linking.openSettings().catch(() => undefined)}
+                style={{ alignSelf: 'flex-start', marginLeft: -12 }}
+              />
+            ) : (
+              <Button
+                title="Allow notifications"
+                variant="ghost"
+                onPress={() => void toggleReminder(true)}
+                disabled={busy === 'reminder'}
+                style={{ alignSelf: 'flex-start', marginLeft: -12 }}
+              />
+            )}
           </View>
         ) : null}
         {reminder.enabled ? (

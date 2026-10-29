@@ -70,7 +70,7 @@ export default function TodayScreen() {
 
   const streak = currentStreak(dayList, settings.counterStartDate, today);
   const best = bestStreak(dayList, settings.counterStartDate, today);
-  const week = weekStrip(dayList, today);
+  const week = weekStrip(dayList, today, settings.installDate);
   const todayColor = days[today]?.color ?? null;
   const call = callWindow(dayList, settings, today);
   const yesterday = addDays(today, -1);

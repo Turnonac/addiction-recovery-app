@@ -148,6 +148,22 @@ describe('WeekStrip', () => {
     expect(screen.getByLabelText('Wednesday, October 28: Blue, no call')).toBeOnTheScreen();
     expect(screen.getByLabelText('Thursday, October 29, today: not logged yet')).toBeOnTheScreen();
   });
+
+  it('does not count days before install as missed calls', async () => {
+    await render(
+      <WeekStrip
+        partnerName="James"
+        days={[
+          { date: '2026-10-26', color: null, checkedIn: false, isToday: false, beforeInstall: true },
+          { date: '2026-10-27', color: 0, checkedIn: true, isToday: false, beforeInstall: true },
+          { date: '2026-10-28', color: null, checkedIn: false, isToday: false, beforeInstall: false },
+        ]}
+      />,
+    );
+    expect(screen.getByLabelText('Monday, October 26: not logged yet')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Tuesday, October 27: Green, checked in with James')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Wednesday, October 28: not logged yet, no call')).toBeOnTheScreen();
+  });
 });
 
 describe('Chips', () => {
@@ -167,6 +183,23 @@ describe('Chips', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Add a Yellow behavior' }));
     expect(onEdit).toHaveBeenCalled();
     expect(onAdd).toHaveBeenCalled();
+  });
+});
+
+describe('Screen footer', () => {
+  it('is capped and scrolls, so large text cannot push its last button off-screen', async () => {
+    const onSave = jest.fn();
+    await render(
+      <Screen testID="page" footer={<Button title="Save check-in" onPress={onSave} />}>
+        <Text>Body</Text>
+      </Screen>,
+    );
+    const footer = screen.getByTestId('page-footer');
+    expect(footer).toHaveStyle({ maxHeight: '55%' });
+    // The footer's content sits in its own scroll view.
+    expect(footer.children[0]).toHaveProp('keyboardShouldPersistTaps', 'handled');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+    expect(onSave).toHaveBeenCalledTimes(1);
   });
 });
 

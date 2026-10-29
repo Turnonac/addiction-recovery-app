@@ -12,6 +12,8 @@ export interface WeekStripDayItem {
   color: ColorLevel | null;
   checkedIn: boolean;
   isToday: boolean;
+  /** Before the app was installed: no "no call" mark (as in MonthCalendar). */
+  beforeInstall?: boolean;
 }
 
 export interface WeekStripProps {
@@ -28,7 +30,8 @@ const MARK_SIZE = 16;
 /**
  * Seven day circles with weekday letters. Logged days show their color glyph,
  * unlogged days a dashed ring. Under each day: check = checked in with the
- * partner, dash = no call (nothing for today until the call happens).
+ * partner, dash = no call (nothing for today until the call happens, and
+ * nothing for days before install).
  */
 export function WeekStrip({ days, showCallMarks = true, partnerName }: WeekStripProps) {
   const theme = useAppTheme();
@@ -37,17 +40,18 @@ export function WeekStrip({ days, showCallMarks = true, partnerName }: WeekStrip
     <View style={{ flexDirection: 'row', gap: 4 }}>
       {days.map((day) => {
         const colorText = day.color !== null ? COLOR_NAMES[day.color] : 'not logged yet';
+        const missedCall = !day.checkedIn && !day.isToday && !day.beforeInstall;
         let callText = '';
         if (showCallMarks) {
           if (day.checkedIn) callText = `, checked in with ${who}`;
-          else if (!day.isToday) callText = ', no call';
+          else if (missedCall) callText = ', no call';
         }
         const label = `${formatLong(day.date)}${day.isToday ? ', today' : ''}: ${colorText}${callText}`;
 
         let mark = <View style={{ width: MARK_SIZE, height: MARK_SIZE }} />;
         if (showCallMarks && day.checkedIn) {
           mark = <Check size={MARK_SIZE} color={theme.accentText} />;
-        } else if (showCallMarks && !day.isToday) {
+        } else if (showCallMarks && missedCall) {
           mark = <Minus size={MARK_SIZE} color={theme.muted} />;
         }
 

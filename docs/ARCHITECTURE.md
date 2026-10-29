@@ -137,7 +137,8 @@ monthSummary(days: DayLog[], year, month1to12, today, installDate: LocalDate|nul
   // plus today if today is checked in. checkIns counted over the same days.
 recentUnloggedDates(days, installDate: LocalDate|null, today, limit = 7): LocalDate[]
   // past days (yesterday back to max(installDate, today - limit)) with no color, oldest first
-weekStrip(days, today): { date; color: ColorLevel|null; checkedIn: boolean; isToday: boolean }[] // last 7 days ending today
+weekStrip(days, today, installDate: LocalDate|null = null):
+  { date; color: ColorLevel|null; checkedIn: boolean; isToday: boolean; beforeInstall: boolean }[] // last 7 days ending today
 backupNudgeDue(lastExportAt: string|null, installDate: LocalDate|null, today): boolean
   // true if never exported and installed ≥ 30 days ago, or last export ≥ 30 days ago
 ```

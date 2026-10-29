@@ -190,14 +190,33 @@ describe('weekStrip', () => {
       TODAY,
     );
     expect(strip).toEqual([
-      { date: '2026-10-23', color: 0, checkedIn: true, isToday: false },
-      { date: '2026-10-24', color: null, checkedIn: false, isToday: false },
-      { date: '2026-10-25', color: null, checkedIn: false, isToday: false },
-      { date: '2026-10-26', color: null, checkedIn: true, isToday: false },
-      { date: '2026-10-27', color: null, checkedIn: false, isToday: false },
-      { date: '2026-10-28', color: null, checkedIn: false, isToday: false },
-      { date: TODAY, color: 2, checkedIn: false, isToday: true },
+      { date: '2026-10-23', color: 0, checkedIn: true, isToday: false, beforeInstall: false },
+      { date: '2026-10-24', color: null, checkedIn: false, isToday: false, beforeInstall: false },
+      { date: '2026-10-25', color: null, checkedIn: false, isToday: false, beforeInstall: false },
+      { date: '2026-10-26', color: null, checkedIn: true, isToday: false, beforeInstall: false },
+      { date: '2026-10-27', color: null, checkedIn: false, isToday: false, beforeInstall: false },
+      { date: '2026-10-28', color: null, checkedIn: false, isToday: false, beforeInstall: false },
+      { date: TODAY, color: 2, checkedIn: false, isToday: true, beforeInstall: false },
     ]);
+  });
+
+  it('flags the days before installDate', () => {
+    const strip = weekStrip([day('2026-10-24', 1, true)], TODAY, '2026-10-27');
+    expect(strip.map((d) => [d.date, d.beforeInstall])).toEqual([
+      ['2026-10-23', true],
+      ['2026-10-24', true],
+      ['2026-10-25', true],
+      ['2026-10-26', true],
+      ['2026-10-27', false],
+      ['2026-10-28', false],
+      [TODAY, false],
+    ]);
+    // Backfilled data before install is still shown.
+    expect(strip[1]).toMatchObject({ color: 1, checkedIn: true });
+  });
+
+  it('installed today: every earlier day is before install', () => {
+    expect(weekStrip([], TODAY, TODAY).filter((d) => d.beforeInstall)).toHaveLength(6);
   });
 
   it('crosses a month boundary', () => {

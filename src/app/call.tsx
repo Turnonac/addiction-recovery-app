@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Alert, AppState, Pressable, Text, View } from 'react-native';
 
 import { callWindow } from '@/domain/call';
-import { addDays, formatShort } from '@/domain/dates';
+import { addDays, formatLong, formatShort } from '@/domain/dates';
 import { monthSummary } from '@/domain/history';
 import { COLOR_NAMES, type ColorLevel, type LocalDate } from '@/domain/types';
 import { callPhone } from '@/services/dialer';
@@ -34,6 +34,12 @@ export default function CallScreen() {
     else router.replace('/(tabs)');
   };
 
+  // Close this modal first: navigating from it would push a second copy of the tabs above it.
+  const editPartner = () => {
+    close();
+    router.navigate('/settings/partner', { withAnchor: true });
+  };
+
   if (partner === null) {
     return (
       <Screen edges={MODAL_EDGES}>
@@ -43,25 +49,31 @@ export default function CallScreen() {
           title="Add your partner first"
           subtitle="Each day you call one person you trust, share your lowest color, and they pray for you."
         />
-        <Button
-          title="Add your partner"
-          onPress={() => router.navigate('/settings/partner', { withAnchor: true })}
-        />
+        <Button title="Add your partner" onPress={editPartner} />
       </Screen>
     );
   }
 
-  return <CallWithPartner name={partner.name.trim() || 'your partner'} phone={partner.phone} close={close} />;
+  return (
+    <CallWithPartner
+      name={partner.name.trim() || 'your partner'}
+      phone={partner.phone}
+      close={close}
+      editPartner={editPartner}
+    />
+  );
 }
 
 function CallWithPartner({
   name,
   phone,
   close,
+  editPartner,
 }: {
   name: string;
   phone: string;
   close: () => void;
+  editPartner: () => void;
 }) {
   const router = useRouter();
   const theme = useAppTheme();
@@ -77,6 +89,9 @@ function CallWithPartner({
   // Set after the dialer opens; when the app comes back we ask whether they talked.
   const awaitingReturn = useRef(false);
   const leftApp = useRef(false);
+  // The day the call started. A call that runs past midnight counts for that day,
+  // so the new day keeps its own window (and its color is shared on its own call).
+  const callDay = useRef<LocalDate | null>(null);
 
   const dayList = Object.values(days);
   const info = callWindow(dayList, { counterStartDate, installDate }, today);
@@ -94,23 +109,35 @@ function CallWithPartner({
       if (state === 'active' && leftApp.current) {
         awaitingReturn.current = false;
         leftApp.current = false;
-        const s = useAppStore.getState();
-        s.refreshToday();
+        useAppStore.getState().refreshToday();
         const now = useAppStore.getState().today;
-        if (useAppStore.getState().days[now]?.checkedIn) return;
-        Alert.alert(`Did you talk with ${name}?`, undefined, [
-          { text: 'Not yet', style: 'cancel' },
-          {
-            text: 'Yes, we talked',
-            onPress: () => {
-              void useAppStore
-                .getState()
-                .setCheckedIn(now, true)
-                .then(() => AccessibilityInfo.announceForAccessibility(`Checked in with ${name} today`))
-                .catch(() => Alert.alert("Couldn't save", 'Please try again.'));
+        const day = callDay.current ?? now;
+        callDay.current = null;
+        if (useAppStore.getState().days[day]?.checkedIn) return;
+        const sameDay = day === now;
+        Alert.alert(
+          `Did you talk with ${name}?`,
+          sameDay ? undefined : `The call started on ${formatLong(day)}, so it counts for that day.`,
+          [
+            { text: 'Not yet', style: 'cancel' },
+            {
+              text: 'Yes, we talked',
+              onPress: () => {
+                void useAppStore
+                  .getState()
+                  .setCheckedIn(day, true)
+                  .then(() =>
+                    AccessibilityInfo.announceForAccessibility(
+                      sameDay
+                        ? `Checked in with ${name} today`
+                        : `Checked in with ${name} for ${formatLong(day)}`,
+                    ),
+                  )
+                  .catch(() => Alert.alert("Couldn't save", 'Please try again.'));
+              },
             },
-          },
-        ]);
+          ],
+        );
       }
     });
     return () => sub.remove();
@@ -120,8 +147,11 @@ function CallWithPartner({
     if (dialing) return;
     setDialing(true);
     try {
+      // The day on screen when the call starts (the window the user is about to share).
+      const startedOn = useAppStore.getState().today;
       const ok = await callPhone(phone);
       if (ok) {
+        callDay.current = startedOn;
         awaitingReturn.current = true;
         leftApp.current = false;
         return;
@@ -129,10 +159,7 @@ function CallWithPartner({
       if (phone.trim().length === 0) {
         Alert.alert(`No number for ${name}`, `Add ${name}'s phone number to call from here.`, [
           { text: 'Not now', style: 'cancel' },
-          {
-            text: 'Add number',
-            onPress: () => router.navigate('/settings/partner', { withAnchor: true }),
-          },
+          { text: 'Add number', onPress: editPartner },
         ]);
       } else {
         Alert.alert(

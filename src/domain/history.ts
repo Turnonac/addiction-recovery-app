@@ -18,6 +18,8 @@ export interface WeekStripDay {
   color: ColorLevel | null;
   checkedIn: boolean;
   isToday: boolean;
+  /** Before installDate: a missing call there is not a missed call. */
+  beforeInstall: boolean;
 }
 
 function pad2(n: number): string {
@@ -107,7 +109,11 @@ export function recentUnloggedDates(
 }
 
 /** The last 7 days ending today, oldest first. */
-export function weekStrip(days: DayLog[], today: LocalDate): WeekStripDay[] {
+export function weekStrip(
+  days: DayLog[],
+  today: LocalDate,
+  installDate: LocalDate | null = null,
+): WeekStripDay[] {
   const byDate = indexByDate(days);
   return datesBetween(addDays(today, -6), today).map((date) => {
     const day = byDate.get(date);
@@ -116,6 +122,7 @@ export function weekStrip(days: DayLog[], today: LocalDate): WeekStripDay[] {
       color: day?.color ?? null,
       checkedIn: day?.checkedIn ?? false,
       isToday: date === today,
+      beforeInstall: installDate !== null && date < installDate,
     };
   });
 }

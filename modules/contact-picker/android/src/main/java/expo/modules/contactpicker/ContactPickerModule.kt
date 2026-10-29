@@ -13,6 +13,7 @@ import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.Serializable
@@ -51,12 +52,26 @@ class ContactPickerModule : Module() {
   private lateinit var pickPhoneLauncher: AppContextActivityResultLauncher<PickPhoneInput, Uri?>
   private val isPicking = AtomicBoolean(false)
 
+  // Result of the pick in progress. Completed by the launcher's callback, or with
+  // null when the launching Activity is destroyed (see OnActivityDestroys).
+  @Volatile
+  private var pendingPick: CompletableDeferred<Uri?>? = null
+
   override fun definition() = ModuleDefinition {
     // JS: requireOptionalNativeModule('ContactPicker')
     Name("ContactPicker")
 
     RegisterActivityContracts {
       pickPhoneLauncher = registerForActivityResult(PickPhoneContract())
+    }
+
+    // When the Activity is recreated while the picker is open (font size, display
+    // size or language change; "Don't keep activities"), the registry drops this
+    // launcher's callback with the old Activity and the result never reaches us.
+    // Settle the pick as cancelled so the JS promise and isPicking are not stuck
+    // until the process dies; the user can simply pick again.
+    OnActivityDestroys {
+      pendingPick?.complete(null)
     }
 
     // Resolves { name, phone } or null when the user backs out of the picker.
@@ -69,18 +84,21 @@ class ContactPickerModule : Module() {
     if (!isPicking.compareAndSet(false, true)) {
       throw PickInProgressException()
     }
+    val result = CompletableDeferred<Uri?>()
+    pendingPick = result
     try {
-      val picked: Uri? = try {
-        pickPhoneLauncher.launch(PickPhoneInput())
+      try {
+        pickPhoneLauncher.launch(PickPhoneInput()) { uri -> result.complete(uri) }
       } catch (e: ActivityNotFoundException) {
         throw NoContactsAppException(e)
       }
-      val uri: Uri = picked ?: return null
+      val uri: Uri = result.await() ?: return null
 
       return withContext(Dispatchers.IO) {
         readPhone(uri)
       }
     } finally {
+      pendingPick = null
       isPicking.set(false)
     }
   }

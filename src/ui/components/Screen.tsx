@@ -34,7 +34,11 @@ export interface ScreenProps {
    * when 'bottom' is listed.
    */
   edges?: readonly ScreenEdge[];
-  /** Pinned bar under the content (save / call buttons), with a top hairline. */
+  /**
+   * Pinned bar under the content (save / call buttons), with a top hairline.
+   * Capped at FOOTER_MAX_HEIGHT of the screen; taller footers (very large text
+   * sizes) scroll, so neither the content nor the footer's last button is lost.
+   */
   footer?: ReactNode;
   /** Vertical space between children. Default 14. */
   gap?: number;
@@ -46,6 +50,9 @@ export interface ScreenProps {
   contentStyle?: StyleProp<ViewStyle>;
   testID?: string;
 }
+
+/** Share of the screen a footer may take before it scrolls. */
+const FOOTER_MAX_HEIGHT = '55%';
 
 /** Themed page: background, safe-area padding, optional scroll and footer. */
 export function Screen({
@@ -86,17 +93,27 @@ export function Screen({
 
   const footerView = footer ? (
     <View
+      testID={testID ? `${testID}-footer` : undefined}
       style={{
-        gap: 12,
-        paddingTop: 12,
-        paddingHorizontal: 20,
-        paddingBottom: bottomInset > 0 ? bottomInset : 16,
+        maxHeight: FOOTER_MAX_HEIGHT,
         backgroundColor: theme.bg,
         borderTopWidth: 1,
         borderTopColor: theme.line,
       }}
     >
-      {footer}
+      <ScrollView
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={{
+          gap: 12,
+          paddingTop: 12,
+          paddingHorizontal: 20,
+          paddingBottom: bottomInset > 0 ? bottomInset : 16,
+        }}
+        keyboardShouldPersistTaps="handled"
+        alwaysBounceVertical={false}
+      >
+        {footer}
+      </ScrollView>
     </View>
   ) : null;
 

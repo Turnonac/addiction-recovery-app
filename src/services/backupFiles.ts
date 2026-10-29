@@ -6,6 +6,21 @@ import type { BackupFileV1 } from '@/domain/types';
 
 export type BackupReadErrorCode = 'unreadable' | 'invalid-json';
 
+/**
+ * Largest file read as a backup. Ten years of days is a few hundred KB, so
+ * anything bigger is the wrong file; refusing it avoids loading it into memory.
+ */
+export const MAX_BACKUP_BYTES = 5_000_000;
+
+/**
+ * Types offered in the picker. Backups are JSON; some file providers label
+ * .json files as plain text or a generic binary. Not every type: on Android
+ * the picker copies the chosen file on the main thread, so picking a large
+ * video by mistake could freeze the app. (iOS maps octet-stream to any data
+ * file, but copies out of process; the size check below covers both.)
+ */
+export const BACKUP_PICKER_TYPES = ['application/json', 'text/plain', 'application/octet-stream'];
+
 /** Thrown by `pickBackupFile` when a picked file cannot be read or is not JSON. */
 export class BackupReadError extends Error {
   readonly code: BackupReadErrorCode;
@@ -70,13 +85,13 @@ function removeCacheCopy(uri: string): void {
 /**
  * Lets the user pick a backup file and returns its parsed JSON (still unvalidated;
  * pass it to `parseBackup`). Resolves null if the user cancels.
- * @throws BackupReadError if the file cannot be read or is not JSON.
+ * @throws BackupReadError if the file cannot be read, is too large, or is not JSON.
  */
 export async function pickBackupFile(): Promise<unknown | null> {
   let result: DocumentPicker.DocumentPickerResult;
   try {
     result = await DocumentPicker.getDocumentAsync({
-      type: ['application/json', 'text/plain', '*/*'],
+      type: BACKUP_PICKER_TYPES,
       copyToCacheDirectory: true,
       multiple: false,
     });
@@ -89,7 +104,12 @@ export async function pickBackupFile(): Promise<unknown | null> {
 
   let text: string;
   try {
-    text = await new File(asset.uri).text();
+    const file = new File(asset.uri);
+    const size = asset.size ?? file.size;
+    if (size > MAX_BACKUP_BYTES) {
+      throw new RangeError(`File too large for a backup: ${size} bytes`);
+    }
+    text = await file.text();
   } catch (error) {
     throw new BackupReadError('unreadable', error);
   } finally {

@@ -145,18 +145,23 @@ export default function RootLayout() {
   }, []);
 
   // Reminder tap (also the tap that cold-started the app) opens today's check-in.
+  // The explicit date matters when a check-in for another day is already open:
+  // that screen is reused, and its params are replaced by these.
   useEffect(() => {
     if (!ready || !onboardingDone) return undefined;
     return addReminderTapListener(() => {
       try {
-        router.navigate('/check-in');
+        useAppStore.getState().refreshToday();
+        router.navigate({ pathname: '/check-in', params: { date: useAppStore.getState().today } });
       } catch (error) {
         console.warn('WalkInLight: could not open the check-in', error);
       }
     });
   }, [ready, onboardingDone, router]);
 
-  // Back in the foreground: recompute today and make the OS reminder match settings.
+  // Back in the foreground: recompute today, re-apply the privacy cover (Android sets
+  // it per window, and a recreated Activity has a new one) and make the OS reminder
+  // match settings.
   useEffect(() => {
     if (!ready) return undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -176,6 +181,7 @@ export default function RootLayout() {
     const subscription = AppState.addEventListener('change', (next) => {
       if (next === 'active' && last !== 'active') {
         useAppStore.getState().refreshToday();
+        void enablePrivacyCover();
         reconcileSoon();
       } else if (next !== 'active') {
         clearTimeout(timer);

@@ -29,6 +29,12 @@ const snapshot: AppSnapshot = {
 
 const sortedDays = [...snapshot.days].sort((a, b) => a.date.localeCompare(b.date));
 
+/** What parsing a file exported at EXPORTED_AT restores: that export is the last backup. */
+const restored = (input: AppSnapshot): AppSnapshot => ({
+  ...input,
+  settings: { ...input.settings, lastExportAt: EXPORTED_AT },
+});
+
 /** A JSON round trip, like writing the file and reading it back. */
 const viaJson = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
@@ -62,11 +68,11 @@ describe('buildBackup', () => {
 });
 
 describe('parseBackup: round trip', () => {
-  it('build -> JSON -> parse returns the same snapshot', () => {
+  it('build -> JSON -> parse returns the same snapshot, with this export as the last backup', () => {
     const result = parseBackup(viaJson(buildBackup(snapshot, EXPORTED_AT)));
     expect(result).toEqual({
       ok: true,
-      snapshot: { ...snapshot, days: sortedDays },
+      snapshot: restored({ ...snapshot, days: sortedDays }),
       summary: { dayCount: 4, firstDate: '2026-10-01', lastDate: '2026-10-28', partnerName: 'Sam' },
     });
   });
@@ -103,8 +109,35 @@ describe('parseBackup: round trip', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.summary).toEqual(summary);
-      expect(result.snapshot).toEqual(input);
+      expect(result.snapshot).toEqual(restored(input));
     }
+  });
+
+  it('restores the export time even when the file recorded no earlier export', () => {
+    // A first export: the settings were saved before markExported() ran.
+    const file = viaJson(
+      buildBackup({ ...snapshot, settings: { ...snapshot.settings, lastExportAt: null } }, EXPORTED_AT),
+    );
+    const result = parseBackup(file);
+    expect(result.ok && result.snapshot.settings.lastExportAt).toBe(EXPORTED_AT);
+  });
+
+  it('keeps a later recorded export time', () => {
+    const later = '2026-10-30T08:00:00.000Z';
+    const file = viaJson(
+      buildBackup({ ...snapshot, settings: { ...snapshot.settings, lastExportAt: later } }, EXPORTED_AT),
+    );
+    const result = parseBackup(file);
+    expect(result.ok && result.snapshot.settings.lastExportAt).toBe(later);
+  });
+
+  it('compares export times as instants, not strings', () => {
+    const file = validFile();
+    // 20:00Z is later than 21:15+02:00 (19:15Z), though it sorts first as a string.
+    file.exportedAt = '2026-10-29T21:15:00+02:00';
+    file.settings.lastExportAt = '2026-10-29T20:00:00.000Z';
+    const result = parseBackup(file);
+    expect(result.ok && result.snapshot.settings.lastExportAt).toBe('2026-10-29T20:00:00.000Z');
   });
 
   it('accepts timestamps with an offset', () => {
@@ -122,7 +155,7 @@ describe('parseBackup: round trip', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.snapshot.days[0]).toEqual({ date: '2026-10-01', color: 0, checkedIn: false });
-      expect(result.snapshot.settings).toEqual(snapshot.settings);
+      expect(result.snapshot.settings).toEqual(restored(snapshot).settings);
       expect(Object.keys(result.snapshot)).toEqual(['days', 'behaviors', 'settings']);
     }
   });

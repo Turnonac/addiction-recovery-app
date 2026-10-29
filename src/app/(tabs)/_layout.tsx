@@ -52,6 +52,9 @@ export default function TabsLayout() {
         options={{
           title: 'Settings',
           tabBarAccessibilityLabel: 'Settings',
+          // Leaving the tab resets its stack, so links into Settings from Today
+          // (Add partner, Back up) never stack on a page left open earlier.
+          popToTopOnBlur: true,
           tabBarIcon: ({ focused, color }) => (
             <TabIcon name="settings" focused={focused} color={color} />
           ),
