@@ -34,7 +34,8 @@ Never install packages; everything needed is already in `package.json`.
 - **Best streak** = max over every completed run (`nextAnchor - anchor - 1`)
   and the current streak. Anchors = counterStartDate + every Red date ≤ today.
   A run is completed only when it ends at a Red: the gap from an earlier Red up to
-  counterStartDate is untracked, so a Red logged before the start never raises best.
+  counterStartDate is untracked and never counts. (Two Reds logged before the start
+  still form a run between them.)
 - **Day boundary = midnight.** Missed days can be made up (backfill any past day
   from History; Today shows "Yesterday isn't logged"). Future days are locked.
   A check-in opened for today keeps that day if midnight passes while it is open.
