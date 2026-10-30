@@ -21,13 +21,19 @@ Never install packages; everything needed is already in `package.json`.
   (careless about avoiding Red), **Yellow** (actions that move toward Red),
   **Red** (viewed anything explicit). Stored as severity 0..3 (`ColorLevel`).
 - Each day stores ONLY: lowest color of the day (or null) and whether the user
-  checked in with their partner. No timestamps.
+  checked in with their partner. No timestamps. (Late colors waiting for the next
+  call are a short list in settings, not day data.)
 - **Lowest wins:** a worse color replaces a better one. A better color than the
   stored one needs a "Did you pick X by mistake?" confirmation.
-- **Late color after the call:** if a day is checked in and gets a WORSE color
-  (previous color non-null): for today, clear the check-in and prompt the user to
-  call again; for a past day, keep the check-in (that call happened) and offer a
-  call that shares that day. Previous color null → keep the check-in.
+- **Late color after the call:** one call per day, and a check-in is never cleared
+  (that call happened). If a checked-in day gets a WORSE color (previous color
+  non-null), or a day becomes Red with no call that day, and the next call's window
+  doesn't cover it, it is saved in `settings.pendingShares` and the next call shows it
+  under "Also share". If today has no call yet, the app offers that call now ("Call
+  {name} to share this?"); if today is already checked in, it says the day goes on the
+  next call and never offers a second call. A share stays pending until a call on a
+  later day than the last call when it was logged. Previous color null → keep the
+  check-in, nothing to share later.
 - **Counter** = calendar days since the last Red (Red day shows 0, next day 1).
   Before any Red, count from `settings.counterStartDate`. Unlogged days never
   reset it. Reds dated after today are ignored.
@@ -174,6 +180,12 @@ streaksIfRed(days, counterStartDate, date, today): { current: number; best: numb
 FIRST_CALL_MAX_DAYS = 14
 callWindow(days: DayLog[], settings: Pick<Settings, 'counterStartDate' | 'installDate'>, today): CallWindow
 inCallWindow(days, settings, today, date): boolean  // the next call covers `date`
+needsLaterShare(outcome, days, settings, today, date): boolean
+  // a saved worseAfterCall, or becameRed on an unchecked day, outside the window (days include it)
+addPendingShare(pending, days, today, date): PendingShare[]
+  // adds { date, since: last call }, replaces the same date, drops shares a later call covered
+sharesForNextCall(days, settings incl. pendingShares, today): LocalDate[]
+  // pending dates no later call has covered and not in the window, oldest first
 ```
 
 ### domain/checkin.ts
@@ -181,8 +193,7 @@ inCallWindow(days, settings, today, date): boolean  // the next call covers `dat
 decideSetColor(existing: DayLog | undefined, date: LocalDate, requested: ColorLevel,
                opts: { confirmBetter?: boolean }, today: LocalDate): SetColorOutcome
   // becameRed only when the day was not Red before.
-  // worseAfterCall: checked-in day, non-null color, got worse. clearedCheckIn: that, on today
-  // (its check-in is cleared); a past day keeps its check-in.
+  // worseAfterCall: checked-in day, non-null color, got worse. Never clears a check-in.
 lowestOf(colors: (ColorLevel|null)[]): ColorLevel | null
 ```
 
@@ -218,7 +229,8 @@ parseBackup(input: unknown): { ok: true; snapshot: AppSnapshot; summary: { dayCo
   // newer-version: 'light2life-backup' with schemaVersion > 1
   // invalid: anything else that fails the schema (a legacy file must be schemaVersion 1)
   // Drops day rows with no color and no check-in. Restored lastExportAt = later of the
-  // file's exportedAt and its settings.lastExportAt.
+  // file's exportedAt and its settings.lastExportAt. settings.pendingShares may be missing
+  // (files from before it): read as [].
 backupFileName(today: LocalDate): string      // 'daily-backup-2026-10-29.json' (discreet)
 ```
 `BackupFileV1.format` is `BackupFormat` (`'light2life-backup' | 'walkinlight-backup'`).
@@ -402,18 +414,18 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   instead of opening a second one. 4 color cards with the user's behaviors, Red shows grace
   note (today: "Your counter restarts at 0. Your history and best streak stay."; a past day:
   the counter and best streak it would really leave, from `streaksIfRed`; then "God's grace
-  doesn't reset."), save → outcome handling (confirm-better dialog). If the next call covers
-  the day: becameRed → `/call` if a partner exists ("Save, then call {name}"), clearedCheckIn →
-  "You'd already talked with {name} today. Call again to share this?". If it doesn't (a past
-  day already talked about, or older than the first-call window) and the day became Red or got
-  worse after its call: "Call {name} to share this?" → `/call?share=<date>`.
+  doesn't reset."), save → outcome handling (confirm-better dialog). becameRed on a day the next
+  call covers → `/call` if a partner exists ("Save, then call {name}"). A late color saved for
+  the next call (`needsLaterShare`), with a partner: today not checked in → "Call {name} to share
+  this?" (Later / Call now → `/call`); today checked in → "You'll share this on your next call"
+  (OK only).
 - `call.tsx` — modal (asks to add a partner if there is none): since-last-call list (long gaps
   collapse to the last 7 days + "Show all") with "Log it" for unlogged days, lowest summary,
   script, "Call {name}" (dialer). The day on screen when Call is tapped is the call day; when the
   app returns from the background it asks "Did you talk with {name}?" and marks that day.
-  Manual "I talked with {name} — mark today" toggle, month check-in count. `?share=YYYY-MM-DD`:
-  a logged past day outside the window shows in an "Also share" card and adds an "Also share:
-  “On {date}, my lowest was {color}.”" step (also shown when today is already checked in).
+  Manual "I talked with {name} — mark today" toggle, month check-in count. `sharesForNextCall`
+  days show in an "Also share" card with an "Also share: “On {date}, my lowest was {color}.”"
+  step; once today is checked in the card reads "Share on your next call" and there are no steps.
 - `day/[date].tsx` — modal: day color ("Log it" / "Change" → `/check-in?date=`), "Checked in
   with {partner}" toggle; invalid or future dates show a message.
 - `onboarding.tsx` — steps: welcome (privacy promise) → how colors work → counter start

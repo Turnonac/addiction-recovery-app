@@ -120,7 +120,6 @@ describe('setColor', () => {
       kind: 'saved',
       day: day(TODAY, YELLOW),
       worseAfterCall: false,
-      clearedCheckIn: false,
       becameRed: false,
     });
     expect(store().days[TODAY]).toEqual(day(TODAY, YELLOW));
@@ -134,7 +133,6 @@ describe('setColor', () => {
       kind: 'saved',
       day: day(TODAY, RED),
       worseAfterCall: false,
-      clearedCheckIn: false,
       becameRed: true,
     });
     expect(store().days[TODAY].color).toBe(RED);
@@ -154,7 +152,6 @@ describe('setColor', () => {
       kind: 'saved',
       day: day(TODAY, GREEN),
       worseAfterCall: false,
-      clearedCheckIn: false,
       becameRed: false,
     });
     expect(store().days[TODAY].color).toBe(GREEN);
@@ -167,18 +164,19 @@ describe('setColor', () => {
     expect(store().days[TODAY]).toEqual(day(TODAY, BLUE, true));
   });
 
-  it('a worse color after the call clears the check-in', async () => {
+  it('a worse color after the call keeps the check-in and saves the day for the next call', async () => {
     const repo = await initWith({ days: [day(TODAY, GREEN, true)] });
     const outcome = await store().setColor(TODAY, YELLOW);
     expect(outcome).toEqual({
       kind: 'saved',
-      day: day(TODAY, YELLOW, false),
+      day: day(TODAY, YELLOW, true),
       worseAfterCall: true,
-      clearedCheckIn: true,
       becameRed: false,
     });
-    expect(store().days[TODAY]).toEqual(day(TODAY, YELLOW, false));
-    expect((await repo.loadAll()).days).toEqual([day(TODAY, YELLOW, false)]);
+    expect(store().days[TODAY]).toEqual(day(TODAY, YELLOW, true));
+    expect((await repo.loadAll()).days).toEqual([day(TODAY, YELLOW, true)]);
+    expect(store().settings.pendingShares).toEqual([{ date: TODAY, since: TODAY }]);
+    expect((await repo.loadAll()).settings.pendingShares).toEqual([{ date: TODAY, since: TODAY }]);
   });
 
   it('a worse color on a past checked-in day keeps that call', async () => {
@@ -188,10 +186,17 @@ describe('setColor', () => {
       kind: 'saved',
       day: day(YESTERDAY, RED, true),
       worseAfterCall: true,
-      clearedCheckIn: false,
       becameRed: true,
     });
     expect((await repo.loadAll()).days).toEqual([day(YESTERDAY, RED, true)]);
+    expect(store().settings.pendingShares).toEqual([{ date: YESTERDAY, since: YESTERDAY }]);
+  });
+
+  it('saves nothing for later when the next call covers the day', async () => {
+    await initWith({ days: [day('2026-10-20', GREEN, true)] });
+    await store().setColor(YESTERDAY, RED);
+    await store().setColor(TODAY, YELLOW);
+    expect(store().settings.pendingShares).toEqual([]);
   });
 
   it('keeps the check-in when the previous color was null', async () => {
@@ -201,7 +206,6 @@ describe('setColor', () => {
       kind: 'saved',
       day: day(TODAY, BLUE, true),
       worseAfterCall: false,
-      clearedCheckIn: false,
       becameRed: false,
     });
     expect((await repo.loadAll()).days).toEqual([day(TODAY, BLUE, true)]);

@@ -209,7 +209,7 @@ describe('check-in', () => {
     expect(screen.getByRole('button', { name: 'Pick a color to save' })).toBeDisabled();
   });
 
-  it('keeps a past call when that day gets worse, then shares the day on a new call', async () => {
+  it('keeps a past call when that day gets worse and shares it on the next call', async () => {
     const alerts = spyOnAlerts();
     const yesterday = addDays(todayLocal(), -1);
     await setup({ partner: SAM }, [{ date: yesterday, color: 0, checkedIn: true }]);
@@ -220,13 +220,28 @@ describe('check-in', () => {
 
     await waitFor(() => expect(alerts.find('Call Sam to share this?')).toBeTruthy());
     expect(alerts.find('Call Sam to share this?').message).toBe(
-      `Your next call won't include ${formatShort(yesterday)}.`,
+      `Your next call will include ${formatShort(yesterday)}.`,
     );
     expect(useAppStore.getState().days[yesterday]).toEqual({ date: yesterday, color: 2, checkedIn: true });
 
     await alerts.press('Call Sam to share this?', 'Call now');
     expect(await screen.findByText('Also share')).toBeTruthy();
     expect(screen.getByText('Also share: “Yesterday, my lowest was Yellow.”')).toBeTruthy();
+  });
+
+  it('never offers a second call today: a worse color waits for the next call', async () => {
+    const alerts = spyOnAlerts();
+    const today = await setup({ partner: SAM }, [{ date: todayLocal(), color: 0, checkedIn: true }]);
+    await renderRouter(routes, { initialUrl: '/check-in' });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
+    expect(screen.getByRole('button', { name: 'Save check-in' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+
+    await waitFor(() => expect(alerts.find("You'll share this on your next call")).toBeTruthy());
+    expect(alerts.find("You'll share this on your next call").buttons.map((b) => b.text)).toEqual(['OK']);
+    expect(useAppStore.getState().days[today]).toEqual({ date: today, color: 3, checkedIn: true });
+    expect(useAppStore.getState().settings.pendingShares).toEqual([{ date: today, since: today }]);
   });
 
   it('asks before calling about a Red the next call would not cover', async () => {
@@ -247,6 +262,9 @@ describe('check-in', () => {
     await waitFor(() => expect(useAppStore.getState().days[twoDaysAgo]?.color).toBe(3));
     await alerts.press('Call Sam to share this?', 'Later');
     expect(screen.queryByText('Also share')).toBeNull();
+    expect(useAppStore.getState().settings.pendingShares).toEqual([
+      { date: twoDaysAgo, since: addDays(today, -1) },
+    ]);
   });
 });
 
@@ -273,26 +291,36 @@ describe('call', () => {
     expect(await screen.findByText('You already talked with Sam today.')).toBeTruthy();
   });
 
-  it('shares a day outside the window even after talking today', async () => {
-    const today = await setup({ partner: SAM }, [
-      { date: addDays(todayLocal(), -1), color: 2, checkedIn: false },
-      { date: todayLocal(), color: 0, checkedIn: true },
-    ]);
-    await renderRouter(routes, { initialUrl: `/call?share=${addDays(today, -1)}` });
+  it('lists a late color for the next call once today is done, without a second call', async () => {
+    await setup(
+      { partner: SAM, pendingShares: [{ date: addDays(todayLocal(), -1), since: todayLocal() }] },
+      [
+        { date: addDays(todayLocal(), -1), color: 2, checkedIn: false },
+        { date: todayLocal(), color: 0, checkedIn: true },
+      ],
+    );
+    await renderRouter(routes, { initialUrl: '/call' });
 
     expect(screen.getByText('You already talked with Sam today.')).toBeTruthy();
-    expect(screen.getByText('Also share')).toBeTruthy();
-    expect(screen.getByText('Share: “Yesterday, my lowest was Yellow.”')).toBeTruthy();
+    expect(screen.getByText('Share on your next call')).toBeTruthy();
+    expect(screen.getByLabelText('Yesterday: Yellow')).toBeTruthy();
+    expect(screen.queryByText('On the call')).toBeNull();
   });
 
-  it('ignores a share day the window already lists', async () => {
-    const today = await setup({ partner: SAM }, [
-      { date: addDays(todayLocal(), -1), color: 2, checkedIn: false },
+  it('shares a late color on the next call, then drops it once that call is marked', async () => {
+    const yesterday = addDays(todayLocal(), -1);
+    const today = await setup({ partner: SAM, pendingShares: [{ date: yesterday, since: yesterday }] }, [
+      { date: yesterday, color: 2, checkedIn: true },
     ]);
-    await renderRouter(routes, { initialUrl: `/call?share=${addDays(today, -1)}` });
+    await renderRouter(routes, { initialUrl: '/call' });
 
-    expect(screen.getByText('Since you started')).toBeTruthy();
+    expect(screen.getByText('Also share')).toBeTruthy();
+    expect(screen.getByText('Also share: “Yesterday, my lowest was Yellow.”')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: /I talked with Sam/ }));
+    await waitFor(() => expect(useAppStore.getState().days[today]?.checkedIn).toBe(true));
     expect(screen.queryByText('Also share')).toBeNull();
+    expect(screen.queryByText('Share on your next call')).toBeNull();
   });
 
   /** Taps "Call Sam" and waits for the dial to finish. */

@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
-import { inCallWindow } from '@/domain/call';
+import { inCallWindow, needsLaterShare } from '@/domain/call';
 import { decideSetColor } from '@/domain/checkin';
 import { formatLong, formatShort, isValidLocalDate } from '@/domain/dates';
 import { bestStreak, currentStreak, streaksIfRed } from '@/domain/streak';
@@ -81,11 +81,9 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
     else router.replace('/(tabs)');
   };
 
-  /** `share`: a day the next call won't cover on its own, shown on the call screen too. */
-  const goToCall = (share?: LocalDate) => {
-    // Days opened from the call screen are in its window, so there is nothing extra to share.
+  const goToCall = () => {
     if (fromCall) close();
-    else router.replace(share === undefined ? '/call' : { pathname: '/call', params: { share } });
+    else router.replace('/call');
   };
 
   const dayWord = isToday ? 'today' : 'that day';
@@ -114,45 +112,33 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
         return;
       }
       case 'saved': {
-        if (!outcome.becameRed && !outcome.worseAfterCall) {
+        const state = useAppStore.getState();
+        const list = Object.values(state.days);
+        // A new Red the next call covers goes straight to it.
+        if (outcome.becameRed && inCallWindow(list, state.settings, state.today, date)) {
+          if (partner !== null) goToCall();
+          else close();
+          return;
+        }
+        // A late color the store saved for the next call (one call per day).
+        if (partner === null || !needsLaterShare(outcome, list, state.settings, state.today, date)) {
           close();
           return;
         }
-        const state = useAppStore.getState();
-        if (inCallWindow(Object.values(state.days), state.settings, state.today, date)) {
-          // The next call covers this day: a new Red goes straight there; a worse color
-          // today just lost today's check-in, so ask to call again.
-          if (outcome.becameRed) {
-            if (partner !== null) goToCall();
-            else close();
-            return;
-          }
-          setSaving(false);
+        const which = isToday ? 'today' : formatShort(date);
+        setSaving(false);
+        if (state.days[state.today]?.checkedIn) {
           Alert.alert(
-            `You'd already talked with ${partnerName} today. Call again to share this?`,
-            undefined,
-            [
-              { text: 'Later', style: 'cancel', onPress: close },
-              { text: 'Call now', onPress: () => goToCall() },
-            ],
+            "You'll share this on your next call",
+            `You already talked with ${partnerName} today, so ${which} goes on your next call.`,
+            [{ text: 'OK', onPress: close }],
           );
           return;
         }
-        // A past day the partner has already talked with you since (or before the
-        // first call window): the next call won't show it, so offer to share it.
-        if (partner === null) {
-          close();
-          return;
-        }
-        setSaving(false);
-        Alert.alert(
-          `Call ${partnerName} to share this?`,
-          `Your next call won't include ${isToday ? 'today' : formatShort(date)}.`,
-          [
-            { text: 'Later', style: 'cancel', onPress: close },
-            { text: 'Call now', onPress: () => goToCall(date) },
-          ],
-        );
+        Alert.alert(`Call ${partnerName} to share this?`, `Your next call will include ${which}.`, [
+          { text: 'Later', style: 'cancel', onPress: close },
+          { text: 'Call now', onPress: goToCall },
+        ]);
         return;
       }
     }

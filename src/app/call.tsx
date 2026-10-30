@@ -1,9 +1,9 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Alert, AppState, Pressable, Text, View } from 'react-native';
 
-import { callWindow } from '@/domain/call';
-import { addDays, formatLong, formatShort, isValidLocalDate } from '@/domain/dates';
+import { callWindow, sharesForNextCall } from '@/domain/call';
+import { addDays, formatLong, formatShort } from '@/domain/dates';
 import { monthSummary } from '@/domain/history';
 import { COLOR_NAMES, type ColorLevel, type LocalDate } from '@/domain/types';
 import { callPhone } from '@/services/dialer';
@@ -24,16 +24,10 @@ import { MIN_TOUCH, useAppTheme } from '@/ui/theme';
 const COLLAPSED_ROWS = 7;
 const COLLAPSE_OVER = 10;
 
-/**
- * Partner call modal: what to share, the script, dial, and mark today as checked in.
- * `?share=YYYY-MM-DD`: a past day the window doesn't cover (a worse color logged after
- * the partner already heard it), shown and shared on its own.
- */
+/** Partner call modal: what to share, the script, dial, and mark today as checked in. */
 export default function CallScreen() {
   const router = useRouter();
   const partner = useAppStore((s) => s.settings.partner);
-  const params = useLocalSearchParams<{ share?: string | string[] }>();
-  const share = Array.isArray(params.share) ? params.share[0] : params.share;
 
   const close = () => {
     if (router.canGoBack()) router.back();
@@ -64,7 +58,6 @@ export default function CallScreen() {
     <CallWithPartner
       name={partner.name.trim() || 'your partner'}
       phone={partner.phone}
-      share={share}
       close={close}
       editPartner={editPartner}
     />
@@ -74,13 +67,11 @@ export default function CallScreen() {
 function CallWithPartner({
   name,
   phone,
-  share,
   close,
   editPartner,
 }: {
   name: string;
   phone: string;
-  share: string | undefined;
   close: () => void;
   editPartner: () => void;
 }) {
@@ -90,6 +81,7 @@ function CallWithPartner({
   const days = useAppStore((s) => s.days);
   const counterStartDate = useAppStore((s) => s.settings.counterStartDate);
   const installDate = useAppStore((s) => s.settings.installDate);
+  const pendingShares = useAppStore((s) => s.settings.pendingShares);
   const setCheckedIn = useAppStore((s) => s.setCheckedIn);
 
   const [showAll, setShowAll] = useState(false);
@@ -107,15 +99,13 @@ function CallWithPartner({
   const checkedInToday = days[today]?.checkedIn ?? false;
   const [year, month] = today.split('-').map(Number);
   const summary = monthSummary(dayList, year, month, today, installDate);
-  // Only a logged past day outside the window; a day the window covers is already listed.
-  const extraColor =
-    share !== undefined &&
-    isValidLocalDate(share) &&
-    share <= today &&
-    !info.days.some((d) => d.date === share)
-      ? (days[share]?.color ?? null)
-      : null;
-  const extra = extraColor === null || share === undefined ? null : { date: share, color: extraColor };
+  // Late colors on days an earlier call covered: this call shares them (or the next, if today is done).
+  const extras = sharesForNextCall(dayList, { counterStartDate, installDate, pendingShares }, today).flatMap(
+    (date) => {
+      const color = days[date]?.color ?? null;
+      return color === null ? [] : [{ date, color }];
+    },
+  );
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -232,8 +222,8 @@ function CallWithPartner({
   const lowest = info.lowest;
   const hasUnlogged = info.unloggedDates.length > 0;
   const steps = [
-    ...(info.checkedInToday ? [] : [shareLine(firstCall, lowest)]),
-    ...(extra === null ? [] : [extraLine(extra, today, info.checkedInToday)]),
+    shareLine(firstCall, lowest),
+    ...(extras.length === 0 ? [] : [extrasLine(extras, today)]),
     `${name} prays for you.`,
   ];
 
@@ -314,16 +304,21 @@ function CallWithPartner({
         </Card>
       )}
 
-      {extra !== null ? (
+      {extras.length > 0 ? (
         <Card gap={12}>
           <Text accessibilityRole="header" style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
-            Also share
+            {info.checkedInToday ? 'Share on your next call' : 'Also share'}
           </Text>
-          <WindowRow date={extra.date} color={extra.color} today={today} onLog={() => undefined} />
+          <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
+            {extras.length === 1 ? 'A color you logged later for an earlier day.' : 'Colors you logged later for earlier days.'}
+          </Text>
+          {extras.map((extra) => (
+            <WindowRow key={extra.date} date={extra.date} color={extra.color} today={today} onLog={() => undefined} />
+          ))}
         </Card>
       ) : null}
 
-      {!info.checkedInToday || extra !== null ? (
+      {!info.checkedInToday ? (
         <View style={{ gap: 10 }}>
           <Text accessibilityRole="header" style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
             On the call
@@ -354,11 +349,11 @@ function shareLine(firstCall: boolean, lowest: ColorLevel | null): string {
     : `Share: “Since our last call, my lowest was ${color}.”`;
 }
 
-function extraLine(extra: { date: LocalDate; color: ColorLevel }, today: LocalDate, only: boolean): string {
-  const label = dayLabel(extra.date, today);
-  const when = label === 'Today' || label === 'Yesterday' ? label : `On ${label}`;
-  const line = `“${when}, my lowest was ${COLOR_NAMES[extra.color]}.”`;
-  return only ? `Share: ${line}` : `Also share: ${line}`;
+function extrasLine(extras: { date: LocalDate; color: ColorLevel }[], today: LocalDate): string {
+  if (extras.length > 1) return 'Also share each day under “Also share”.';
+  const label = dayLabel(extras[0].date, today);
+  const when = label === 'Yesterday' ? label : `On ${label}`;
+  return `Also share: “${when}, my lowest was ${COLOR_NAMES[extras[0].color]}.”`;
 }
 
 function dayLabel(date: LocalDate, today: LocalDate): string {

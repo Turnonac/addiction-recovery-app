@@ -76,6 +76,13 @@ export interface Reminder {
   minute: number;
 }
 
+/** A late color for the next call to share (docs/ARCHITECTURE.md, "Late color after the call"). */
+export interface PendingShare {
+  date: LocalDate;
+  /** Last checked-in day when it was logged (null: none); a call after this day shared it. */
+  since: LocalDate | null;
+}
+
 export interface Settings {
   partner: Partner | null;
   reminder: Reminder;
@@ -89,6 +96,8 @@ export interface Settings {
   onboardingDone: boolean;
   /** ISO-8601 instant of the last successful export, for the 30-day reminder card. */
   lastExportAt: string | null;
+  /** Days a call already covered that later got a worse color, for the next call. By date. */
+  pendingShares: PendingShare[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -98,6 +107,7 @@ export const DEFAULT_SETTINGS: Settings = {
   installDate: null,
   onboardingDone: false,
   lastExportAt: null,
+  pendingShares: [],
 };
 
 /** Everything the app stores. Used for load, export/import and tests. */
@@ -128,8 +138,6 @@ export type SetColorOutcome =
       day: DayLog;
       /** The day was checked in with a color, then got a worse one: the partner hasn't heard it. */
       worseAfterCall: boolean;
-      /** worseAfterCall on today: today's check-in was cleared so the next call covers it again. */
-      clearedCheckIn: boolean;
       /** The day just became Red (it was not Red before). */
       becameRed: boolean;
     }

@@ -44,7 +44,7 @@ export function sortBehaviors(behaviors: readonly Behavior[]): Behavior[] {
 
 /** A fresh copy of the default settings (no shared nested objects). */
 export function defaultSettings(): Settings {
-  return { ...DEFAULT_SETTINGS, reminder: { ...DEFAULT_SETTINGS.reminder } };
+  return { ...DEFAULT_SETTINGS, reminder: { ...DEFAULT_SETTINGS.reminder }, pendingShares: [] };
 }
 
 export function toColorLevel(value: unknown): ColorLevel | null {
@@ -70,6 +70,7 @@ const SETTING_SCHEMAS: { [K in keyof Settings]: z.ZodType<Settings[K]> } = {
   onboardingDone: z.boolean(),
   // Same rule as BackupSchemaV1, so a loaded value can always be exported again.
   lastExportAt: z.iso.datetime({ offset: true }).nullable(),
+  pendingShares: z.array(z.object({ date: LocalDateSchema, since: LocalDateSchema.nullable() })),
 };
 
 const SETTING_KEYS = Object.keys(SETTING_SCHEMAS) as (keyof Settings)[];

@@ -24,6 +24,7 @@ const snapshot: AppSnapshot = {
     installDate: '2026-10-01',
     onboardingDone: true,
     lastExportAt: '2026-09-01T08:00:00.000Z',
+    pendingShares: [{ date: '2026-10-20', since: '2026-10-28' }],
   },
 };
 
@@ -100,6 +101,7 @@ describe('parseBackup: round trip', () => {
           installDate: null,
           onboardingDone: false,
           lastExportAt: null,
+          pendingShares: [],
         },
       },
       { dayCount: 0, firstDate: null, lastDate: null, partnerName: null },
@@ -111,6 +113,13 @@ describe('parseBackup: round trip', () => {
       expect(result.summary).toEqual(summary);
       expect(result.snapshot).toEqual(restored(input));
     }
+  });
+
+  it('reads a file from before pendingShares as having none', () => {
+    const file = validFile();
+    delete file.settings.pendingShares;
+    const result = parseBackup(file);
+    expect(result.ok && result.snapshot.settings.pendingShares).toEqual([]);
   });
 
   it('restores the export time even when the file recorded no earlier export', () => {
@@ -264,6 +273,8 @@ describe('parseBackup: invalid', () => {
     ['invalid lastExportAt', (f) => (f.settings.lastExportAt = 'not a date')],
     ['partner missing phone', (f) => (f.settings.partner = { name: 'Sam' })],
     ['onboardingDone as string', (f) => (f.settings.onboardingDone = 'yes')],
+    ['invalid pending share date', (f) => (f.settings.pendingShares = [{ date: 'soon', since: null }])],
+    ['pending share missing since', (f) => (f.settings.pendingShares = [{ date: '2026-10-20' }])],
     ['settings missing', (f) => delete f.settings],
     ['behaviors missing', (f) => delete f.behaviors],
   ])('%s', (_name, mutate) => {

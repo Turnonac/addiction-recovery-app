@@ -37,6 +37,8 @@ const SettingsSchema = z.object({
   installDate: LocalDateSchema.nullable(),
   onboardingDone: z.boolean(),
   lastExportAt: IsoInstantSchema.nullable(),
+  // Added within version 1: older files have none.
+  pendingShares: z.array(z.object({ date: LocalDateSchema, since: LocalDateSchema.nullable() })).default([]),
 });
 
 /**
@@ -103,6 +105,7 @@ function copySettings(s: Settings): Settings {
     installDate: s.installDate,
     onboardingDone: s.onboardingDone,
     lastExportAt: s.lastExportAt,
+    pendingShares: s.pendingShares.map(({ date, since }) => ({ date, since })),
   };
 }
 

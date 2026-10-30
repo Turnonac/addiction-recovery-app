@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { create } from 'zustand';
 
 import { defaultSettings, isEmptyDay, sortBehaviors, type Repository } from '@/data/repository';
+import { addPendingShare, needsLaterShare } from '@/domain/call';
 import { decideSetColor } from '@/domain/checkin';
 import { isValidLocalDate, todayLocal } from '@/domain/dates';
 import type {
@@ -154,6 +155,11 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (outcome.kind !== 'saved') return outcome;
         await repo.upsertDay(outcome.day);
         set((s) => ({ days: { ...s.days, [date]: outcome.day } }));
+        const { days, settings } = get();
+        const list = Object.values(days);
+        if (needsLaterShare(outcome, list, settings, today, date)) {
+          await saveSettings({ pendingShares: addPendingShare(settings.pendingShares, list, today, date) });
+        }
         return outcome;
       }),
 

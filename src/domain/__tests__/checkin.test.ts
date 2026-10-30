@@ -12,16 +12,10 @@ const RED = 3;
 
 const day = (date: string, color: ColorLevel | null, checkedIn = false): DayLog => ({ date, color, checkedIn });
 
-const saved = (
-  d: DayLog,
-  clearedCheckIn: boolean,
-  becameRed: boolean,
-  worseAfterCall = clearedCheckIn,
-): SetColorOutcome => ({
+const saved = (d: DayLog, worseAfterCall: boolean, becameRed: boolean): SetColorOutcome => ({
   kind: 'saved',
   day: d,
   worseAfterCall,
-  clearedCheckIn,
   becameRed,
 });
 
@@ -47,12 +41,12 @@ describe('decideSetColor', () => {
     ['worse on a past day', day(YESTERDAY, BLUE), YESTERDAY, YELLOW, {}, saved(day(YESTERDAY, YELLOW), false, false)],
     ['confirmBetter has no effect on a worse color', day(TODAY, GREEN), TODAY, BLUE, { confirmBetter: true }, saved(day(TODAY, BLUE), false, false)],
 
-    // worse color after the call: today's check-in is cleared, a past day keeps its call
-    ['worse on checked-in day clears check-in', day(TODAY, BLUE, true), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW, false), true, false)],
-    ['Red on checked-in day clears check-in and becomes Red', day(TODAY, GREEN, true), TODAY, RED, {}, saved(day(TODAY, RED, false), true, true)],
-    ['worse on a checked-in past day keeps it', day(YESTERDAY, GREEN, true), YESTERDAY, BLUE, {}, saved(day(YESTERDAY, BLUE, true), false, false, true)],
-    ['Red on a checked-in past day keeps it, becomes Red', day('2026-10-01', BLUE, true), '2026-10-01', RED, {}, saved(day('2026-10-01', RED, true), false, true, true)],
-    ['previous null on a past day is not worseAfterCall', day(YESTERDAY, null, true), YESTERDAY, RED, {}, saved(day(YESTERDAY, RED, true), false, true, false)],
+    // worse color after the call: the check-in stays (one call per day), worseAfterCall is set
+    ['worse on checked-in day keeps check-in', day(TODAY, BLUE, true), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW, true), true, false)],
+    ['Red on checked-in day keeps check-in and becomes Red', day(TODAY, GREEN, true), TODAY, RED, {}, saved(day(TODAY, RED, true), true, true)],
+    ['worse on a checked-in past day keeps it', day(YESTERDAY, GREEN, true), YESTERDAY, BLUE, {}, saved(day(YESTERDAY, BLUE, true), true, false)],
+    ['Red on a checked-in past day keeps it, becomes Red', day('2026-10-01', BLUE, true), '2026-10-01', RED, {}, saved(day('2026-10-01', RED, true), true, true)],
+    ['previous null is not worseAfterCall', day(YESTERDAY, null, true), YESTERDAY, RED, {}, saved(day(YESTERDAY, RED, true), false, true)],
 
     // same color is a no-op save
     ['same color no-op', day(TODAY, YELLOW), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW), false, false)],
