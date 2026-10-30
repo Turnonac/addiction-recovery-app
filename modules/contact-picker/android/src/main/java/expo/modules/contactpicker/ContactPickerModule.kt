@@ -15,6 +15,8 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.Serializable
 import java.util.concurrent.atomic.AtomicBoolean
@@ -87,12 +89,24 @@ class ContactPickerModule : Module() {
     val result = CompletableDeferred<Uri?>()
     pendingPick = result
     try {
-      try {
-        pickPhoneLauncher.launch(PickPhoneInput()) { uri -> result.complete(uri) }
-      } catch (e: ActivityNotFoundException) {
-        throw NoContactsAppException(e)
-      }
-      val uri: Uri = result.await() ?: return null
+      val uri: Uri = coroutineScope {
+        // The suspend launch() never resumes if the Activity is destroyed mid-pick, so it
+        // runs in a child job and we wait on result, which OnActivityDestroys can settle.
+        // (The callback overload of launch() needs androidx.activity, which is not on this
+        // module's compile classpath.)
+        val picking = launch {
+          try {
+            result.complete(pickPhoneLauncher.launch(PickPhoneInput()))
+          } catch (e: ActivityNotFoundException) {
+            result.completeExceptionally(NoContactsAppException(e))
+          }
+        }
+        try {
+          result.await()
+        } finally {
+          picking.cancel()
+        }
+      } ?: return null
 
       return withContext(Dispatchers.IO) {
         readPhone(uri)
