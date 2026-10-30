@@ -314,7 +314,7 @@ enablePrivacyCover(): Promise<void>
   // with a fresh key per call (a recreated Activity has a new window). Never throws.
   // Nothing turns the cover off. Does nothing when EXPO_PUBLIC_SCREENSHOT_MODE === '1'.
 // dialer.ts
-sanitizePhone(phone: string): string    // NFKC, drop an extension (from , ; or ext / x not after a letter), then keep a leading + and 0-9 * #
+sanitizePhone(phone: string): string    // NFKC + Arabic-Indic digits; number runs from the first digit to the first letter , or ; after it; + if one comes before it
 callPhone(phone: string): Promise<boolean>  // Linking.openURL('tel:…', '#' encoded); false on failure
                                             // (no number, no telephony, iOS Simulator)
 ```

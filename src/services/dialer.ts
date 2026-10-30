@@ -8,25 +8,38 @@ function normalizeWidth(text: string): string {
   }
 }
 
-/**
- * Where an extension starts: a pause (','), a wait (';'), or 'ext' / 'x' before digits.
- * 'ext' / 'x' must not follow a letter, so a label such as "Fax" or "Text" is not read
- * as an extension marker.
- */
-const EXTENSION = /[,;]|(?<![a-z])(?:ext(?:ension)?|x)[.:]?\s*\d/i;
+/** Arabic-Indic (U+0660-0669) and Persian (U+06F0-06F9) digits, which NFKC leaves as they are. */
+function toAsciiDigits(text: string): string {
+  return text.replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) & 0xf));
+}
+
+/** The number starts at its first digit, with any '*' or '#' right before it (a code like *67). */
+const NUMBER_START = /[*#]*\d/;
 
 /**
- * Keeps a leading '+', digits, '*' and '#'. Everything else (spaces, dashes,
- * brackets, dots, letters, extra '+') is dropped. An extension and everything
- * after it is dropped too, so its digits never join the main number. Full-width
- * characters are normalized first. Returns '' when nothing dialable remains.
+ * After the number starts, a letter (an extension such as "ext", "x" or "p", or a second
+ * label such as "Fax"), a pause (',') or a wait (';') ends it.
+ */
+const NUMBER_END = /[\p{L},;]/u;
+
+/**
+ * Returns the dialable main number: digits, '*' and '#', with a '+' in front when one comes
+ * before the first digit ("+44", "(+44)", "Tel: +44"). Labels before the number are ignored,
+ * and an extension or anything after the number is dropped, so its digits never join the main
+ * number. A trunk "(0)" in an international number ("+44 (0)20") is dropped too. Full-width
+ * and Arabic-Indic digits are normalized first. Returns '' when nothing dialable remains.
  */
 export function sanitizePhone(phone: string): string {
-  const normalized = normalizeWidth(phone).trim();
-  const main = normalized.split(EXTENSION)[0] ?? '';
+  const text = toAsciiDigits(normalizeWidth(phone));
+  const start = text.search(NUMBER_START);
+  if (start === -1) return '';
+  const international = text.slice(0, start).includes('+');
+  let main = text.slice(start);
+  const end = main.search(NUMBER_END);
+  if (end !== -1) main = main.slice(0, end);
+  if (international) main = main.replace(/\(\s*0\s*\)/g, '');
   const digits = main.replace(/[^0-9*#]/g, '');
-  if (digits.length === 0) return '';
-  return normalized.startsWith('+') ? `+${digits}` : digits;
+  return international ? `+${digits}` : digits;
 }
 
 /**

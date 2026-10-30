@@ -44,6 +44,45 @@ describe('sanitizePhone', () => {
     expect(sanitizePhone('Fax 555-1234 x12')).toBe('5551234');
   });
 
+  it('ignores a label before the number, even one ending in a comma or #', () => {
+    expect(sanitizePhone('Cell, 555-123-4567')).toBe('5551234567');
+    expect(sanitizePhone('Jane Doe, (555) 123-4567')).toBe('5551234567');
+    expect(sanitizePhone('Mobile; 555-123-4567')).toBe('5551234567');
+    expect(sanitizePhone('Cell #: 555-123-4567')).toBe('5551234567');
+  });
+
+  it('keeps a + that comes before the first digit', () => {
+    expect(sanitizePhone('(+44) 7700 900123')).toBe('+447700900123');
+    expect(sanitizePhone('Tel: +44 20 7946 0958')).toBe('+442079460958');
+    expect(sanitizePhone('tel:+44-7700-900123')).toBe('+447700900123');
+    // Mac Contacts wraps copied numbers in invisible direction marks.
+    expect(sanitizePhone('‭+44 7700 900123‬')).toBe('+447700900123');
+    expect(sanitizePhone('‪+972 50-123-4567‬')).toBe('+972501234567');
+  });
+
+  it('drops the trunk (0) in an international number', () => {
+    expect(sanitizePhone('+44 (0)7700 900123')).toBe('+447700900123');
+    expect(sanitizePhone('+49 ( 0 )30 1234567')).toBe('+49301234567');
+  });
+
+  it('ends the number at the first letter after it', () => {
+    expect(sanitizePhone('022-2345 6789 Extn. 123')).toBe('02223456789');
+    expect(sanitizePhone('555-123-4567p12')).toBe('5551234567');
+    expect(sanitizePhone('555-123-4567 w12')).toBe('5551234567');
+    expect(sanitizePhone('555-123-4567 poste 12')).toBe('5551234567');
+    expect(sanitizePhone('Phone 555-123-4567 Fax 555-123-4568')).toBe('5551234567');
+    expect(sanitizePhone('+1 555 123 4567 (mobile)')).toBe('+15551234567');
+  });
+
+  it('keeps a slash inside the number', () => {
+    expect(sanitizePhone('030/1234567')).toBe('0301234567');
+  });
+
+  it('converts Arabic-Indic and Persian digits', () => {
+    expect(sanitizePhone('٠٥٠ ١٢٣ ٤٥٦٧')).toBe('0501234567');
+    expect(sanitizePhone('۰۹۱۲ ۳۴۵ ۶۷۸۹')).toBe('09123456789');
+  });
+
   it('drops a pause or wait and what follows (how contacts store an extension)', () => {
     expect(sanitizePhone('555-1234,12')).toBe('5551234');
     expect(sanitizePhone('555-1234;12')).toBe('5551234');
