@@ -7,7 +7,6 @@ function copySettings(settings: Settings): Settings {
     ...settings,
     partner: settings.partner ? { ...settings.partner } : null,
     reminder: { ...settings.reminder },
-    pendingShares: (settings.pendingShares ?? []).map((s) => ({ ...s })),
   };
 }
 

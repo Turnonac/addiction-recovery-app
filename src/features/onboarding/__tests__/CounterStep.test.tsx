@@ -32,18 +32,14 @@ let announceWithOptions: jest.SpiedFunction<
   typeof AccessibilityInfo.announceForAccessibilityWithOptions
 >;
 
-async function initStore(counterStartDate: LocalDate | null) {
+/** A last Red day saved by an earlier Continue is a Red day in the log; null = none. */
+async function initStore(lastRedDay: LocalDate | null) {
   useAppStore.setState(pristine, true);
   await useAppStore.getState().init(
     createMemoryRepository({
-      days: [],
+      days: lastRedDay === null ? [] : [{ date: lastRedDay, color: 3, checkedIn: false }],
       behaviors: [],
-      settings: {
-        ...DEFAULT_SETTINGS,
-        onboardingDone: false,
-        installDate: null,
-        counterStartDate,
-      },
+      settings: { ...DEFAULT_SETTINGS, onboardingDone: false, installDate: null },
     }),
   );
 }
@@ -88,7 +84,7 @@ describe('CounterStep preview on iOS', () => {
   });
 
   it('announces the date picked in the sheet at high priority', async () => {
-    await initStore(todayLocal());
+    await initStore(null);
     await render(<CounterStep onNext={() => undefined} />);
     // No past date yet, so choosing it opens the sheet; Done picks yesterday.
     await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
@@ -109,5 +105,29 @@ describe('CounterStep preview on Android', () => {
     await switchChoices();
     expect(announce.mock.calls).toEqual([[TITLE]]);
     expect(announceWithOptions).not.toHaveBeenCalled();
+  });
+});
+
+describe('CounterStep saving', () => {
+  it('saves the last Red day as a Red day in the log', async () => {
+    const onNext = jest.fn();
+    await initStore(null);
+    await render(<CounterStep onNext={onNext} />);
+    await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Done' })); // picks yesterday
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+    const yesterday = addDays(todayLocal(), -1);
+    expect(useAppStore.getState().days).toEqual({ [yesterday]: { date: yesterday, color: 3, checkedIn: false } });
+  });
+
+  it('back on this step, "Start counting today" removes the saved Red day', async () => {
+    // beforeEach saved a last Red day three days ago.
+    const onNext = jest.fn();
+    await render(<CounterStep onNext={onNext} />);
+    await fireEvent.press(screen.getByRole('radio', { name: /^Start counting today/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().days).toEqual({});
   });
 });

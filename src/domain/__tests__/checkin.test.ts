@@ -12,10 +12,9 @@ const RED = 3;
 
 const day = (date: string, color: ColorLevel | null, checkedIn = false): DayLog => ({ date, color, checkedIn });
 
-const saved = (d: DayLog, worseAfterCall: boolean, becameRed: boolean): SetColorOutcome => ({
+const saved = (d: DayLog, becameRed: boolean): SetColorOutcome => ({
   kind: 'saved',
   day: d,
-  worseAfterCall,
   becameRed,
 });
 
@@ -27,38 +26,37 @@ describe('decideSetColor', () => {
     ['future day rejected even when confirming', undefined, '2026-10-30', GREEN, { confirmBetter: true }, { kind: 'rejectedFuture' }],
 
     // first color
-    ['first color today', undefined, TODAY, YELLOW, {}, saved(day(TODAY, YELLOW), false, false)],
-    ['first color can backfill a past day', undefined, '2026-10-01', BLUE, {}, saved(day('2026-10-01', BLUE), false, false)],
-    ['first color Red becomes Red', undefined, TODAY, RED, {}, saved(day(TODAY, RED), false, true)],
+    ['first color today', undefined, TODAY, YELLOW, {}, saved(day(TODAY, YELLOW), false)],
+    ['first color can backfill a past day', undefined, '2026-10-01', BLUE, {}, saved(day('2026-10-01', BLUE), false)],
+    ['first color Red becomes Red', undefined, TODAY, RED, {}, saved(day(TODAY, RED), true)],
 
     // previous color null (call marked before a color) keeps the check-in
-    ['previous null keeps check-in', day(TODAY, null, true), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW, true), false, false)],
-    ['previous null + Red keeps check-in, becomes Red', day(TODAY, null, true), TODAY, RED, {}, saved(day(TODAY, RED, true), false, true)],
+    ['previous null keeps check-in', day(TODAY, null, true), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW, true), false)],
+    ['previous null + Red keeps check-in, becomes Red', day(TODAY, null, true), TODAY, RED, {}, saved(day(TODAY, RED, true), true)],
 
     // worse color replaces
-    ['worse replaces better', day(TODAY, GREEN), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW), false, false)],
-    ['worse to Red becomes Red', day(TODAY, YELLOW), TODAY, RED, {}, saved(day(TODAY, RED), false, true)],
-    ['worse on a past day', day(YESTERDAY, BLUE), YESTERDAY, YELLOW, {}, saved(day(YESTERDAY, YELLOW), false, false)],
-    ['confirmBetter has no effect on a worse color', day(TODAY, GREEN), TODAY, BLUE, { confirmBetter: true }, saved(day(TODAY, BLUE), false, false)],
+    ['worse replaces better', day(TODAY, GREEN), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW), false)],
+    ['worse to Red becomes Red', day(TODAY, YELLOW), TODAY, RED, {}, saved(day(TODAY, RED), true)],
+    ['worse on a past day', day(YESTERDAY, BLUE), YESTERDAY, YELLOW, {}, saved(day(YESTERDAY, YELLOW), false)],
+    ['confirmBetter has no effect on a worse color', day(TODAY, GREEN), TODAY, BLUE, { confirmBetter: true }, saved(day(TODAY, BLUE), false)],
 
-    // worse color after the call: the check-in stays (one call per day), worseAfterCall is set
-    ['worse on checked-in day keeps check-in', day(TODAY, BLUE, true), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW, true), true, false)],
-    ['Red on checked-in day keeps check-in and becomes Red', day(TODAY, GREEN, true), TODAY, RED, {}, saved(day(TODAY, RED, true), true, true)],
-    ['worse on a checked-in past day keeps it', day(YESTERDAY, GREEN, true), YESTERDAY, BLUE, {}, saved(day(YESTERDAY, BLUE, true), true, false)],
-    ['Red on a checked-in past day keeps it, becomes Red', day('2026-10-01', BLUE, true), '2026-10-01', RED, {}, saved(day('2026-10-01', RED, true), true, true)],
-    ['previous null is not worseAfterCall', day(YESTERDAY, null, true), YESTERDAY, RED, {}, saved(day(YESTERDAY, RED, true), false, true)],
+    // worse color after the call: the check-in stays (one call per day)
+    ['worse on checked-in day keeps check-in', day(TODAY, BLUE, true), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW, true), false)],
+    ['Red on checked-in day keeps check-in and becomes Red', day(TODAY, GREEN, true), TODAY, RED, {}, saved(day(TODAY, RED, true), true)],
+    ['worse on a checked-in past day keeps it', day(YESTERDAY, GREEN, true), YESTERDAY, BLUE, {}, saved(day(YESTERDAY, BLUE, true), false)],
+    ['Red on a checked-in past day keeps it, becomes Red', day('2026-10-01', BLUE, true), '2026-10-01', RED, {}, saved(day('2026-10-01', RED, true), true)],
 
     // same color is a no-op save
-    ['same color no-op', day(TODAY, YELLOW), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW), false, false)],
-    ['same color keeps check-in', day(TODAY, BLUE, true), TODAY, BLUE, {}, saved(day(TODAY, BLUE, true), false, false)],
-    ['Red again is not becameRed', day(TODAY, RED), TODAY, RED, {}, saved(day(TODAY, RED), false, false)],
+    ['same color no-op', day(TODAY, YELLOW), TODAY, YELLOW, {}, saved(day(TODAY, YELLOW), false)],
+    ['same color keeps check-in', day(TODAY, BLUE, true), TODAY, BLUE, {}, saved(day(TODAY, BLUE, true), false)],
+    ['Red again is not becameRed', day(TODAY, RED), TODAY, RED, {}, saved(day(TODAY, RED), false)],
 
     // better color needs confirmation
     ['better needs confirm', day(TODAY, YELLOW), TODAY, GREEN, {}, { kind: 'needsConfirmBetter', current: YELLOW, requested: GREEN }],
     ['better needs confirm (confirmBetter false)', day(TODAY, RED), TODAY, BLUE, { confirmBetter: false }, { kind: 'needsConfirmBetter', current: RED, requested: BLUE }],
-    ['better confirmed saves', day(TODAY, YELLOW), TODAY, GREEN, { confirmBetter: true }, saved(day(TODAY, GREEN), false, false)],
-    ['better confirmed keeps check-in', day(TODAY, YELLOW, true), TODAY, BLUE, { confirmBetter: true }, saved(day(TODAY, BLUE, true), false, false)],
-    ['Red corrected to Green is not becameRed', day(TODAY, RED), TODAY, GREEN, { confirmBetter: true }, saved(day(TODAY, GREEN), false, false)],
+    ['better confirmed saves', day(TODAY, YELLOW), TODAY, GREEN, { confirmBetter: true }, saved(day(TODAY, GREEN), false)],
+    ['better confirmed keeps check-in', day(TODAY, YELLOW, true), TODAY, BLUE, { confirmBetter: true }, saved(day(TODAY, BLUE, true), false)],
+    ['Red corrected to Green is not becameRed', day(TODAY, RED), TODAY, GREEN, { confirmBetter: true }, saved(day(TODAY, GREEN), false)],
   ])('%s', (_name, existing, date, requested, opts, expected) => {
     expect(decideSetColor(existing, date, requested, opts, TODAY)).toEqual(expected);
   });

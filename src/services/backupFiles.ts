@@ -3,7 +3,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
-import type { BackupFileV1 } from '@/domain/types';
+import type { BackupFileV2 } from '@/domain/types';
 
 export type BackupReadErrorCode = 'unreadable' | 'invalid-json';
 
@@ -55,7 +55,7 @@ function safeFileName(fileName: string): string {
  * Resolves true once the sheet closes (the OS does not say whether it was saved),
  * false if sharing is unavailable or anything fails.
  */
-export async function shareBackupFile(file: BackupFileV1, fileName: string): Promise<boolean> {
+export async function shareBackupFile(file: BackupFileV2, fileName: string): Promise<boolean> {
   try {
     if (!(await Sharing.isAvailableAsync())) return false;
     const target = new File(Paths.cache, safeFileName(fileName));

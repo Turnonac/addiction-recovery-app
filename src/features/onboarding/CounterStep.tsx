@@ -3,6 +3,7 @@ import { AccessibilityInfo, Alert, Platform, Pressable, Text, View } from 'react
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { addDays, diffDays } from '@/domain/dates';
+import { redDates } from '@/domain/streak';
 import type { LocalDate } from '@/domain/types';
 import type { StepNavProps } from '@/features/onboarding/IntroSteps';
 import {
@@ -23,20 +24,18 @@ type Choice = 'today' | 'past';
 /** How far back "My last Red day was…" can go. */
 const MAX_YEARS_BACK = 20;
 
-/** Step 3: where the clean-day counter starts. Saves counterStartDate on Continue. */
+/** Step 3: where the clean-day counter starts. On Continue a last Red day is saved as a Red day. */
 export function CounterStep({ onNext, onBack }: StepNavProps) {
   const theme = useAppTheme();
   const today = useAppStore((s) => s.today);
-  const savedStart = useAppStore((s) => s.settings.counterStartDate);
-  const setCounterStartDate = useAppStore((s) => s.setCounterStartDate);
+  const days = useAppStore((s) => s.days);
+  const setLastRedDay = useAppStore((s) => s.setLastRedDay);
 
   const yesterday = addDays(today, -1);
-  const [choice, setChoice] = useState<Choice>(
-    savedStart !== null && savedStart < today ? 'past' : 'today',
-  );
-  const [pastDate, setPastDate] = useState<LocalDate | null>(
-    savedStart !== null && savedStart < today ? savedStart : null,
-  );
+  // The last Red day saved by an earlier Continue (going back to this step).
+  const savedStart = redDates(Object.values(days), yesterday).at(-1) ?? null;
+  const [choice, setChoice] = useState<Choice>(savedStart !== null ? 'past' : 'today');
+  const [pastDate, setPastDate] = useState<LocalDate | null>(savedStart);
   const [picker, setPicker] = useState<PickerRequest | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -85,7 +84,7 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
     if (start === null || saving) return;
     setSaving(true);
     try {
-      await setCounterStartDate(start);
+      await setLastRedDay(choice === 'past' ? start : null);
       onNext();
     } catch {
       setSaving(false);

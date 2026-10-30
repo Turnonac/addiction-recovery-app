@@ -119,7 +119,6 @@ describe('setColor', () => {
     expect(outcome).toEqual({
       kind: 'saved',
       day: day(TODAY, YELLOW),
-      worseAfterCall: false,
       becameRed: false,
     });
     expect(store().days[TODAY]).toEqual(day(TODAY, YELLOW));
@@ -132,7 +131,6 @@ describe('setColor', () => {
     expect(outcome).toEqual({
       kind: 'saved',
       day: day(TODAY, RED),
-      worseAfterCall: false,
       becameRed: true,
     });
     expect(store().days[TODAY].color).toBe(RED);
@@ -151,7 +149,6 @@ describe('setColor', () => {
     expect(confirmed).toEqual({
       kind: 'saved',
       day: day(TODAY, GREEN),
-      worseAfterCall: false,
       becameRed: false,
     });
     expect(store().days[TODAY].color).toBe(GREEN);
@@ -164,39 +161,19 @@ describe('setColor', () => {
     expect(store().days[TODAY]).toEqual(day(TODAY, BLUE, true));
   });
 
-  it('a worse color after the call keeps the check-in and saves the day for the next call', async () => {
+  it('a worse color after the call keeps the check-in (one call per day)', async () => {
     const repo = await initWith({ days: [day(TODAY, GREEN, true)] });
     const outcome = await store().setColor(TODAY, YELLOW);
-    expect(outcome).toEqual({
-      kind: 'saved',
-      day: day(TODAY, YELLOW, true),
-      worseAfterCall: true,
-      becameRed: false,
-    });
+    expect(outcome).toEqual({ kind: 'saved', day: day(TODAY, YELLOW, true), becameRed: false });
     expect(store().days[TODAY]).toEqual(day(TODAY, YELLOW, true));
     expect((await repo.loadAll()).days).toEqual([day(TODAY, YELLOW, true)]);
-    expect(store().settings.pendingShares).toEqual([{ date: TODAY, since: TODAY }]);
-    expect((await repo.loadAll()).settings.pendingShares).toEqual([{ date: TODAY, since: TODAY }]);
   });
 
   it('a worse color on a past checked-in day keeps that call', async () => {
     const repo = await initWith({ days: [day(YESTERDAY, GREEN, true)] });
     const outcome = await store().setColor(YESTERDAY, RED);
-    expect(outcome).toEqual({
-      kind: 'saved',
-      day: day(YESTERDAY, RED, true),
-      worseAfterCall: true,
-      becameRed: true,
-    });
+    expect(outcome).toEqual({ kind: 'saved', day: day(YESTERDAY, RED, true), becameRed: true });
     expect((await repo.loadAll()).days).toEqual([day(YESTERDAY, RED, true)]);
-    expect(store().settings.pendingShares).toEqual([{ date: YESTERDAY, since: YESTERDAY }]);
-  });
-
-  it('saves nothing for later when the next call covers the day', async () => {
-    await initWith({ days: [day('2026-10-20', GREEN, true)] });
-    await store().setColor(YESTERDAY, RED);
-    await store().setColor(TODAY, YELLOW);
-    expect(store().settings.pendingShares).toEqual([]);
   });
 
   it('keeps the check-in when the previous color was null', async () => {
@@ -205,7 +182,6 @@ describe('setColor', () => {
     expect(outcome).toEqual({
       kind: 'saved',
       day: day(TODAY, BLUE, true),
-      worseAfterCall: false,
       becameRed: false,
     });
     expect((await repo.loadAll()).days).toEqual([day(TODAY, BLUE, true)]);
@@ -397,17 +373,6 @@ describe('settings', () => {
     expect(store().settings.reminder).toEqual({ enabled: true, hour: 7, minute: 30 });
   });
 
-  it('setCounterStartDate saves a past date and caps a future one at today', async () => {
-    const repo = await initWith();
-    await store().setCounterStartDate('2026-09-01');
-    expect(store().settings.counterStartDate).toBe('2026-09-01');
-    expect((await repo.loadAll()).settings.counterStartDate).toBe('2026-09-01');
-
-    await store().setCounterStartDate(TOMORROW);
-    expect(store().settings.counterStartDate).toBe(TODAY);
-    await expect(store().setCounterStartDate('not-a-date')).rejects.toThrow(RangeError);
-  });
-
   it('markExported stores a valid ISO instant only', async () => {
     const repo = await initWith();
     const iso = '2026-10-29T18:30:00.000Z';
@@ -420,29 +385,54 @@ describe('settings', () => {
   });
 });
 
-describe('completeOnboarding', () => {
-  it('sets onboardingDone, installDate and a missing counterStartDate to today', async () => {
+describe('setLastRedDay', () => {
+  it('saves the last Red day as a Red day in the log', async () => {
     const repo = await initWith();
-    await store().completeOnboarding();
-    const expected: Settings = {
-      ...DEFAULT_SETTINGS,
-      onboardingDone: true,
-      installDate: TODAY,
-      counterStartDate: TODAY,
-    };
-    expect(store().settings).toEqual(expected);
-    expect((await repo.loadAll()).settings).toEqual(expected);
+    await store().setLastRedDay('2026-09-01');
+    expect(store().days).toEqual({ '2026-09-01': day('2026-09-01', RED) });
+    expect((await repo.loadAll()).days).toEqual([day('2026-09-01', RED)]);
+    expect(store().settings).toEqual(DEFAULT_SETTINGS);
   });
 
-  it('keeps a counterStartDate chosen during onboarding', async () => {
+  it('replaces the one saved before, or just removes it for "Start counting today"', async () => {
+    const repo = await initWith();
+    await store().setLastRedDay('2026-09-01');
+    await store().setLastRedDay('2026-09-15');
+    expect((await repo.loadAll()).days).toEqual([day('2026-09-15', RED)]);
+    await store().setLastRedDay('2026-09-15');
+    expect((await repo.loadAll()).days).toEqual([day('2026-09-15', RED)]);
+    await store().setLastRedDay(null);
+    expect((await repo.loadAll()).days).toEqual([]);
+    expect(store().days).toEqual({});
+  });
+
+  it('keeps a check-in on the days it touches', async () => {
+    await initWith({ days: [day('2026-09-01', null, true), day('2026-09-15', null, true)] });
+    await store().setLastRedDay('2026-09-01');
+    expect(store().days['2026-09-01']).toEqual(day('2026-09-01', RED, true));
+    await store().setLastRedDay('2026-09-15');
+    expect(store().days['2026-09-01']).toEqual(day('2026-09-01', null, true));
+    expect(store().days['2026-09-15']).toEqual(day('2026-09-15', RED, true));
+  });
+
+  it('rejects today, future and malformed dates, and runs only during onboarding', async () => {
     await initWith();
-    await store().setCounterStartDate('2026-08-15');
+    await expect(store().setLastRedDay(TODAY)).rejects.toThrow(RangeError);
+    await expect(store().setLastRedDay(TOMORROW)).rejects.toThrow(RangeError);
+    await expect(store().setLastRedDay('not-a-date')).rejects.toThrow(RangeError);
     await store().completeOnboarding();
-    expect(store().settings).toMatchObject({
-      onboardingDone: true,
-      installDate: TODAY,
-      counterStartDate: '2026-08-15',
-    });
+    await expect(store().setLastRedDay('2026-09-01')).rejects.toThrow('onboarding');
+    expect(store().days).toEqual({});
+  });
+});
+
+describe('completeOnboarding', () => {
+  it('sets onboardingDone and installDate to today', async () => {
+    const repo = await initWith();
+    await store().completeOnboarding();
+    const expected: Settings = { ...DEFAULT_SETTINGS, onboardingDone: true, installDate: TODAY };
+    expect(store().settings).toEqual(expected);
+    expect((await repo.loadAll()).settings).toEqual(expected);
   });
 });
 
@@ -460,7 +450,6 @@ describe('replaceAll', () => {
       settings: {
         ...DEFAULT_SETTINGS,
         partner: { name: 'Sam', phone: '+1 555 0100' },
-        counterStartDate: '2026-09-01',
         installDate: '2026-09-01',
         onboardingDone: true,
       },
@@ -515,7 +504,8 @@ describe('settingsFromRows', () => {
     const settings = settingsFromRows([
       { key: 'onboardingDone', value: 'not json' },
       { key: 'reminder', value: JSON.stringify({ enabled: true, hour: 30, minute: 0 }) },
-      { key: 'counterStartDate', value: JSON.stringify('2026-02-30') },
+      { key: 'installDate', value: JSON.stringify('2026-02-30') },
+      { key: 'counterStartDate', value: JSON.stringify('2026-09-01') }, // no longer a setting
       { key: 'somethingElse', value: '1' },
       { key: '__proto__', value: '{"polluted":true}' },
     ]);

@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Alert, AppState, Pressable, Text, View } from 'react-native';
 
-import { callWindow, sharesForNextCall } from '@/domain/call';
+import { callWindow } from '@/domain/call';
 import { addDays, formatLong, formatShort } from '@/domain/dates';
 import { monthSummary } from '@/domain/history';
 import { COLOR_NAMES, type ColorLevel, type LocalDate } from '@/domain/types';
@@ -79,9 +79,7 @@ function CallWithPartner({
   const theme = useAppTheme();
   const today = useAppStore((s) => s.today);
   const days = useAppStore((s) => s.days);
-  const counterStartDate = useAppStore((s) => s.settings.counterStartDate);
   const installDate = useAppStore((s) => s.settings.installDate);
-  const pendingShares = useAppStore((s) => s.settings.pendingShares);
   const setCheckedIn = useAppStore((s) => s.setCheckedIn);
 
   const [showAll, setShowAll] = useState(false);
@@ -95,17 +93,10 @@ function CallWithPartner({
   const callDay = useRef<LocalDate | null>(null);
 
   const dayList = Object.values(days);
-  const info = callWindow(dayList, { counterStartDate, installDate }, today);
+  const info = callWindow(dayList, { installDate }, today);
   const checkedInToday = days[today]?.checkedIn ?? false;
   const [year, month] = today.split('-').map(Number);
   const summary = monthSummary(dayList, year, month, today, installDate);
-  // Late colors on days an earlier call covered: this call shares them (or the next, if today is done).
-  const extras = sharesForNextCall(dayList, { counterStartDate, installDate, pendingShares }, today).flatMap(
-    (date) => {
-      const color = days[date]?.color ?? null;
-      return color === null ? [] : [{ date, color }];
-    },
-  );
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -221,11 +212,6 @@ function CallWithPartner({
   const firstCall = info.lastCallDate === null;
   const lowest = info.lowest;
   const hasUnlogged = info.unloggedDates.length > 0;
-  const steps = [
-    shareLine(firstCall, lowest),
-    ...(extras.length === 0 ? [] : [extrasLine(extras, today)]),
-    `${name} prays for you.`,
-  ];
 
   return (
     <Screen edges={MODAL_EDGES} footer={footer} gap={16}>
@@ -304,28 +290,13 @@ function CallWithPartner({
         </Card>
       )}
 
-      {extras.length > 0 ? (
-        <Card gap={12}>
-          <Text accessibilityRole="header" style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
-            {info.checkedInToday ? 'Share on your next call' : 'Also share'}
-          </Text>
-          <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-            {extras.length === 1 ? 'A color you logged later for an earlier day.' : 'Colors you logged later for earlier days.'}
-          </Text>
-          {extras.map((extra) => (
-            <WindowRow key={extra.date} date={extra.date} color={extra.color} today={today} onLog={() => undefined} />
-          ))}
-        </Card>
-      ) : null}
-
       {!info.checkedInToday ? (
         <View style={{ gap: 10 }}>
           <Text accessibilityRole="header" style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
             On the call
           </Text>
-          {steps.map((text, i) => (
-            <Step key={text} number={i + 1} text={text} />
-          ))}
+          <Step number={1} text={shareLine(firstCall, lowest)} />
+          <Step number={2} text={`${name} prays for you.`} />
         </View>
       ) : null}
     </Screen>
@@ -347,13 +318,6 @@ function shareLine(firstCall: boolean, lowest: ColorLevel | null): string {
   return firstCall
     ? `Share: “Since I started, my lowest was ${color}.”`
     : `Share: “Since our last call, my lowest was ${color}.”`;
-}
-
-function extrasLine(extras: { date: LocalDate; color: ColorLevel }[], today: LocalDate): string {
-  if (extras.length > 1) return 'Also share each day under “Also share”.';
-  const label = dayLabel(extras[0].date, today);
-  const when = label === 'Yesterday' ? label : `On ${label}`;
-  return `Also share: “${when}, my lowest was ${COLOR_NAMES[extras[0].color]}.”`;
 }
 
 function dayLabel(date: LocalDate, today: LocalDate): string {

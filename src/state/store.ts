@@ -2,19 +2,20 @@ import { z } from 'zod';
 import { create } from 'zustand';
 
 import { defaultSettings, isEmptyDay, sortBehaviors, type Repository } from '@/data/repository';
-import { addPendingShare, needsLaterShare } from '@/domain/call';
 import { decideSetColor } from '@/domain/checkin';
-import { isValidLocalDate, todayLocal } from '@/domain/dates';
-import type {
-  AppSnapshot,
-  Behavior,
-  ColorLevel,
-  DayLog,
-  LocalDate,
-  Partner,
-  Reminder,
-  SetColorOutcome,
-  Settings,
+import { addDays, isValidLocalDate, todayLocal } from '@/domain/dates';
+import { redDates } from '@/domain/streak';
+import {
+  RED,
+  type AppSnapshot,
+  type Behavior,
+  type ColorLevel,
+  type DayLog,
+  type LocalDate,
+  type Partner,
+  type Reminder,
+  type SetColorOutcome,
+  type Settings,
 } from '@/domain/types';
 
 /** Longest behavior line, in UTF-16 code units (matches TextInput maxLength). */
@@ -46,8 +47,13 @@ export interface AppState {
   setPartner(partner: Partner | null): Promise<void>;
   /** Persists only; screens call services/notifications. */
   setReminder(reminder: Reminder): Promise<void>;
-  setCounterStartDate(date: LocalDate): Promise<void>;
-  /** Sets onboardingDone, installDate = today, and counterStartDate = today if it was unset. */
+  /**
+   * Onboarding only. "My last Red day was…": `date` (before today) becomes a Red day,
+   * replacing the one saved here before (the latest Red before today). null ("Start
+   * counting today") just removes that one.
+   */
+  setLastRedDay(date: LocalDate | null): Promise<void>;
+  /** Sets onboardingDone and installDate = today. */
   completeOnboarding(): Promise<void>;
   /** `iso` must be an ISO-8601 instant (e.g. new Date().toISOString()). */
   markExported(iso: string): Promise<void>;
@@ -155,11 +161,6 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (outcome.kind !== 'saved') return outcome;
         await repo.upsertDay(outcome.day);
         set((s) => ({ days: { ...s.days, [date]: outcome.day } }));
-        const { days, settings } = get();
-        const list = Object.values(days);
-        if (needsLaterShare(outcome, list, settings, today, date)) {
-          await saveSettings({ pendingShares: addPendingShare(settings.pendingShares, list, today, date) });
-        }
         return outcome;
       }),
 
@@ -223,27 +224,41 @@ export const useAppStore = create<AppState>()((set, get) => {
         await saveSettings({ reminder: { enabled, hour, minute } });
       }),
 
-    setCounterStartDate: (date) =>
+    setLastRedDay: (date) =>
       serial(async () => {
-        assertValidDate(date);
+        if (date !== null) assertValidDate(date);
+        const repo = requireRepo();
+        if (get().settings.onboardingDone) throw new Error('setLastRedDay: onboarding only');
         const today = syncToday();
-        // A future start would mean nothing yet; the counter treats it as today anyway.
-        await saveSettings({ counterStartDate: date > today ? today : date });
+        if (date !== null && date >= today) throw new RangeError(`Last Red day must be before today: ${date}`);
+        const previous = redDates(Object.values(get().days), addDays(today, -1)).at(-1) ?? null;
+        if (previous === date) return;
+        if (previous !== null) {
+          const cleared: DayLog = { ...get().days[previous], color: null };
+          if (isEmptyDay(cleared)) {
+            await repo.deleteDay(previous);
+            set((s) => ({ days: withoutDay(s.days, previous) }));
+          } else {
+            await repo.upsertDay(cleared);
+            set((s) => ({ days: { ...s.days, [previous]: cleared } }));
+          }
+        }
+        if (date !== null) {
+          const day: DayLog = { date, color: RED, checkedIn: get().days[date]?.checkedIn ?? false };
+          await repo.upsertDay(day);
+          set((s) => ({ days: { ...s.days, [date]: day } }));
+        }
       }),
 
     completeOnboarding: () =>
       serial(async () => {
         const today = syncToday();
-        await saveSettings({
-          onboardingDone: true,
-          installDate: today,
-          counterStartDate: get().settings.counterStartDate ?? today,
-        });
+        await saveSettings({ onboardingDone: true, installDate: today });
       }),
 
     markExported: (iso) =>
       serial(async () => {
-        // Must stay valid for BackupSchemaV1, or the next export could not be imported.
+        // Must stay valid for BackupSchemaV2, or the next export could not be imported.
         if (!IsoInstant.safeParse(iso).success) throw new RangeError(`Invalid ISO instant: ${iso}`);
         await saveSettings({ lastExportAt: iso });
       }),

@@ -68,8 +68,8 @@ export default function TodayScreen() {
   const partner = settings.partner;
   const partnerName = partner?.name.trim() || 'your partner';
 
-  const streak = currentStreak(dayList, settings.counterStartDate, today);
-  const best = bestStreak(dayList, settings.counterStartDate, today, settings.installDate);
+  const streak = currentStreak(dayList, settings.installDate, today);
+  const best = bestStreak(dayList, settings.installDate, today);
   const week = weekStrip(dayList, today, settings.installDate);
   const todayColor = days[today]?.color ?? null;
   const call = callWindow(dayList, settings, today);

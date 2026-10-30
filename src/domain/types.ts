@@ -76,38 +76,25 @@ export interface Reminder {
   minute: number;
 }
 
-/** A late color for the next call to share (docs/ARCHITECTURE.md, "Late color after the call"). */
-export interface PendingShare {
-  date: LocalDate;
-  /** Last checked-in day when it was logged (null: none); a call after this day shared it. */
-  since: LocalDate | null;
-}
-
 export interface Settings {
   partner: Partner | null;
   reminder: Reminder;
   /**
-   * Anchor for the clean-day counter before any Red is logged
-   * ("My last Red day was…" / "Start counting today"). Set in onboarding.
+   * Day onboarding finished; History treats earlier days as before-install. Before any
+   * Red on or before it, the counter counts from this day ("Start counting today").
    */
-  counterStartDate: LocalDate | null;
-  /** Day onboarding finished; History treats earlier days as before-install. */
   installDate: LocalDate | null;
   onboardingDone: boolean;
   /** ISO-8601 instant of the last successful export, for the 30-day reminder card. */
   lastExportAt: string | null;
-  /** Days a call already covered that later got a worse color, for the next call. By date. */
-  pendingShares: PendingShare[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   partner: null,
   reminder: { enabled: false, hour: 21, minute: 0 },
-  counterStartDate: null,
   installDate: null,
   onboardingDone: false,
   lastExportAt: null,
-  pendingShares: [],
 };
 
 /** Everything the app stores. Used for load, export/import and tests. */
@@ -136,8 +123,6 @@ export type SetColorOutcome =
   | {
       kind: 'saved';
       day: DayLog;
-      /** The day was checked in with a color, then got a worse one: the partner hasn't heard it. */
-      worseAfterCall: boolean;
       /** The day just became Red (it was not Red before). */
       becameRed: boolean;
     }
@@ -150,15 +135,13 @@ export type SetColorOutcome =
   | { kind: 'rejectedFuture' };
 
 /**
- * Backup format id. New files use 'light2life-backup'. Files exported under the
- * old working name carry 'walkinlight-backup' (same version 1 shape) and still import.
+ * Backup file, version 2: what every export writes. Validated with zod in domain/backup.ts,
+ * which also reads version 1 files (they carried settings.counterStartDate) and files from
+ * the old working name ('walkinlight-backup', version 1 only).
  */
-export type BackupFormat = 'light2life-backup' | 'walkinlight-backup';
-
-/** Backup file format, version 1. Validated with zod in domain/backup.ts. */
-export interface BackupFileV1 {
-  format: BackupFormat;
-  schemaVersion: 1;
+export interface BackupFileV2 {
+  format: 'light2life-backup';
+  schemaVersion: 2;
   exportedAt: string;
   days: DayLog[];
   behaviors: Behavior[];

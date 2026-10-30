@@ -29,6 +29,25 @@ const MIGRATIONS: readonly string[] = [
     value TEXT NOT NULL
   ) WITHOUT ROWID;
   `,
+  // 1 -> 2: the day log is the one source for Red days. Onboarding's "My last Red day
+  // was…" lived in the counterStartDate setting; a start before installDate becomes
+  // that day's Red (unless the day already has a color). A start on installDate was
+  // "Start counting today", which installDate already says. Then the setting goes.
+  `
+  INSERT INTO day_log (date, color, checked_in)
+  SELECT start_date, 3, 0
+  FROM (
+    SELECT
+      (SELECT CASE WHEN json_valid(value) THEN CASE WHEN json_type(value) = 'text'
+        THEN json_extract(value, '$') END END FROM settings WHERE key = 'counterStartDate') AS start_date,
+      (SELECT CASE WHEN json_valid(value) THEN CASE WHEN json_type(value) = 'text'
+        THEN json_extract(value, '$') END END FROM settings WHERE key = 'installDate') AS install_date
+  )
+  WHERE start_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND start_date < install_date
+  ON CONFLICT(date) DO UPDATE SET color = 3 WHERE day_log.color IS NULL;
+
+  DELETE FROM settings WHERE key IN ('counterStartDate', 'pendingShares');
+  `,
 ];
 
 /** Schema version this build of the app expects. */

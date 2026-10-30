@@ -2,9 +2,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
-import { inCallWindow, needsLaterShare } from '@/domain/call';
+import { inCallWindow } from '@/domain/call';
 import { decideSetColor } from '@/domain/checkin';
-import { formatLong, formatShort, isValidLocalDate } from '@/domain/dates';
+import { formatLong, isValidLocalDate } from '@/domain/dates';
 import { bestStreak, currentStreak, streaksIfRed } from '@/domain/streak';
 import {
   COLOR_LEVELS,
@@ -112,34 +112,17 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
         return;
       }
       case 'saved': {
+        // A new Red goes straight to the call when that call covers the day (one call a day).
         const state = useAppStore.getState();
-        const list = Object.values(state.days);
-        // A new Red the next call covers goes straight to it.
-        if (outcome.becameRed && inCallWindow(list, state.settings, state.today, date)) {
-          if (partner !== null) goToCall();
-          else close();
+        if (
+          outcome.becameRed &&
+          partner !== null &&
+          inCallWindow(Object.values(state.days), state.settings, state.today, date)
+        ) {
+          goToCall();
           return;
         }
-        // A late color the store saved for the next call (one call per day).
-        if (partner === null || !needsLaterShare(outcome, list, state.settings, state.today, date)) {
-          close();
-          return;
-        }
-        const which = isToday ? 'today' : formatShort(date);
-        setSaving(false);
-        if (state.days[state.today]?.checkedIn) {
-          Alert.alert(
-            "You'll share this on your next call",
-            `You already talked with ${partnerName} today, so ${which} goes on your next call.`,
-            [{ text: 'OK', onPress: close }],
-          );
-          return;
-        }
-        Alert.alert(`Call ${partnerName} to share this?`, `Your next call will include ${which}.`, [
-          { text: 'Later', style: 'cancel', onPress: close },
-          { text: 'Call now', onPress: goToCall },
-        ]);
-        return;
+        close();
       }
     }
   }
@@ -241,18 +224,17 @@ function daysText(n: number): string {
  */
 function redNoteText(
   days: DayLog[],
-  counterStartDate: LocalDate | null,
   installDate: LocalDate | null,
   date: LocalDate,
   today: LocalDate,
 ): string {
   if (date === today) return 'Your counter restarts at 0. Your history and best streak stay.';
-  const after = streaksIfRed(days, counterStartDate, date, today, installDate);
+  const after = streaksIfRed(days, installDate, date, today);
   const counter =
-    after.current === currentStreak(days, counterStartDate, today)
+    after.current === currentStreak(days, installDate, today)
       ? `Your counter stays at ${daysText(after.current)}.`
       : `Your counter goes back to ${daysText(after.current)}.`;
-  return after.best === bestStreak(days, counterStartDate, today, installDate)
+  return after.best === bestStreak(days, installDate, today)
     ? `${counter} Your history and best streak stay.`
     : `${counter} Your best streak becomes ${daysText(after.best)}. Your history stays.`;
 }
@@ -264,9 +246,8 @@ function GraceNote({ date }: { date: LocalDate }) {
   const red = theme.levels[RED];
   const today = useAppStore((s) => s.today);
   const days = useAppStore((s) => s.days);
-  const counterStartDate = useAppStore((s) => s.settings.counterStartDate);
   const installDate = useAppStore((s) => s.settings.installDate);
-  const text = redNoteText(Object.values(days), counterStartDate, installDate, date, today);
+  const text = redNoteText(Object.values(days), installDate, date, today);
   return (
     <View
       accessible

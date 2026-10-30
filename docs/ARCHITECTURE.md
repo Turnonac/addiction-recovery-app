@@ -21,37 +21,33 @@ Never install packages; everything needed is already in `package.json`.
   (careless about avoiding Red), **Yellow** (actions that move toward Red),
   **Red** (viewed anything explicit). Stored as severity 0..3 (`ColorLevel`).
 - Each day stores ONLY: lowest color of the day (or null) and whether the user
-  checked in with their partner. No timestamps. (Late colors waiting for the next
-  call are a short list in settings, not day data.)
+  checked in with their partner. No timestamps. A check-in is always the day's
+  partner call; there is no other kind. The day log is the one source of truth for
+  days: counter, best streak, call window and month stats are computed from it plus
+  `settings.installDate`, never stored.
 - **Lowest wins:** a worse color replaces a better one. A better color than the
   stored one needs a "Did you pick X by mistake?" confirmation.
 - **Late color after the call:** one call per day, and a check-in is never cleared
-  (that call happened). If a checked-in day gets a WORSE color (previous color
-  non-null), or a day becomes Red with no call that day, and the next call's window
-  doesn't cover it, it is saved in `settings.pendingShares` and the next call shows it
-  under "Also share". If today has no call yet, the app offers that call now ("Call
-  {name} to share this?"); if today is already checked in, it says the day goes on the
-  next call and never offers a second call. A share stays pending until a call on a
-  later day than the last call when it was logged. Previous color null → keep the
-  check-in, nothing to share later.
+  (that call happened). A color logged later just updates the day; the next call's
+  window still starts after the last check-in, so a day already called about is not
+  listed again.
 - **Counter** = calendar days since the last Red (Red day shows 0, next day 1).
-  Before any Red, count from `settings.counterStartDate`. Unlogged days never
-  reset it. Reds dated after today are ignored.
+  Onboarding's "My last Red day was…" saves that day as a Red day. With no Red on or
+  before `installDate` ("Start counting today"), the counter counts from installDate.
+  Unlogged days never reset it. Reds dated after today are ignored. A Red backfilled
+  before installDate counts like any other, so the counter counts from it if it is
+  the latest Red.
 - **Best streak** = max over every completed run (`nextAnchor - anchor - 1`)
-  and the current streak. Anchors = counterStartDate + every Red date ≤ today.
-  A run is completed only when it ends at a Red. counterStartDate counts as one when it
-  is before installDate (the user picked "My last Red day was…") or is itself a logged
-  Red. A "Start counting today" start (= installDate) is not, so the gap from an earlier
-  Red up to it is untracked and does not count. (Two Reds logged before the start still
-  form a run between them.)
+  and the current streak. Anchors = every Red date ≤ today, plus installDate when no
+  Red is on or before it.
 - **Day boundary = midnight.** Missed days can be made up (backfill any past day
   from History; Today shows "Yesterday isn't logged"). Future days are locked.
   A check-in opened for today keeps that day if midnight passes while it is open.
 - **Partner call (one-way, once a day):** window = every day after the last
   checked-in day, through today. If today is already checked in, the window is
   empty ("You already talked with James today"). Before the first ever call,
-  the window starts at counterStartDate (or installDate, or today), capped to
-  the last 14 days. Script: "Since our last call, my lowest was {color}." Then
+  the window starts where the counter started at install (the latest Red on or
+  before installDate, else installDate, else today), capped to the last 14 days. Script: "Since our last call, my lowest was {color}." Then
   the partner prays. A call counts for the day it was dialed, even if it ends
   after midnight.
 - Partner step is skippable in onboarding but labeled the most important step;
@@ -75,7 +71,7 @@ Never install packages; everything needed is already in `package.json`.
 - **Backup:** export a JSON file via the share sheet. The file name is discreet
   (`daily-backup-YYYY-MM-DD.json`); the format id inside is
   `light2life-backup`. Files exported before the rename (format id
-  `walkinlight-backup`, schemaVersion 1) still import. Import shows a preview,
+  `walkinlight-backup`, schemaVersion 1) and version 1 files still import. Import shows a preview,
   then replaces everything. OS backups (iCloud / Google) allowed
   (`android.allowBackup: true`).
 - Light (Calm) + dark mode following the phone. 3 tabs: Today, History,
@@ -169,33 +165,27 @@ formatMonthYear(year, month1to12): string        // 'October 2026'
 ### domain/streak.ts
 ```ts
 redDates(days: DayLog[], today): LocalDate[]     // Red dates ≤ today, ascending, unique
-currentStreak(days, counterStartDate: LocalDate|null, today): number | null  // null if no anchor at all
-bestStreak(days, counterStartDate, today, installDate: LocalDate|null = null): number | null
-  // only runs that end at a Red count; counterStartDate before installDate counts as a Red
-streaksIfRed(days, counterStartDate, date, today, installDate = null): { current: number; best: number }
+counterStart(days, installDate: LocalDate|null, today): LocalDate | null
+  // where the counter started at install: latest Red ≤ installDate, else installDate
+currentStreak(days, installDate: LocalDate|null, today): number | null  // null if no anchor at all
+bestStreak(days, installDate, today): number | null
+streaksIfRed(days, installDate, date, today): { current: number; best: number }
   // both as they would be with `date` logged Red (the check-in's Red note)
-// A counterStartDate after today is treated as today.
+// An installDate after today is treated as today.
 ```
 
 ### domain/call.ts
 ```ts
 FIRST_CALL_MAX_DAYS = 14
-callWindow(days: DayLog[], settings: Pick<Settings, 'counterStartDate' | 'installDate'>, today): CallWindow
+callWindow(days: DayLog[], settings: Pick<Settings, 'installDate'>, today): CallWindow
 inCallWindow(days, settings, today, date): boolean  // the next call covers `date`
-needsLaterShare(outcome, days, settings, today, date): boolean
-  // a saved worseAfterCall, or becameRed on an unchecked day, outside the window (days include it)
-addPendingShare(pending, days, today, date): PendingShare[]
-  // adds { date, since: last call }, replaces the same date, drops shares a later call covered
-sharesForNextCall(days, settings incl. pendingShares, today): LocalDate[]
-  // pending dates no later call has covered and not in the window, oldest first
 ```
 
 ### domain/checkin.ts
 ```ts
 decideSetColor(existing: DayLog | undefined, date: LocalDate, requested: ColorLevel,
                opts: { confirmBetter?: boolean }, today: LocalDate): SetColorOutcome
-  // becameRed only when the day was not Red before.
-  // worseAfterCall: checked-in day, non-null color, got worse. Never clears a check-in.
+  // becameRed only when the day was not Red before. Never clears a check-in.
 lowestOf(colors: (ColorLevel|null)[]): ColorLevel | null
 ```
 
@@ -221,21 +211,22 @@ backupNudgeDue(lastExportAt: string|null, installDate: LocalDate|null, today): b
 ```ts
 BACKUP_FORMAT = 'light2life-backup'           // written by every export
 LEGACY_BACKUP_FORMAT = 'walkinlight-backup'   // files from before the rename; read, never written
-BACKUP_SCHEMA_VERSION = 1
-BackupSchemaV1: zod schema for BackupFileV1 (either format id; strict about types, no coercion;
+BACKUP_SCHEMA_VERSION = 2
+BackupSchemaV2: zod schema for BackupFileV2 (BACKUP_FORMAT only; strict about types, no coercion;
   validates dates, color range, reminder time, unique day dates and behavior ids; unknown keys dropped)
-buildBackup(snapshot: AppSnapshot, exportedAt: string): BackupFileV1   // format BACKUP_FORMAT, days sorted
+BackupSchemaV1: the same rules for version 1 files (either format id, plus settings.counterStartDate)
+buildBackup(snapshot: AppSnapshot, exportedAt: string): BackupFileV2   // format BACKUP_FORMAT, days sorted
 parseBackup(input: unknown): { ok: true; snapshot: AppSnapshot; summary: { dayCount; firstDate; lastDate; partnerName } }
                            | { ok: false; error: 'not-a-backup' | 'newer-version' | 'invalid' }
   // not-a-backup: not an object, or neither format id
-  // newer-version: 'light2life-backup' with schemaVersion > 1
-  // invalid: anything else that fails the schema (a legacy file must be schemaVersion 1)
+  // newer-version: 'light2life-backup' with schemaVersion > 2
+  // invalid: anything else that fails its version's schema (a legacy file must be schemaVersion 1)
   // Drops day rows with no color and no check-in. Restored lastExportAt = later of the
-  // file's exportedAt and its settings.lastExportAt. settings.pendingShares may be missing
-  // (files from before it): read as [].
+  // file's exportedAt and its settings.lastExportAt. Version 1: a counterStartDate before
+  // installDate ("My last Red day was…") becomes that day's Red unless it has a color.
 backupFileName(today: LocalDate): string      // 'daily-backup-2026-10-29.json' (discreet)
 ```
-`BackupFileV1.format` is `BackupFormat` (`'light2life-backup' | 'walkinlight-backup'`).
+`BackupFileV2.format` is always `'light2life-backup'`.
 
 ### data/repository.ts
 ```ts
@@ -254,7 +245,7 @@ createSqliteRepository(db: SQLiteDatabase): Repository
 // toColorLevel, settingsFromRows.
 // data/memoryRepository.ts: createMemoryRepository(initial?: AppSnapshot): Repository
 ```
-SQLite schema (PRAGMA user_version = 1), DB file `app.db`, WAL journal mode:
+SQLite schema (PRAGMA user_version = 2), DB file `app.db`, WAL journal mode:
 - `day_log(date TEXT PRIMARY KEY NOT NULL, color INTEGER NULL CHECK(color BETWEEN 0 AND 3), checked_in INTEGER NOT NULL DEFAULT 0 CHECK(checked_in IN (0,1))) WITHOUT ROWID`
 - `behavior(id INTEGER PRIMARY KEY AUTOINCREMENT, color INTEGER NOT NULL CHECK(color BETWEEN 0 AND 3), text TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0)`
 - `settings(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) WITHOUT ROWID` (one row per
@@ -269,7 +260,9 @@ migrateDatabase(db): Promise<void>            // each step + its user_version bu
                                               // a newer database (app downgrade) is left alone
 openAppDatabase(): Promise<SQLiteDatabase>    // opens 'app.db', runs migrations
 ```
-Migrations are append-only: never edit a shipped entry.
+Migrations are append-only: never edit a shipped entry. 1 → 2 turns the old
+`counterStartDate` setting into a Red day (when it is before `installDate` and that
+day has no color) and deletes it.
 
 ### state/store.ts
 ```ts
@@ -290,8 +283,9 @@ interface AppState {
   removeBehavior(id): Promise<void>;
   setPartner(partner: Partner | null): Promise<void>;
   setReminder(reminder: Reminder): Promise<void>;   // persists only; screens call services/notifications
-  setCounterStartDate(date: LocalDate): Promise<void>;  // a future date is saved as today
-  completeOnboarding(): Promise<void>;              // onboardingDone, installDate = today, counterStartDate = today if unset
+  setLastRedDay(date: LocalDate | null): Promise<void>;  // onboarding only: `date` (< today) becomes Red,
+                                                    // replacing the one saved before; null removes it
+  completeOnboarding(): Promise<void>;              // onboardingDone, installDate = today
   markExported(iso: string): Promise<void>;         // rejects anything but an ISO-8601 instant
   replaceAll(snapshot: AppSnapshot): Promise<void>; // writes, then reloads from the repository
 }
@@ -326,7 +320,7 @@ pickPartnerContact(): Promise<{ status: 'picked'; partner: Partner } | { status:
 // backupFiles.ts
 MAX_BACKUP_BYTES = 5_000_000
 BACKUP_PICKER_TYPES = ['application/json', 'text/plain', 'application/octet-stream']
-shareBackupFile(file: BackupFileV1, fileName: string): Promise<boolean>
+shareBackupFile(file: BackupFileV2, fileName: string): Promise<boolean>
   // write to cache, open share sheet; true once the sheet closes (the OS doesn't say whether
   // the file was saved), false if sharing is unavailable or anything fails
 pickBackupFile(): Promise<unknown | null>
@@ -389,7 +383,7 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   strip, today's check-in card, partner call card OR "Add your partner" card,
   "Yesterday isn't logged" card, 30-day backup reminder card (→ Settings).
 - `(tabs)/history.tsx` — stats (current, best, month check-ins), month calendar with month
-  navigation (back to the earliest of installDate, counterStartDate and the oldest logged day;
+  navigation (back to the earlier of installDate and the oldest logged day;
   no future months), `ColorTotals`, "Missed a day? Tap it…" hint. Tapping a past/today day
   opens `/day/[date]`.
 - `(tabs)/settings/_layout.tsx` — Stack (no native header, anchor `index`).
@@ -417,21 +411,17 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   note (today: "Your counter restarts at 0. Your history and best streak stay."; a past day:
   the counter and best streak it would really leave, from `streaksIfRed`; then "God's grace
   doesn't reset."), save → outcome handling (confirm-better dialog). becameRed on a day the next
-  call covers → `/call` if a partner exists ("Save, then call {name}"). A late color saved for
-  the next call (`needsLaterShare`), with a partner: today not checked in → "Call {name} to share
-  this?" (Later / Call now → `/call`); today checked in → "You'll share this on your next call"
-  (OK only).
+  call covers → `/call` if a partner exists ("Save, then call {name}"); anything else closes.
 - `call.tsx` — modal (asks to add a partner if there is none): since-last-call list (long gaps
   collapse to the last 7 days + "Show all") with "Log it" for unlogged days, lowest summary,
   script, "Call {name}" (dialer). The day on screen when Call is tapped is the call day; when the
   app returns from the background it asks "Did you talk with {name}?" and marks that day.
-  Manual "I talked with {name} — mark today" toggle, month check-in count. `sharesForNextCall`
-  days show in an "Also share" card with an "Also share: “On {date}, my lowest was {color}.”"
-  step; once today is checked in the card reads "Share on your next call" and there are no steps.
+  Manual "I talked with {name} — mark today" toggle, month check-in count.
 - `day/[date].tsx` — modal: day color ("Log it" / "Change" → `/check-in?date=`), "Checked in
   with {partner}" toggle; invalid or future dates show a message.
 - `onboarding.tsx` — steps: welcome (privacy promise) → how colors work → counter start
-  ("Start counting today" / "My last Red day was…" date picker) → partner (most important
+  ("Start counting today" / "My last Red day was…" date picker; a last Red day is saved as a
+  Red day in the log, via `setLastRedDay`) → partner (most important
   step; contacts or typed; skippable) → color lists (Green, Blue, Yellow, Red; Red locked
   line; "Write these later" skips to the reminder) → reminder (time or no reminders; this page
   is the permission pre-prompt) → done ("Start" → `completeOnboarding()`). Steps 1–6 show

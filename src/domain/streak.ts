@@ -2,15 +2,13 @@ import { diffDays } from './dates';
 import { RED, type DayLog, type LocalDate } from './types';
 
 /**
- * Clean-day counter rules (docs/ARCHITECTURE.md, "Counter" and "Best streak"):
- * - Counter = calendar days since the last Red (the Red day shows 0, the next day 1).
- * - Anchors = counterStartDate + every Red date ≤ today. The counter counts from
- *   the latest anchor, so before any Red it counts from counterStartDate.
+ * Clean-day counter rules (docs/ARCHITECTURE.md, "Counter" and "Best streak").
+ * Everything comes from the day log plus installDate:
+ * - Anchors = every Red date ≤ today, plus installDate when no Red is on or before it.
+ *   Onboarding's "My last Red day was…" is a Red day like any other.
+ * - Counter = calendar days since the latest anchor (a Red day shows 0, the next day 1).
  * - Unlogged days never reset anything; Reds dated after today are ignored.
  * - Best = max over every completed run (nextAnchor - anchor - 1) and the current streak.
- *   A run is completed only when a Red ends it. counterStartDate counts as a Red only
- *   when it is before installDate ("My last Red day was…"); a "Start counting today"
- *   start is not a Red, so the untracked gap up to it is not a clean run.
  */
 
 /** Red dates on or before today, ascending, unique. */
@@ -23,47 +21,39 @@ export function redDates(days: DayLog[], today: LocalDate): LocalDate[] {
 }
 
 /**
- * Sorted unique anchors. A counterStartDate after today (e.g. the phone moved
- * to an earlier time zone) is clamped to today so the counter shows 0.
+ * Where the counter started at install: the latest Red on or before installDate,
+ * else installDate itself; null when neither exists. An installDate after today
+ * (e.g. the phone moved to an earlier time zone) is treated as today.
  */
-function anchors(reds: LocalDate[], counterStartDate: LocalDate | null, today: LocalDate): LocalDate[] {
-  const set = new Set(reds);
-  if (counterStartDate !== null) set.add(counterStartDate <= today ? counterStartDate : today);
+export function counterStart(days: DayLog[], installDate: LocalDate | null, today: LocalDate): LocalDate | null {
+  if (installDate === null) return null;
+  const install = installDate <= today ? installDate : today;
+  const before = redDates(days, install);
+  return before.at(-1) ?? install;
+}
+
+/** Sorted unique anchors. */
+function anchors(days: DayLog[], installDate: LocalDate | null, today: LocalDate): LocalDate[] {
+  const set = new Set(redDates(days, today));
+  const start = counterStart(days, installDate, today);
+  if (start !== null) set.add(start);
   return [...set].sort();
 }
 
 /** Days since the latest anchor; null when there is no anchor at all. */
-export function currentStreak(
-  days: DayLog[],
-  counterStartDate: LocalDate | null,
-  today: LocalDate,
-): number | null {
-  const all = anchors(redDates(days, today), counterStartDate, today);
-  const last = all.at(-1);
+export function currentStreak(days: DayLog[], installDate: LocalDate | null, today: LocalDate): number | null {
+  const last = anchors(days, installDate, today).at(-1);
   return last === undefined ? null : diffDays(last, today);
 }
 
-/**
- * Longest clean run, including the current one; null when there is no anchor at all.
- * `installDate` tells a named last Red day (counterStartDate before it) from "Start counting today".
- */
-export function bestStreak(
-  days: DayLog[],
-  counterStartDate: LocalDate | null,
-  today: LocalDate,
-  installDate: LocalDate | null = null,
-): number | null {
-  const reds = redDates(days, today);
-  const endsRun = new Set(reds);
-  if (counterStartDate !== null && installDate !== null && counterStartDate < installDate) {
-    endsRun.add(counterStartDate);
-  }
-  const all = anchors(reds, counterStartDate, today);
+/** Longest clean run, including the current one; null when there is no anchor at all. */
+export function bestStreak(days: DayLog[], installDate: LocalDate | null, today: LocalDate): number | null {
+  const all = anchors(days, installDate, today);
   const last = all.at(-1);
   if (last === undefined) return null;
   let best = diffDays(last, today);
   for (let i = 0; i + 1 < all.length; i++) {
-    if (endsRun.has(all[i + 1])) best = Math.max(best, diffDays(all[i], all[i + 1]) - 1);
+    best = Math.max(best, diffDays(all[i], all[i + 1]) - 1);
   }
   return best;
 }
@@ -71,14 +61,13 @@ export function bestStreak(
 /** Current and best streak as they would be with `date` logged Red (the check-in's Red note). */
 export function streaksIfRed(
   days: DayLog[],
-  counterStartDate: LocalDate | null,
+  installDate: LocalDate | null,
   date: LocalDate,
   today: LocalDate,
-  installDate: LocalDate | null = null,
 ): { current: number; best: number } {
   const withRed = [...days.filter((d) => d.date !== date), { date, color: RED, checkedIn: false }];
   return {
-    current: currentStreak(withRed, counterStartDate, today) ?? 0,
-    best: bestStreak(withRed, counterStartDate, today, installDate) ?? 0,
+    current: currentStreak(withRed, installDate, today) ?? 0,
+    best: bestStreak(withRed, installDate, today) ?? 0,
   };
 }

@@ -20,13 +20,14 @@ export function DoneStep({ onBack, onFinish }: DoneStepProps) {
   const theme = useAppTheme();
   const today = useAppStore((s) => s.today);
   const days = useAppStore((s) => s.days);
-  const counterStartDate = useAppStore((s) => s.settings.counterStartDate);
+
   const partner = useAppStore((s) => s.settings.partner);
   const reminder = useAppStore((s) => s.settings.reminder);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
   const [busy, setBusy] = useState(false);
 
-  const counter = currentStreak(Object.values(days), counterStartDate ?? today, today) ?? 0;
+  // installDate is set when this page finishes; the counter starts today unless a last Red day was named.
+  const counter = currentStreak(Object.values(days), today, today) ?? 0;
 
   const lines = [
     `Your counter: ${counter} ${counter === 1 ? 'day' : 'days'}`,

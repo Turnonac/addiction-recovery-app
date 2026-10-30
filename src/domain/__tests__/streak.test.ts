@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from '@jest/globals';
 
-import { bestStreak, currentStreak, redDates, streaksIfRed } from '@/domain/streak';
+import { bestStreak, counterStart, currentStreak, redDates, streaksIfRed } from '@/domain/streak';
 import type { ColorLevel, DayLog } from '@/domain/types';
 
 const TODAY = '2026-10-29';
@@ -27,18 +27,32 @@ describe('redDates', () => {
   });
 });
 
+describe('counterStart', () => {
+  test.each<[string, DayLog[], string | null, string | null]>([
+    ['no installDate -> null', [red('2026-10-01')], null, null],
+    ['no Red on or before install -> installDate ("Start counting today")', [], '2026-10-10', '2026-10-10'],
+    ['the latest Red on or before install ("My last Red day was…")', [red('2026-09-01'), red('2026-10-05')], '2026-10-10', '2026-10-05'],
+    ['a Red on the install day', [red('2026-10-10')], '2026-10-10', '2026-10-10'],
+    ['Reds after install do not move it', [red('2026-10-20')], '2026-10-10', '2026-10-10'],
+    ['a future installDate is treated as today', [], '2026-11-02', TODAY],
+  ])('%s', (_name, days, installDate, expected) => {
+    expect(counterStart(days, installDate, TODAY)).toBe(expected);
+  });
+});
+
 describe('currentStreak', () => {
   test.each<[string, DayLog[], string | null, number | null]>([
     ['no anchor at all -> null', [], null, null],
-    ['only non-Red days and no start -> null', [day('2026-10-20', 2), day('2026-10-21', 0)], null, null],
-    ['only a future Red and no start -> null', [red('2026-11-05')], null, null],
-    ['counts from counterStartDate before any Red', [], '2026-10-01', 28],
-    ['start today -> 0', [], TODAY, 0],
+    ['only non-Red days and no install -> null', [day('2026-10-20', 2), day('2026-10-21', 0)], null, null],
+    ['only a future Red and no install -> null', [red('2026-11-05')], null, null],
+    ['counts from installDate before any Red', [], '2026-10-01', 28],
+    ['install today -> 0', [], TODAY, 0],
     ['Red today -> 0', [red(TODAY)], '2026-10-01', 0],
     ['Red yesterday -> 1', [red('2026-10-28')], null, 1],
     ['consecutive Reds count from the last one', [red('2026-10-25'), red('2026-10-26'), red('2026-10-27')], null, 2],
-    ['Red after counterStartDate', [red('2026-10-20')], '2026-10-01', 9],
-    ['Red before counterStartDate counts from the start date', [red('2026-09-01')], '2026-10-01', 28],
+    ['Red after installDate', [red('2026-10-20')], '2026-10-01', 9],
+    ['a last Red day before install counts from that day', [red('2026-09-01')], '2026-10-01', 58],
+    ['the latest Red before install wins', [red('2026-08-01'), red('2026-09-01')], '2026-10-01', 58],
     ['future Red is ignored', [red('2026-10-30'), red('2026-12-01')], '2026-10-01', 28],
     [
       'unlogged and non-Red days never reset',
@@ -46,10 +60,10 @@ describe('currentStreak', () => {
       '2026-10-01',
       28,
     ],
-    ['future counterStartDate is clamped to 0', [], '2026-11-02', 0],
+    ['future installDate is clamped to 0', [], '2026-11-02', 0],
     ['duplicate Red rows count once', [red('2026-10-19'), red('2026-10-19')], null, 10],
-  ])('%s', (_name, days, start, expected) => {
-    expect(currentStreak(days, start, TODAY)).toBe(expected);
+  ])('%s', (_name, days, installDate, expected) => {
+    expect(currentStreak(days, installDate, TODAY)).toBe(expected);
   });
 
   it('counts across DST changes by calendar day', () => {
@@ -61,11 +75,11 @@ describe('currentStreak', () => {
 describe('bestStreak', () => {
   test.each<[string, DayLog[], string | null, number | null]>([
     ['no anchor at all -> null', [], null, null],
-    ['only a future Red and no start -> null', [red('2026-11-05')], null, null],
-    ['start date only = current streak', [], '2026-10-01', 28],
+    ['only a future Red and no install -> null', [red('2026-11-05')], null, null],
+    ['install only = current streak', [], '2026-10-01', 28],
     ['Red today only -> 0', [red(TODAY)], null, 0],
     [
-      // runs: Sep1→Sep11 = 9, Sep11→Sep12 = 0, Sep12→Oct27 = 44; current 2
+      // anchors: Sep1 (install), Sep11, Sep12, Oct27: runs 9, 0, 44; current 2
       'longest completed run among several',
       [red('2026-09-11'), red('2026-09-12'), red('2026-10-27')],
       '2026-09-01',
@@ -86,36 +100,21 @@ describe('bestStreak', () => {
       7,
     ],
     [
-      // anchors: Aug1, Sep30 (Reds), Oct25 (start): run Aug1→Sep30 = 59; Sep30→Oct25
-      // ends at the start, not a Red, so it is no run; current 4
-      'Reds before counterStartDate still form runs',
+      // anchors: Aug1, Sep30 (Reds; install Oct25 is not one, a Red is before it): run 59; current 29
+      'Reds before install form runs',
       [red('2026-08-01'), red('2026-09-30')],
       '2026-10-25',
       59,
     ],
     [
-      // anchors: Sep1 (Red), Sep21 (start): Sep1→Sep21 is no run; current 38
-      'Red before counterStartDate, current run longest',
-      [red('2026-09-01')],
-      '2026-09-21',
-      38,
-    ],
-    [
-      // 'Start counting today' on Oct 27, then a Red backfilled on Oct 1: the untracked
-      // gap up to the start is not a clean run, so best stays the current 2 (not 25)
-      'a Red before the start date does not raise best',
+      // "Start counting today" on Oct 27, then a Red backfilled on Oct 1: the day log
+      // is the one source, so the counter counts from that Red (28), and so does best
+      'a Red backfilled before install counts from that Red',
       [red('2026-10-01')],
       '2026-10-27',
-      2,
+      28,
     ],
-    [
-      // a Red on the start date itself ends the run before it: Sep1→Oct1 = 29; current 28
-      'a Red on counterStartDate ends a run',
-      [red('2026-09-01'), red('2026-10-01')],
-      '2026-10-01',
-      29,
-    ],
-    ['Reds only, no counterStartDate', [red('2026-10-01'), red('2026-10-20')], null, 18],
+    ['Reds only, no installDate', [red('2026-10-01'), red('2026-10-20')], null, 18],
     ['future Red is ignored', [red('2026-10-01'), red('2026-11-15')], null, 28],
     ['duplicate Red rows do not create a -1 run', [red('2026-10-10'), red('2026-10-10')], null, 19],
     [
@@ -124,18 +123,8 @@ describe('bestStreak', () => {
       '2026-09-01',
       38,
     ],
-  ])('%s', (_name, days, start, expected) => {
-    expect(bestStreak(days, start, TODAY)).toBe(expected);
-  });
-
-  test.each<[string, DayLog[], string, string | null, number]>([
-    // "My last Red day was Oct 1" (before install): Sep1→Oct1 = 29 is a run; current 28
-    ['a named last Red day before install ends a run', [red('2026-09-01')], '2026-10-01', '2026-10-20', 29],
-    // "Start counting today" (start = install): no run up to the start; current 28
-    ['a start-today start does not end a run', [red('2026-09-01')], '2026-10-01', '2026-10-01', 28],
-    ['no installDate: the start is not a Red', [red('2026-09-01')], '2026-10-01', null, 28],
-  ])('with installDate: %s', (_name, days, start, installDate, expected) => {
-    expect(bestStreak(days, start, TODAY, installDate)).toBe(expected);
+  ])('%s', (_name, days, installDate, expected) => {
+    expect(bestStreak(days, installDate, TODAY)).toBe(expected);
   });
 
   it('is never below the current streak', () => {
@@ -145,9 +134,9 @@ describe('bestStreak', () => {
       [[], '2026-10-29'],
       [[red('2026-10-28')], '2026-10-27'],
     ];
-    for (const [days, start] of cases) {
-      const best = bestStreak(days, start, TODAY);
-      const current = currentStreak(days, start, TODAY);
+    for (const [days, installDate] of cases) {
+      const best = bestStreak(days, installDate, TODAY);
+      const current = currentStreak(days, installDate, TODAY);
       expect(best).not.toBeNull();
       expect(best!).toBeGreaterThanOrEqual(current!);
     }
@@ -160,16 +149,12 @@ describe('streaksIfRed', () => {
     ['Red yesterday leaves 1', [], '2026-10-01', '2026-10-28', { current: 1, best: 26 }],
     ['past Red splits the run', [], '2026-10-01', '2026-10-20', { current: 9, best: 18 }],
     ['a later Red keeps the counter', [red('2026-10-20')], '2026-10-01', '2026-10-05', { current: 9, best: 14 }],
-    ['before the start date nothing changes', [], '2026-10-27', '2026-10-01', { current: 2, best: 2 }],
+    // last Red day Oct 20, installed Oct 27: a Red on Oct 2 leaves Oct 3..19 = 17
+    ['a run up to a last Red day counts', [red('2026-10-20')], '2026-10-27', '2026-10-02', { current: 9, best: 17 }],
+    ['before a start-today install it counts back', [], '2026-10-27', '2026-10-01', { current: 28, best: 28 }],
     ['replaces the color already logged that day', [day('2026-10-20', 0, true)], '2026-10-01', '2026-10-20', { current: 9, best: 18 }],
-  ])('%s', (_name, days, start, date, expected) => {
-    expect(streaksIfRed(days, start, date, TODAY)).toEqual(expected);
-  });
-
-  it('counts the run up to a named last Red day', () => {
-    // "My last Red day was Oct 20" on Oct 27; a Red backfilled on Oct 2 leaves Oct 3..19 = 17.
-    expect(streaksIfRed([], '2026-10-20', '2026-10-02', TODAY, '2026-10-27')).toEqual({ current: 9, best: 17 });
-    expect(streaksIfRed([], '2026-10-20', '2026-10-02', TODAY)).toEqual({ current: 9, best: 9 });
+  ])('%s', (_name, days, installDate, date, expected) => {
+    expect(streaksIfRed(days, installDate, date, TODAY)).toEqual(expected);
   });
 
   it('does not change the days it is given', () => {
