@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { router, Stack } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { Alert, AppState, Text, type AlertButton, type AppStateStatus } from 'react-native';
+import { Alert, AppState, Linking, Text, type AlertButton, type AppStateStatus } from 'react-native';
 
 import TabsLayout from '@/app/(tabs)/_layout';
 import SettingsLayout, { unstable_settings } from '@/app/(tabs)/settings/_layout';
@@ -529,6 +529,18 @@ describe('settings', () => {
         'Light2Life is not a medical device and does not diagnose, treat, cure, or prevent any medical condition.',
       ),
     ).toBeTruthy();
+  });
+
+  it('opens the support page and privacy policy from About', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    await setup();
+    await renderRouter(routes, { initialUrl: '/settings/about' });
+    await fireEvent.press(screen.getByText('Help and support'));
+    expect(openURL).toHaveBeenCalledWith('https://turnonac.github.io/addiction-recovery-app/support.html');
+    await fireEvent.press(screen.getByText('Privacy policy'));
+    expect(openURL).toHaveBeenLastCalledWith(
+      'https://turnonac.github.io/addiction-recovery-app/privacy.html',
+    );
   });
 });
 

@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Help with Light2Life: how to contact us, answers to common questions, backups, moving to a new phone and deleting your data.">
+<title>Light2Life Support</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #F4F6F6;
+    --surface: #FFFFFF;
+    --surface-2: #E8EFED;
+    --text: #15201E;
+    --muted: #55625F;
+    --line: #DCE3E1;
+    --accent: #2F5D50;
+    --accent-text: #24493F;
+    --accent-soft: #E1EDE9;
+    --on-accent: #FFFFFF;
+    --green: #2E8B57;
+    --blue: #2F6FD0;
+    --yellow: #E0A800;
+    --red: #D14343;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0D1015;
+      --surface: #161A21;
+      --surface-2: #212733;
+      --text: #F1F3F6;
+      --muted: #A3ADBB;
+      --line: #2A303B;
+      --accent: #8CC8C0;
+      --accent-text: #A9DCD5;
+      --accent-soft: #173230;
+      --on-accent: #0B1A18;
+      --green: #3FBF77;
+      --blue: #5B95FF;
+      --yellow: #F2C230;
+      --red: #F05A5A;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow-wrap: break-word;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+  .skip { position: absolute; left: -9999px; top: 8px; }
+  .skip:focus { left: 16px; z-index: 10; background: var(--surface); color: var(--text); padding: 8px 12px; border-radius: 8px; }
+  header.site { background: var(--surface); border-bottom: 1px solid var(--line); }
+  header.site .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; min-height: 60px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; color: var(--text); text-decoration: none; padding: 10px 0; }
+  .brand-mark { width: 24px; height: 24px; border-radius: 50%; border: 6px solid var(--accent); flex: none; }
+  nav.site { display: flex; gap: 4px; }
+  nav.site a { color: var(--accent-text); font-weight: 600; font-size: 15px; text-decoration: none; padding: 10px 8px; }
+  nav.site a[aria-current="page"] { color: var(--text); text-decoration: underline; text-underline-offset: 5px; }
+  main { padding: 28px 0 40px; }
+  h1 { font-size: 30px; line-height: 1.2; letter-spacing: -0.01em; margin: 0 0 8px; }
+  h2 { font-size: 22px; line-height: 1.3; margin: 44px 0 10px; scroll-margin-top: 16px; }
+  h3 { font-size: 18px; line-height: 1.4; margin: 26px 0 6px; scroll-margin-top: 16px; }
+  p, ul, ol { margin: 0 0 14px; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 6px 0; }
+  a { color: var(--accent-text); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .lede { color: var(--muted); font-size: 18px; margin: 0 0 24px; }
+  .anchor { margin-left: 8px; color: var(--muted); font-weight: 400; text-decoration: none; opacity: 0.5; }
+  @media (hover: hover) {
+    .anchor { opacity: 0; }
+    h2:hover .anchor, h3:hover .anchor, .anchor:focus-visible { opacity: 1; }
+  }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 0 0 20px; }
+  .box.accent { background: var(--accent-soft); border-color: transparent; border-left: 4px solid var(--accent); }
+  .box > :last-child { margin-bottom: 0; }
+  .box h2:first-child { margin-top: 0; }
+  .button {
+    display: inline-block; background: var(--accent); color: var(--on-accent); font-weight: 700;
+    text-decoration: none; padding: 12px 18px; border-radius: 12px; margin: 4px 0 12px; overflow-wrap: anywhere;
+  }
+  .button:hover { text-decoration: underline; }
+  .toc h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 6px; }
+  .toc ol { margin: 0; padding-left: 20px; columns: 2 220px; column-gap: 24px; }
+  .toc li { margin: 4px 0; break-inside: avoid; }
+  .ui { font-weight: 600; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+  .colors { list-style: none; padding: 0; }
+  .colors li { display: flex; gap: 10px; align-items: baseline; }
+  .dot { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; flex: none; transform: translateY(0.05em); }
+  .dot.green { background: var(--green); }
+  .dot.blue { background: var(--blue); }
+  .dot.yellow { background: var(--yellow); }
+  .dot.red { background: var(--red); }
+  .email { overflow-wrap: anywhere; }
+  footer.site { border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; padding: 20px 0 40px; }
+  footer.site nav { display: flex; flex-wrap: wrap; gap: 0 18px; margin-bottom: 8px; }
+  footer.site nav a { display: inline-block; padding: 8px 0; font-weight: 600; }
+  footer.site p { margin: 0 0 6px; }
+  @media print {
+    header.site nav, .anchor, .skip { display: none; }
+    body { background: #fff; color: #000; }
+    .box { border: 1px solid #999; }
+    .button { background: none; color: #000; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Light2Life</a>
+    <nav class="site" aria-label="Site">
+      <a href="privacy.html">Privacy</a>
+      <a href="support.html" aria-current="page">Support</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <h1>Light2Life Support</h1>
+    <p class="lede">Help with Light2Life, the private daily check-in app.</p>
+
+    <section class="box" aria-labelledby="contact">
+      <h2 id="contact">Contact us<a class="anchor" href="#contact" aria-label="Link to: Contact us">#</a></h2>
+      <p>Questions, problems, feedback and ideas are all welcome. Email us:</p>
+      <p><a class="button email" href="mailto:light2life.help@gmail.com?subject=Light2Life%20support">light2life.help@gmail.com</a></p>
+      <p>We read every message. A reply can take a few days.</p>
+      <p>It helps if you include:</p>
+      <ul>
+        <li>your phone model</li>
+        <li>your iOS or Android version</li>
+        <li>the app version (<span class="ui">Settings › About Light2Life</span>, then <span class="ui">Version</span>)</li>
+        <li>what you did, what happened, and any message you saw</li>
+      </ul>
+      <p>Please leave out private recovery details. We never need them to help with the app.</p>
+    </section>
+
+    <section class="box accent" aria-label="Important">
+      <p><strong>We can’t see your data, so we can’t restore it.</strong> Everything lives only on your phone. Export a backup file now and then: <span class="ui">Settings › Your data › Export backup file</span>.</p>
+    </section>
+
+    <nav class="box toc" aria-labelledby="toc-title">
+      <h2 id="toc-title">On this page</h2>
+      <ol>
+        <li><a href="#what-it-is">What Light2Life is</a></li>
+        <li><a href="#getting-started">Getting started</a></li>
+        <li><a href="#check-ins">Daily check-ins</a></li>
+        <li><a href="#partner-calls">Your partner and calls</a></li>
+        <li><a href="#reminders">Reminders</a></li>
+        <li><a href="#backups">Backups and new phones</a></li>
+        <li><a href="#privacy-cover">The privacy cover</a></li>
+        <li><a href="#delete">Deleting your data</a></li>
+        <li><a href="#messages">Messages you might see</a></li>
+        <li><a href="#other">Other questions</a></li>
+        <li><a href="#help">Professional and emergency help</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="what-it-is">What Light2Life is<a class="anchor" href="#what-it-is" aria-label="Link to: What Light2Life is">#</a></h2>
+    <p>Light2Life is a small daily habit for recovery. Each day you name your lowest color, call one person you trust, and they pray for you. Honest, simple, one day at a time.</p>
+    <p>There’s no account and nothing to sign up for. Everything you enter stays on your phone, and the app has no ads, no analytics and no tracking. It has three tabs: <span class="ui">Today</span>, <span class="ui">History</span> and <span class="ui">Settings</span>.</p>
+    <p>The four colors always mean the same thing:</p>
+    <ul class="colors">
+      <li><span class="dot green" aria-hidden="true"></span><span><strong>Green:</strong> recovery-oriented actions</span></li>
+      <li><span class="dot blue" aria-hidden="true"></span><span><strong>Blue:</strong> careless about avoiding Red</span></li>
+      <li><span class="dot yellow" aria-hidden="true"></span><span><strong>Yellow:</strong> actions that move toward Red</span></li>
+      <li><span class="dot red" aria-hidden="true"></span><span><strong>Red:</strong> viewed anything explicit</span></li>
+    </ul>
+    <p>Your day’s color is your lowest moment of the day. The big number on <span class="ui">Today</span> is the number of days since your last Red.</p>
+
+    <h2 id="getting-started">Getting started<a class="anchor" href="#getting-started" aria-label="Link to: Getting started">#</a></h2>
+
+    <h3 id="setup">How does setup work?<a class="anchor" href="#setup" aria-label="Link to: How does setup work?">#</a></h3>
+    <p>The first time you open the app, a short setup walks you through six steps:</p>
+    <ol>
+      <li>Welcome.</li>
+      <li>How the colors work.</li>
+      <li>When your counter starts: <span class="ui">Start counting today</span>, or <span class="ui">My last Red day was…</span> and pick the date.</li>
+      <li>Who you’ll call each day. You can choose from contacts, type a name and number, or tap <span class="ui">Skip for now</span>.</li>
+      <li>What each color looks like for you. Add your own lines, or tap <span class="ui">Write these later</span>.</li>
+      <li>A daily reminder. Pick a time and tap <span class="ui">Remind me at…</span>, or choose <span class="ui">No reminders for now</span>.</li>
+    </ol>
+
+    <h3 id="counter-start">Can I change my counter start date later?<a class="anchor" href="#counter-start" aria-label="Link to: Can I change my counter start date later?">#</a></h3>
+    <p>No. The start date is set only during setup. If you log a Red day for a past date in <span class="ui">History</span>, the counter counts from that day instead.</p>
+
+    <h2 id="check-ins">Daily check-ins<a class="anchor" href="#check-ins" aria-label="Link to: Daily check-ins">#</a></h2>
+
+    <h3 id="how-check-in">How do I check in?<a class="anchor" href="#how-check-in" aria-label="Link to: How do I check in?">#</a></h3>
+    <p>On <span class="ui">Today</span>, tap <span class="ui">Check in</span> (or <span class="ui">Update</span> if you already logged today). Pick your lowest color for the day, then tap <span class="ui">Save check-in</span>.</p>
+
+    <h3 id="wrong-color">I picked the wrong color. Can I fix it?<a class="anchor" href="#wrong-color" aria-label="Link to: I picked the wrong color">#</a></h3>
+    <p>Yes. Tap <span class="ui">Update</span> and pick again. A color closer to Red replaces the saved one right away. If you pick a better color than the one saved, the app asks you to confirm, in case it was a mistake. A logged day can be changed, but it can’t be set back to “not logged.”</p>
+
+    <h3 id="missed-day">I missed a day. What do I do?<a class="anchor" href="#missed-day" aria-label="Link to: I missed a day">#</a></h3>
+    <p>If yesterday is missing, <span class="ui">Today</span> shows <span class="ui">Log yesterday</span>. For any other past day, go to <span class="ui">History</span>, tap the day, and tap <span class="ui">Log it</span>. Days you haven’t logged never reset your counter. Future days stay locked until they start.</p>
+
+    <h3 id="red-day">What happens when I log Red?<a class="anchor" href="#red-day" aria-label="Link to: What happens when I log Red?">#</a></h3>
+    <p>Your counter restarts at 0. Your history and your best streak stay. If you have a partner, the button becomes <span class="ui">Save, then call…</span> and the call screen opens after you save.</p>
+
+    <h3 id="my-colors">How do I edit what each color looks like for me?<a class="anchor" href="#my-colors" aria-label="Link to: How do I edit my color lists?">#</a></h3>
+    <p>Go to <span class="ui">Settings › My colors</span>. Tap the <span class="ui">+</span> chip to add a line, or tap a line to edit it or <span class="ui">Delete</span> it. Deleting doesn’t ask first. Each line can be up to 120 characters. Changing your list doesn’t change past days.</p>
+
+    <h2 id="partner-calls">Your partner and calls<a class="anchor" href="#partner-calls" aria-label="Link to: Your partner and calls">#</a></h2>
+
+    <h3 id="contacts-permission">Does Light2Life need access to my contacts?<a class="anchor" href="#contacts-permission" aria-label="Link to: Does Light2Life need access to my contacts?">#</a></h3>
+    <p>No. <span class="ui">Choose from contacts</span> opens your phone’s own contact picker, and only the person you pick is passed to the app. The app saves one name and one phone number. On iPhone, if the contact has several numbers, the app asks which one to use. You can also just type the name and number.</p>
+
+    <h3 id="edit-partner">How do I add, change or remove my partner?<a class="anchor" href="#edit-partner" aria-label="Link to: How do I add, change or remove my partner?">#</a></h3>
+    <p>Go to <span class="ui">Settings</span>. Tap <span class="ui">Add your partner</span>, or tap your partner’s row to edit it. Choose from contacts or type a name and number, then tap <span class="ui">Save partner</span>. To remove them, tap <span class="ui">Remove partner</span>. Your history and past check-ins stay.</p>
+    <p>The app doesn’t look at your contacts again after you pick someone. If their number changes, update it here.</p>
+
+    <h3 id="call-screen">What happens on the call screen?<a class="anchor" href="#call-screen" aria-label="Link to: What happens on the call screen?">#</a></h3>
+    <p>From <span class="ui">Today</span>, tap <span class="ui">Call</span> on your daily call card. The call screen shows each day since your last call and your lowest color. On the call, you share your lowest color since your last call, and your partner prays for you. Tap <span class="ui">Call</span> to open your phone’s dialer. On iPhone, your phone asks you to confirm the call first.</p>
+
+    <h3 id="mark-talked">How do I record that we talked?<a class="anchor" href="#mark-talked" aria-label="Link to: How do I record that we talked?">#</a></h3>
+    <p>When you come back to the app after calling, it asks <span class="ui">Did you talk with…?</span> Tap <span class="ui">Yes, we talked</span>. You can also tap <span class="ui">I talked with… — mark today</span> on the call screen. For a past day, go to <span class="ui">History</span>, tap the day, and turn on <span class="ui">Checked in with…</span>. A call that starts before midnight counts for the day it started.</p>
+
+    <h3 id="checkin-cleared">Why did today’s partner check-in disappear?<a class="anchor" href="#checkin-cleared" aria-label="Link to: Why did today’s partner check-in disappear?">#</a></h3>
+    <p>If you had already talked today and then log a color closer to Red, the check-in is cleared so you can share the new color. The app offers to call again right away, or later.</p>
+
+    <h3 id="wrong-number">The call goes to the wrong number.<a class="anchor" href="#wrong-number" aria-label="Link to: The call goes to the wrong number">#</a></h3>
+    <p>Light2Life dials exactly the number you saved. It doesn’t add a country code or change the format. Fix it in <span class="ui">Settings</span>: tap your partner’s row, edit the number, and save. Include the country code if your phone needs it.</p>
+
+    <h3 id="cant-call">The call won’t start.<a class="anchor" href="#cant-call" aria-label="Link to: The call won’t start">#</a></h3>
+    <p>If you see “Couldn’t start the call,” your device couldn’t open a phone dialer. This happens on devices that can’t make phone calls, like some tablets. The message shows your partner’s number so you can call another way. If you see “No number for…,” tap <span class="ui">Add number</span>.</p>
+
+    <h2 id="reminders">Reminders<a class="anchor" href="#reminders" aria-label="Link to: Reminders">#</a></h2>
+
+    <h3 id="set-reminder">How do I turn the reminder on or change the time?<a class="anchor" href="#set-reminder" aria-label="Link to: How do I turn the reminder on or change the time?">#</a></h3>
+    <p>Go to <span class="ui">Settings › Daily reminder</span>. Turn on <span class="ui">Remind me to check in</span>, then tap <span class="ui">Time</span>. It starts at 9:00 PM. A preview shows exactly what the reminder says. Turn the switch off to stop it.</p>
+
+    <h3 id="no-reminder">My reminder isn’t showing up.<a class="anchor" href="#no-reminder" aria-label="Link to: My reminder isn’t showing up">#</a></h3>
+    <ul>
+      <li>Check that <span class="ui">Remind me to check in</span> is on in <span class="ui">Settings</span>.</li>
+      <li>If you see <span class="ui">Open phone settings</span>, notifications are off for Light2Life in your phone’s settings. Tap it and turn them on. On Android, also check that the “Daily reminder” notification category is on.</li>
+      <li>If you see <span class="ui">Allow notifications</span>, tap it. This can happen after moving to a new phone.</li>
+      <li>The reminder doesn’t appear while the app is open.</li>
+      <li>On Android, it can arrive a few minutes after the set time.</li>
+    </ul>
+
+    <h3 id="vague-reminder">Why is the reminder so vague?<a class="anchor" href="#vague-reminder" aria-label="Link to: Why is the reminder so vague?">#</a></h3>
+    <p>On purpose. It says only “Daily check-in” and “Time for your daily check-in.” It never says what the app is for. Your phone still shows the Light2Life name and icon with it.</p>
+
+    <h2 id="backups">Backups and new phones<a class="anchor" href="#backups" aria-label="Link to: Backups and new phones">#</a></h2>
+    <p>Your data lives only on your phone. We don’t have a copy. A backup file is the surest way to keep it safe.</p>
+
+    <h3 id="export">How do I back up?<a class="anchor" href="#export" aria-label="Link to: How do I back up?">#</a></h3>
+    <ol>
+      <li>Go to <span class="ui">Settings › Your data › Export backup file</span>.</li>
+      <li>Your phone’s share sheet opens. Save the file somewhere safe, like Files, a cloud drive or your email.</li>
+      <li>When the app asks, tap <span class="ui">Yes, I saved it</span>.</li>
+    </ol>
+    <p>Settings then shows the date of your last backup. If you haven’t backed up in 30 days, <span class="ui">Today</span> shows a “Back up your history” card.</p>
+    <p>The file is named like <code>daily-backup-2026-10-30.json</code>. It’s plain text that anyone who opens it can read, and it includes your partner’s name and number. It has no password, so keep it somewhere private.</p>
+
+    <h3 id="new-phone">How do I move to a new phone?<a class="anchor" href="#new-phone" aria-label="Link to: How do I move to a new phone?">#</a></h3>
+    <ol>
+      <li>On your old phone, export a backup file and save it somewhere your new phone can reach, like a cloud drive or your email.</li>
+      <li>On your new phone, install Light2Life and finish the short setup. You can skip the partner, tap <span class="ui">Write these later</span>, and choose <span class="ui">No reminders for now</span>. Settings opens only after setup.</li>
+      <li>Go to <span class="ui">Settings › Your data › Import backup file</span>, pick the file, and tap <span class="ui">Replace</span>.</li>
+      <li>If your reminder was on, allow notifications when asked.</li>
+    </ol>
+    <p>An iCloud or Google restore of your whole phone may also bring your data over. That depends on your phone and your backup settings.</p>
+
+    <h3 id="import">How does importing work?<a class="anchor" href="#import" aria-label="Link to: How does importing work?">#</a></h3>
+    <p><span class="ui">Settings › Your data › Import backup file</span> lets you pick a Light2Life backup file (5 MB or smaller). You’ll see a preview first: how many days it holds and your partner’s name. Tapping <span class="ui">Replace</span> replaces everything on this phone with the backup. Your original file isn’t changed.</p>
+
+    <h3 id="lost-data">I deleted the app or lost my phone. Can you get my data back?<a class="anchor" href="#lost-data" aria-label="Link to: I deleted the app or lost my phone">#</a></h3>
+    <p>We’re sorry. We never have a copy of your data, so we can’t recover it. It can come back only from a backup file you exported or from your phone’s iCloud or Google backup.</p>
+
+    <h3 id="phone-backup">Does iCloud or Google backup include Light2Life?<a class="anchor" href="#phone-backup" aria-label="Link to: Does iCloud or Google backup include Light2Life?">#</a></h3>
+    <p>If iCloud Backup or Google backup is on in your phone’s settings, your phone may include Light2Life’s data. Whether a restore brings it back depends on your phone and your settings, which the app can’t control. A backup file is the surest option.</p>
+
+    <h2 id="privacy-cover">The privacy cover<a class="anchor" href="#privacy-cover" aria-label="Link to: The privacy cover">#</a></h2>
+
+    <h3 id="blank-switcher">Why is the app blank or blurred in the app switcher?<a class="anchor" href="#blank-switcher" aria-label="Link to: Why is the app blank or blurred in the app switcher?">#</a></h3>
+    <p>It’s a privacy cover, so people glancing at your phone can’t see your check-ins. On iPhone, the app blurs in the app switcher and whenever it isn’t active, for example behind a system pop-up. On Android, it shows blank in Recent apps. The cover is always on and can’t be turned off.</p>
+
+    <h3 id="screenshots">Why can’t I take screenshots on Android?<a class="anchor" href="#screenshots" aria-label="Link to: Why can’t I take screenshots on Android?">#</a></h3>
+    <p>The same privacy cover blocks screenshots of the app on Android. On iPhone, screenshots still work, so take care with any you take.</p>
+
+    <h2 id="delete">Deleting your data<a class="anchor" href="#delete" aria-label="Link to: Deleting your data">#</a></h2>
+    <p>Light2Life doesn’t have a “delete all” button. To delete everything:</p>
+    <ol>
+      <li>Uninstall Light2Life. This removes all of its data from that phone. (On Android, clearing the app’s storage in your phone’s settings also works.) On Android, if Google backup is on, reinstalling Light2Life can bring your data back. To stop that, turn Google backup off or delete your phone’s Google backup before you reinstall.</li>
+      <li>Delete any backup files you exported, wherever you saved or sent them.</li>
+      <li>To remove every copy, delete your phone’s iCloud or Google backups in your phone’s settings.</li>
+    </ol>
+    <p>To remove just some things: remove your partner in <span class="ui">Settings</span>, delete a line in <span class="ui">Settings › My colors</span>, or turn off a partner check-in by tapping the day in <span class="ui">History</span>.</p>
+    <p>Export a backup file first if you might want your data back. We can’t delete or restore your data for you, because we never have it. See the <a href="privacy.html#delete">Privacy Policy</a> for details.</p>
+
+    <h2 id="messages">Messages you might see<a class="anchor" href="#messages" aria-label="Link to: Messages you might see">#</a></h2>
+
+    <h3 id="couldnt-open-data">“Couldn’t open your data”<a class="anchor" href="#couldnt-open-data" aria-label="Link to: Couldn’t open your data">#</a></h3>
+    <p>Nothing was deleted. Tap <span class="ui">Try again</span>, or close Light2Life and open it again. If it keeps happening, restart your phone. Please don’t uninstall the app unless you have a backup file, because uninstalling erases your data.</p>
+
+    <h3 id="couldnt-save">“Couldn’t save”<a class="anchor" href="#couldnt-save" aria-label="Link to: Couldn’t save">#</a></h3>
+    <p>Please try again. If it keeps happening, email us.</p>
+
+    <h3 id="contacts-cant-open">“Contacts can’t be opened here”<a class="anchor" href="#contacts-cant-open" aria-label="Link to: Contacts can’t be opened here">#</a></h3>
+    <p>Your phone’s contact picker isn’t available. Type the name and number instead. If a contact has no name or no phone number, the app asks you to type it.</p>
+
+    <h3 id="couldnt-export">“Couldn’t export”<a class="anchor" href="#couldnt-export" aria-label="Link to: Couldn’t export">#</a></h3>
+    <p>Sharing isn’t available right now. Please try again in a moment.</p>
+
+    <h3 id="import-errors">Import messages<a class="anchor" href="#import-errors" aria-label="Link to: Import messages">#</a></h3>
+    <ul>
+      <li><strong>“This file isn’t a Light2Life backup.”</strong> Pick the <code>.json</code> file you exported from Light2Life.</li>
+      <li><strong>“That file couldn’t be opened.”</strong> Try again, or download the file again. It must be 5 MB or smaller.</li>
+      <li><strong>“This backup was made by a newer version of Light2Life.”</strong> Update the app, then try again.</li>
+      <li><strong>“This backup file is damaged and can’t be used.”</strong> Try another copy of the file, if you have one.</li>
+      <li><strong>“Couldn’t import.”</strong> Nothing was changed. Please try again.</li>
+    </ul>
+
+    <h3 id="reminder-errors">Reminder messages<a class="anchor" href="#reminder-errors" aria-label="Link to: Reminder messages">#</a></h3>
+    <p>“Reminders are off,” “Couldn’t set the reminder,” “Couldn’t change the reminder” or “Couldn’t change the time”: check that notifications are on for Light2Life in your phone’s settings, then try again in <span class="ui">Settings › Daily reminder</span>.</p>
+
+    <h2 id="other">Other questions<a class="anchor" href="#other" aria-label="Link to: Other questions">#</a></h2>
+
+    <h3 id="ads">Are there ads or in-app purchases?<a class="anchor" href="#ads" aria-label="Link to: Are there ads or in-app purchases?">#</a></h3>
+    <p>No. Light2Life has no ads and no in-app purchases.</p>
+
+    <h3 id="collect">Do you collect my data?<a class="anchor" href="#collect" aria-label="Link to: Do you collect my data?">#</a></h3>
+    <p>No. There’s no account and no server, and the app doesn’t send what you enter anywhere. Read the <a href="privacy.html">Privacy Policy</a> and the <a href="consumer-health-data.html">Consumer Health Data Privacy Policy</a>.</p>
+
+    <h3 id="feedback">Can I suggest a feature?<a class="anchor" href="#feedback" aria-label="Link to: Can I suggest a feature?">#</a></h3>
+    <p>Yes, please. Email us at <a class="email" href="mailto:light2life.help@gmail.com">light2life.help@gmail.com</a>.</p>
+
+    <h2 id="help">Professional and emergency help<a class="anchor" href="#help" aria-label="Link to: Professional and emergency help">#</a></h2>
+    <div class="box accent">
+      <p>Light2Life is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. It isn’t a substitute for a doctor, counselor or recovery program. For medical advice, diagnosis or treatment, please talk with a doctor or another qualified health professional.</p>
+      <p><strong>If you’re in crisis, or you might hurt yourself or someone else, call your local emergency number or go to the nearest emergency room now.</strong> We can’t respond to emergencies by email.</p>
+    </div>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <nav aria-label="Footer">
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="consumer-health-data.html">Consumer health data</a>
+      <a href="index.html">Home</a>
+    </nav>
+    <p>Light2Life · <a class="email" href="mailto:light2life.help@gmail.com">light2life.help@gmail.com</a></p>
+  </div>
+</footer>
+</body>
+</html>

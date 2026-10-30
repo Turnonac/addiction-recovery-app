@@ -43,7 +43,8 @@ npx eas-cli@latest submit -p ios --latest --non-interactive               # uplo
 ```
 
 Apple then processes the build (5–30 minutes) before it appears in TestFlight. App Store review
-also needs a privacy policy URL (see [Privacy policy](#privacy-policy)).
+also needs a privacy policy URL and a support URL (see
+[Privacy policy and support pages](#privacy-policy-and-support-pages)).
 
 ## Android release
 
@@ -86,15 +87,28 @@ build or use the profile for store builds, and do not set `EXPO_PUBLIC_SCREENSHO
 anywhere else (for example a local `.env`). iOS does not need it: the iOS cover only blurs the
 app in the app switcher.
 
-## Privacy policy
+## Privacy policy and support pages
 
-Both stores need a privacy policy URL before release.
+The pages live in `docs/` (`index.html`, `privacy.html`, `support.html`,
+`consumer-health-data.html`; `.nojekyll` serves them as they are) and are published by GitHub
+Pages:
 
-1. Publish the privacy policy page at a stable public URL.
-2. Set `PRIVACY_POLICY_URL` in `src/app/(tabs)/settings/about.tsx`. The "Privacy policy" row in
-   About appears once it is not empty. Ship it in the next store build.
-3. Enter the same URL in App Store Connect (App Privacy) and in Play Console (App content ›
-   Privacy policy).
+| Page | URL |
+| --- | --- |
+| Privacy policy | https://turnonac.github.io/addiction-recovery-app/privacy.html |
+| Support | https://turnonac.github.io/addiction-recovery-app/support.html |
+| Consumer health data | https://turnonac.github.io/addiction-recovery-app/consumer-health-data.html |
+
+Support email: `light2life.help@gmail.com`.
+
+1. One time (owner): GitHub repo › Settings › Pages › Build and deployment › Deploy from a
+   branch › `main`, folder `/docs`. Pages go live a minute or two after each push to `main`.
+2. The About screen's Help and support and Privacy policy rows open these URLs
+   (`src/app/(tabs)/settings/about.tsx`). Ship them in the next store build.
+3. App Store Connect: Privacy Policy URL (App Privacy) and Support URL (version page).
+   Play Console: App content › Privacy policy, and Store settings › Contact details (email and
+   website).
+4. When a page changes, update its "Last updated" date.
 
 ## Free tier
 

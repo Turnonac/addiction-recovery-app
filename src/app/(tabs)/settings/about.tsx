@@ -6,8 +6,11 @@ import { BackButton, Card, Screen, ScreenHeader, SettingsGroup, SettingsRow } fr
 import { Check } from '@/ui/icons';
 import { useAppTheme } from '@/ui/theme';
 
-/** Set once the privacy policy is published; the row stays hidden while empty. */
-const PRIVACY_POLICY_URL: string = '';
+/** Pages served by GitHub Pages from docs/ on main (see docs/BUILDING.md). */
+const PAGES_URL = 'https://turnonac.github.io/addiction-recovery-app';
+const PRIVACY_POLICY_URL = `${PAGES_URL}/privacy.html`;
+/** Contact email, FAQ and help. Apple wants a way to reach the developer from inside the app. */
+const SUPPORT_URL = `${PAGES_URL}/support.html`;
 
 const PRIVACY_POINTS = [
   'No account and no sign-up.',
@@ -39,7 +42,10 @@ function buildNumber(): string | null {
   return null;
 }
 
-/** Settings › About: mission, privacy statement, disclaimer, version (and build number when known). */
+/**
+ * Settings › About: mission, privacy statement, disclaimer, version (and build number when known),
+ * and links to the support page and privacy policy.
+ */
 export default function AboutScreen() {
   const router = useRouter();
   const theme = useAppTheme();
@@ -52,10 +58,8 @@ export default function AboutScreen() {
     else router.replace('/settings');
   };
 
-  const openPolicy = () => {
-    Linking.openURL(PRIVACY_POLICY_URL).catch(() =>
-      Alert.alert("Couldn't open the link", PRIVACY_POLICY_URL),
-    );
+  const openLink = (url: string) => {
+    Linking.openURL(url).catch(() => Alert.alert("Couldn't open the link", url));
   };
 
   const body = { color: theme.text, fontSize: 15, lineHeight: 22 } as const;
@@ -99,9 +103,16 @@ export default function AboutScreen() {
 
       <SettingsGroup>
         <SettingsRow title="Version" value={version} />
-        {PRIVACY_POLICY_URL !== '' ? (
-          <SettingsRow title="Privacy policy" onPress={openPolicy} accessibilityHint="Opens in your browser" />
-        ) : null}
+        <SettingsRow
+          title="Help and support"
+          onPress={() => openLink(SUPPORT_URL)}
+          accessibilityHint="Opens in your browser"
+        />
+        <SettingsRow
+          title="Privacy policy"
+          onPress={() => openLink(PRIVACY_POLICY_URL)}
+          accessibilityHint="Opens in your browser"
+        />
       </SettingsGroup>
     </Screen>
   );

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Light2Life Privacy Policy. Light2Life keeps everything on your phone. There’s no account and no server, and we never see what you enter.">
+<title>Light2Life Privacy Policy</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #F4F6F6;
+    --surface: #FFFFFF;
+    --surface-2: #E8EFED;
+    --text: #15201E;
+    --muted: #55625F;
+    --line: #DCE3E1;
+    --accent: #2F5D50;
+    --accent-text: #24493F;
+    --accent-soft: #E1EDE9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0D1015;
+      --surface: #161A21;
+      --surface-2: #212733;
+      --text: #F1F3F6;
+      --muted: #A3ADBB;
+      --line: #2A303B;
+      --accent: #8CC8C0;
+      --accent-text: #A9DCD5;
+      --accent-soft: #173230;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow-wrap: break-word;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+  .skip { position: absolute; left: -9999px; top: 8px; }
+  .skip:focus { left: 16px; z-index: 10; background: var(--surface); color: var(--text); padding: 8px 12px; border-radius: 8px; }
+  header.site { background: var(--surface); border-bottom: 1px solid var(--line); }
+  header.site .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; min-height: 60px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; color: var(--text); text-decoration: none; padding: 10px 0; }
+  .brand-mark { width: 24px; height: 24px; border-radius: 50%; border: 6px solid var(--accent); flex: none; }
+  nav.site { display: flex; gap: 4px; }
+  nav.site a { color: var(--accent-text); font-weight: 600; font-size: 15px; text-decoration: none; padding: 10px 8px; }
+  nav.site a[aria-current="page"] { color: var(--text); text-decoration: underline; text-underline-offset: 5px; }
+  main { padding: 28px 0 40px; }
+  h1 { font-size: 30px; line-height: 1.2; letter-spacing: -0.01em; margin: 0 0 8px; }
+  h2 { font-size: 22px; line-height: 1.3; margin: 40px 0 10px; scroll-margin-top: 16px; }
+  h3 { font-size: 18px; line-height: 1.4; margin: 24px 0 6px; scroll-margin-top: 16px; }
+  p, ul, ol, dl { margin: 0 0 14px; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 6px 0; }
+  a { color: var(--accent-text); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .meta { color: var(--muted); font-size: 15px; margin: 0 0 24px; }
+  .anchor { margin-left: 8px; color: var(--muted); font-weight: 400; text-decoration: none; opacity: 0.5; }
+  @media (hover: hover) {
+    .anchor { opacity: 0; }
+    h2:hover .anchor, h3:hover .anchor, .anchor:focus-visible { opacity: 1; }
+  }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 0 0 20px; }
+  .box.accent { background: var(--accent-soft); border-color: transparent; border-left: 4px solid var(--accent); }
+  .box > :last-child { margin-bottom: 0; }
+  .toc h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 6px; }
+  .toc ol { margin: 0; padding-left: 20px; columns: 2 220px; column-gap: 24px; }
+  .toc li { margin: 4px 0; break-inside: avoid; }
+  .ui { font-weight: 600; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+  dl.facts { display: grid; grid-template-columns: 1fr; gap: 2px 16px; }
+  dl.facts dt { font-weight: 700; margin-top: 10px; }
+  dl.facts dd { margin: 0; }
+  @media (min-width: 560px) {
+    dl.facts { grid-template-columns: 11em 1fr; }
+    dl.facts dt, dl.facts dd { margin-top: 10px; }
+  }
+  .email { overflow-wrap: anywhere; }
+  footer.site { border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; padding: 20px 0 40px; }
+  footer.site nav { display: flex; flex-wrap: wrap; gap: 0 18px; margin-bottom: 8px; }
+  footer.site nav a { display: inline-block; padding: 8px 0; font-weight: 600; }
+  footer.site p { margin: 0 0 6px; }
+  @media print {
+    header.site nav, .anchor, .skip { display: none; }
+    body { background: #fff; color: #000; }
+    .box { border: 1px solid #999; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Light2Life</a>
+    <nav class="site" aria-label="Site">
+      <a href="privacy.html" aria-current="page">Privacy</a>
+      <a href="support.html">Support</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <h1>Light2Life Privacy Policy</h1>
+    <p class="meta">Effective 30 October 2026 · Last updated 30 October 2026</p>
+
+    <section class="box accent" aria-labelledby="in-short">
+      <h2 id="in-short" style="margin-top:0">In short<a class="anchor" href="#in-short" aria-label="Link to: In short">#</a></h2>
+      <p>Light2Life keeps everything on your phone. There’s no account and no server. We never see what you enter, so we can’t sell or share it. The app has no ads, no analytics and no tracking.</p>
+    </section>
+
+    <nav class="box toc" aria-labelledby="toc-title">
+      <h2 id="toc-title">On this page</h2>
+      <ol>
+        <li><a href="#who-we-are">Who we are</a></li>
+        <li><a href="#what-we-collect">What we collect</a></li>
+        <li><a href="#on-your-phone">What the app saves on your phone</a></li>
+        <li><a href="#contacts">Contacts</a></li>
+        <li><a href="#calls">Phone calls</a></li>
+        <li><a href="#reminder">Your daily reminder</a></li>
+        <li><a href="#permissions">Permissions</a></li>
+        <li><a href="#security">Keeping your data safe</a></li>
+        <li><a href="#backup-files">Backup files you export</a></li>
+        <li><a href="#phone-backups">Phone backups</a></li>
+        <li><a href="#apple-google">What Apple and Google may share with us</a></li>
+        <li><a href="#email">If you email us</a></li>
+        <li><a href="#retention">How long data is kept</a></li>
+        <li><a href="#delete">How to delete your data</a></li>
+        <li><a href="#choices">Your choices</a></li>
+        <li><a href="#children">Children</a></li>
+        <li><a href="#consumer-health-data">Consumer health data</a></li>
+        <li><a href="#rights">Your rights</a></li>
+        <li><a href="#website">These web pages</a></li>
+        <li><a href="#changes">Changes to this policy</a></li>
+        <li><a href="#contact">Contact us</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="who-we-are">Who we are<a class="anchor" href="#who-we-are" aria-label="Link to: Who we are">#</a></h2>
+    <p>Light2Life is an app made by an independent developer (“the Light2Life developer”). In this policy, “we” and “us” mean the Light2Life developer. “You” means the person using the app.</p>
+    <p>This policy covers the Light2Life app for iPhone and Android, and these web pages. For any privacy question, email us at <a class="email" href="mailto:light2life.help@gmail.com">light2life.help@gmail.com</a>.</p>
+
+    <h2 id="what-we-collect">What we collect: nothing<a class="anchor" href="#what-we-collect" aria-label="Link to: What we collect">#</a></h2>
+    <p>Light2Life has no account, no sign-up and no server. It has no analytics, advertising or tracking code, and it doesn’t send what you enter to us or to anyone else.</p>
+    <ul>
+      <li>We never receive the information you put in the app.</li>
+      <li>We don’t sell or share your data, because we never have it.</li>
+      <li>No one gets your data from us. That includes advertisers, analytics companies and data brokers.</li>
+    </ul>
+    <p>Your data leaves your phone only if you send it yourself by <a href="#backup-files">exporting a backup file</a>, or through your phone’s own <a href="#phone-backups">iCloud or Google backup</a>.</p>
+
+    <h2 id="on-your-phone">What the app saves on your phone<a class="anchor" href="#on-your-phone" aria-label="Link to: What the app saves on your phone">#</a></h2>
+    <p>Everything below comes from you: you type it, pick it or tap it. It’s saved in the app’s private storage on your phone. It’s used only to run the app on your phone: your check-ins, counter, history, call screen and reminder, and any backup file you choose to export.</p>
+    <ul>
+      <li><strong>Your daily log.</strong> For each day you log: your lowest color (Green, Blue, Yellow or Red) and whether you checked in with your partner (yes or no). No time of day is saved.</li>
+      <li><strong>Your color lists.</strong> The short lines you write under each color (up to 120 characters each) and their order. Red’s first line, “Viewing anything explicit,” is part of the app and isn’t saved.</li>
+      <li><strong>Your partner.</strong> One name and one phone number, as you typed or picked them.</li>
+      <li><strong>Your reminder setting.</strong> Whether it’s on, and the time.</li>
+      <li><strong>A few dates.</strong> The day your counter started, the day you finished setup, and the date and time of your last backup file. That one is saved when you tap <span class="ui">Yes, I saved it</span>, or comes from a backup file you import. Apart from your reminder time, it’s the only time of day the app keeps.</li>
+    </ul>
+    <p>If you turn on the reminder, your phone also keeps the scheduled reminder so it can come back after a restart.</p>
+
+    <h2 id="contacts">Contacts<a class="anchor" href="#contacts" aria-label="Link to: Contacts">#</a></h2>
+    <p>Light2Life never asks for access to your contacts and never reads your address book.</p>
+    <p>When you tap <span class="ui">Choose from contacts</span>, your phone opens its own contact picker. Only the person you choose is passed to the app.</p>
+    <ul>
+      <li><strong>iPhone:</strong> Apple’s picker passes the one contact you tap to the app. The app keeps only a name and one phone number. If the contact has several numbers, it asks which one to use. Nothing else from the contact is saved.</li>
+      <li><strong>Android:</strong> the picker shows phone numbers. You pick one, and the app reads only that entry’s name and number.</li>
+    </ul>
+    <p>You can also type a name and number instead. The app saves exactly what you pick or type. It doesn’t look at your contacts again, so later changes in your address book don’t reach the app.</p>
+    <p>To remove your partner: <span class="ui">Settings › your partner › Remove partner</span>. Your history stays.</p>
+
+    <h2 id="calls">Phone calls<a class="anchor" href="#calls" aria-label="Link to: Phone calls">#</a></h2>
+    <p>When you tap <span class="ui">Call</span>, Light2Life opens your phone’s own dialer with your partner’s number. Light2Life doesn’t place, record or listen to the call.</p>
+    <p>When you come back to the app, it asks whether you talked. It saves only your yes or no for that day. The app never contacts your partner. You make the call.</p>
+
+    <h2 id="reminder">Your daily reminder<a class="anchor" href="#reminder" aria-label="Link to: Your daily reminder">#</a></h2>
+    <p>The daily reminder is set up on your phone. It isn’t sent from a server, and Light2Life doesn’t use push notifications.</p>
+    <p>It says only “Daily check-in” and “Time for your daily check-in.” It never says what the app is for. Your phone still shows the Light2Life name and icon next to it, as it does for any app.</p>
+    <p>Turn it off any time in <span class="ui">Settings › Daily reminder</span>, or in your phone’s settings.</p>
+
+    <h2 id="permissions">Permissions<a class="anchor" href="#permissions" aria-label="Link to: Permissions">#</a></h2>
+    <p>The only permission Light2Life asks you for is permission to send notifications. It asks only when you turn on a reminder, or when you restore a backup file that had the reminder on. It never asks for your contacts, location, photos, camera or microphone.</p>
+    <p>On Android, the app also has a few standard permissions that don’t ask you anything. One lets your reminder come back after the phone restarts. Another is internet access, which comes with the tools the app is built with. Light2Life doesn’t use it to send your data anywhere.</p>
+
+    <h2 id="security">Keeping your data safe<a class="anchor" href="#security" aria-label="Link to: Keeping your data safe">#</a></h2>
+    <p>Your data sits in the app’s private storage on your phone, where other apps can’t read it. It’s protected by your phone’s own security, so a screen lock (a passcode, fingerprint or face unlock) helps. Light2Life doesn’t have a password of its own, and it doesn’t add its own encryption.</p>
+    <p>The app also has a privacy cover that is always on:</p>
+    <ul>
+      <li><strong>iPhone:</strong> the app’s screen is blurred in the app switcher and whenever the app isn’t active. Screenshots still work on iPhone.</li>
+      <li><strong>Android:</strong> the app shows blank in Recent apps, and screenshots of the app are blocked.</li>
+    </ul>
+
+    <h2 id="backup-files">Backup files you export<a class="anchor" href="#backup-files" aria-label="Link to: Backup files you export">#</a></h2>
+    <p><span class="ui">Settings › Your data › Export backup file</span> makes a file with a plain name like <code>daily-backup-2026-10-30.json</code>. Your phone’s share sheet opens, and you choose where it goes: Files, a cloud drive, email and so on. Light2Life never uploads it.</p>
+    <ul>
+      <li>The file holds all your Light2Life data, including your partner’s name and number, and the date and time the file was made.</li>
+      <li>It’s plain text that anyone who opens it can read. It has no password and isn’t encrypted. Please keep it somewhere safe.</li>
+      <li>Once you save or send it, it’s kept by the place you chose, such as your cloud drive or email provider, under their privacy policy.</li>
+      <li>Before the share sheet opens, the app writes the file to its own temporary folder on your phone. The app doesn’t delete that copy itself. Your phone may clear it later, exporting again on the same day replaces it, and uninstalling the app removes it.</li>
+    </ul>
+    <p>When you import a backup file, the app reads a temporary copy and deletes that copy right away. Your original file isn’t changed.</p>
+
+    <h2 id="phone-backups">Phone backups (iCloud and Google)<a class="anchor" href="#phone-backups" aria-label="Link to: Phone backups">#</a></h2>
+    <p>If iCloud Backup or Google backup is turned on in your phone’s settings, your phone may include Light2Life’s data in that backup. A backup of your iPhone to a computer can include it too. Apple and Google keep these backups under their own privacy policies. We can’t see them. You manage them in your phone’s settings.</p>
+
+    <h2 id="apple-google">What Apple and Google may share with us<a class="anchor" href="#apple-google" aria-label="Link to: What Apple and Google may share with us">#</a></h2>
+    <p>Light2Life has no crash reporting or analytics of its own. But if you allowed your phone to share analytics or diagnostics with app developers, Apple or Google may send us crash reports and summary statistics about the app. Apple and Google also give developers overall numbers, such as how many people downloaded the app.</p>
+    <p>This comes from Apple and Google, not from Light2Life, and they handle it under their own privacy policies. You can change it in your phone’s settings:</p>
+    <ul>
+      <li><strong>iPhone:</strong> Settings › Privacy &amp; Security › Analytics &amp; Improvements. See <a href="https://www.apple.com/legal/privacy/data/en/app-analytics/">Apple’s page on app analytics</a> and <a href="https://www.apple.com/legal/privacy/">Apple’s privacy policy</a>.</li>
+      <li><strong>Android:</strong> look for “Usage &amp; diagnostics” in your phone’s settings (the place varies by phone). See <a href="https://policies.google.com/privacy">Google’s privacy policy</a>.</li>
+    </ul>
+
+    <h2 id="email">If you email us<a class="anchor" href="#email" aria-label="Link to: If you email us">#</a></h2>
+    <p>If you email us at <a class="email" href="mailto:light2life.help@gmail.com">light2life.help@gmail.com</a>, we get your email address and whatever you write. We use it only to answer you, because you asked us for help. We don’t sell it or share it with anyone else.</p>
+    <p>We keep your emails only as long as we need them to help you. You can ask us to delete them at any time.</p>
+    <p>Please leave out private details you’d rather not put in an email. We never need your recovery details to help with the app.</p>
+
+    <h2 id="retention">How long data is kept<a class="anchor" href="#retention" aria-label="Link to: How long data is kept">#</a></h2>
+    <p>Your app data stays on your phone until you delete it. We keep no copy. Copies you make yourself, like backup files and phone backups, stay until you delete them.</p>
+
+    <h2 id="delete">How to delete your data<a class="anchor" href="#delete" aria-label="Link to: How to delete your data">#</a></h2>
+    <p>Light2Life doesn’t have a “delete all” button. Here’s how to remove your data.</p>
+    <ul>
+      <li><strong>Everything on your phone:</strong> uninstall Light2Life. This removes all of its data from that phone, including any backup copy left in its temporary folder. On Android, you can also clear the app’s storage in your phone’s settings (usually <span class="ui">Settings › Apps › Light2Life › Storage › Clear storage</span>; names vary by phone).</li>
+      <li><strong>If you reinstall on Android:</strong> if Google backup is on, reinstalling Light2Life can bring your data back. To stop that, turn Google backup off or delete your phone’s Google backup before you reinstall.</li>
+      <li><strong>Backup files:</strong> delete any you exported, wherever you saved or sent them.</li>
+      <li><strong>Phone backups:</strong> to remove every copy, delete your iCloud or Google backups in your phone’s settings.</li>
+      <li><strong>Just some things:</strong> remove your partner (<span class="ui">Settings › your partner › Remove partner</span>), delete a line from your color lists (<span class="ui">Settings › My colors</span>, tap the line, then <span class="ui">Delete</span>), or turn off a check-in (<span class="ui">History</span>, tap the day).</li>
+    </ul>
+    <p>Export a backup file first if you might want your data back. We can’t delete or restore your data for you, because we never have it.</p>
+
+    <h2 id="choices">Your choices<a class="anchor" href="#choices" aria-label="Link to: Your choices">#</a></h2>
+    <ul>
+      <li>Turn the reminder or notifications off at any time.</li>
+      <li>Add a partner or not, and remove them at any time.</li>
+      <li>Decide whether to export a backup file, and where it goes.</li>
+      <li>Turn phone backups on or off in your phone’s settings.</li>
+      <li>Uninstall the app at any time to remove its data from your phone.</li>
+    </ul>
+
+    <h2 id="children">Children<a class="anchor" href="#children" aria-label="Link to: Children">#</a></h2>
+    <p>Light2Life is for people 13 and older. It isn’t made for children. We don’t knowingly collect personal information from children under 13.</p>
+
+    <h2 id="consumer-health-data">Consumer health data<a class="anchor" href="#consumer-health-data" aria-label="Link to: Consumer health data">#</a></h2>
+    <p>Our consumer health data policy, for Washington State, Nevada and similar laws, is on its own page: <a href="consumer-health-data.html">Light2Life Consumer Health Data Privacy Policy</a>.</p>
+
+    <h2 id="rights">Your rights<a class="anchor" href="#rights" aria-label="Link to: Your rights">#</a></h2>
+    <p>Wherever you live, including under the GDPR, the UK GDPR and US state privacy laws, you can contact us at any time at <a class="email" href="mailto:light2life.help@gmail.com">light2life.help@gmail.com</a>.</p>
+    <p>We hold no app data about you, so there’s nothing for us to show, correct or delete, except emails you’ve sent us. You can ask to see or delete those. Your app data is already in your hands: you can see and change it in the app, and save a copy with <span class="ui">Export backup file</span>.</p>
+    <p>If you’re unhappy with how we handle your information, you can complain to your local data protection authority.</p>
+
+    <h2 id="website">These web pages<a class="anchor" href="#website" aria-label="Link to: These web pages">#</a></h2>
+    <p>These pages have no cookies, analytics or trackers, and they load no outside fonts or scripts. These pages are hosted on GitHub Pages. GitHub may keep basic technical logs, such as IP addresses, to run and protect its service, as described in the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub Privacy Statement</a>.</p>
+
+    <h2 id="changes">Changes to this policy<a class="anchor" href="#changes" aria-label="Link to: Changes to this policy">#</a></h2>
+    <p>If we change this policy, we’ll update this page and the date at the top. The app can’t send you messages, so please check here for the latest version.</p>
+
+    <h2 id="contact">Contact us<a class="anchor" href="#contact" aria-label="Link to: Contact us">#</a></h2>
+    <p>The Light2Life developer<br>
+    Email: <a class="email" href="mailto:light2life.help@gmail.com">light2life.help@gmail.com</a></p>
+    <p>For help using the app, see <a href="support.html">Light2Life Support</a>.</p>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <nav aria-label="Footer">
+      <a href="support.html">Support</a>
+      <a href="consumer-health-data.html">Consumer health data</a>
+      <a href="index.html">Home</a>
+    </nav>
+    <p>Light2Life · <a class="email" href="mailto:light2life.help@gmail.com">light2life.help@gmail.com</a></p>
+  </div>
+</footer>
+</body>
+</html>
