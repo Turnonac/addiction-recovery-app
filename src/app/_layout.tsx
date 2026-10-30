@@ -144,8 +144,8 @@ export default function RootLayout() {
     void enablePrivacyCover();
   }, []);
 
-  // Reminder tap (also the tap that cold-started the app) opens today's check-in.
-  // The explicit date matters when a check-in for another day is already open:
+  // Reminder tap (also the tap that cold-started the app) opens today's color log.
+  // The explicit date matters when a color log for another day is already open:
   // that screen is reused, and its params are replaced by these.
   useEffect(() => {
     if (!ready || !onboardingDone) return undefined;
@@ -154,7 +154,7 @@ export default function RootLayout() {
         useAppStore.getState().refreshToday();
         router.navigate({ pathname: '/check-in', params: { date: useAppStore.getState().today } });
       } catch (error) {
-        console.warn('Light2Life: could not open the check-in', error);
+        console.warn('Light2Life: could not open the color log', error);
       }
     });
   }, [ready, onboardingDone, router]);

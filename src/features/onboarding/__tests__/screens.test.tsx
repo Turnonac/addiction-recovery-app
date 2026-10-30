@@ -1,5 +1,5 @@
 /**
- * Smoke tests for the Settings, check-in, call and onboarding routes, rendered
+ * Smoke tests for the Settings, color log (check-in route), call and onboarding routes, rendered
  * through expo-router's testing library with the in-memory repository.
  * Native services are mocked; the store and domain rules are real.
  */
@@ -151,7 +151,7 @@ describe('check-in', () => {
     expect(screen.getByRole('button', { name: 'Pick a color to save' })).toBeDisabled();
 
     await fireEvent.press(screen.getByRole('radio', { name: /^Blue/ }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
 
     await waitFor(() => expect(useAppStore.getState().days[today]?.color).toBe(1));
   });
@@ -193,12 +193,12 @@ describe('check-in', () => {
     expect(useAppStore.getState().days['2026-10-30']).toBeUndefined();
   });
 
-  it('starts over when reused for another day (reminder tap over an open check-in)', async () => {
+  it('starts over when reused for another day (reminder tap over an open color log)', async () => {
     const today = await setup({}, [{ date: addDays(todayLocal(), -1), color: 0, checkedIn: false }]);
     const view = await renderRouter(routes, { initialUrl: `/check-in?date=${addDays(today, -1)}` });
     // Yesterday's stored Green is preselected.
     expect(screen.getByRole('radio', { name: /^Green/ })).toBeChecked();
-    expect(screen.getByRole('button', { name: 'Save check-in' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save color' })).toBeEnabled();
 
     await act(async () => router.navigate({ pathname: '/check-in', params: { date: today } }));
 
@@ -215,7 +215,7 @@ describe('check-in', () => {
     const view = await renderRouter(routes, { initialUrl: `/check-in?date=${yesterday}` });
 
     await fireEvent.press(screen.getByRole('radio', { name: /^Yellow/ }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
 
     await waitFor(() => expect(view.getPathname()).toBe('/'));
     expect(useAppStore.getState().days[yesterday]).toEqual({ date: yesterday, color: 2, checkedIn: true });
@@ -228,7 +228,7 @@ describe('check-in', () => {
     const view = await renderRouter(routes, { initialUrl: '/check-in' });
 
     await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
 
     await waitFor(() => expect(view.getPathname()).toBe('/'));
     expect(useAppStore.getState().days[today]).toEqual({ date: today, color: 3, checkedIn: true });
@@ -247,7 +247,7 @@ describe('check-in', () => {
     expect(
       screen.getByText('Your counter goes back to 2 days. Your best streak becomes 2 days. Your history stays.'),
     ).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
 
     await waitFor(() => expect(view.getPathname()).toBe('/'));
     expect(useAppStore.getState().days[twoDaysAgo]?.color).toBe(3);
@@ -440,7 +440,7 @@ describe('settings', () => {
     expect(screen.getByText('Write what each color looks like for you')).toBeTruthy();
     expect(screen.getByText('Export backup file')).toBeTruthy();
 
-    await fireEvent.press(screen.getByRole('switch', { name: 'Remind me to check in' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Remind me to log my color' }));
     await waitFor(() => expect(useAppStore.getState().settings.reminder.enabled).toBe(true));
     expect(notifications.scheduleDailyReminder).toHaveBeenCalledWith(21, 0);
   });
@@ -548,7 +548,7 @@ describe('settings', () => {
     await waitFor(() => expect(useAppStore.getState().settings.reminder).toEqual({ enabled: false, hour: 20, minute: 30 }));
     expect(notifications.reconcileReminder).toHaveBeenLastCalledWith({ enabled: false, hour: 20, minute: 30 });
     expect(alerts.find('Backup restored').message).toContain('so the daily reminder is off');
-    expect(screen.getByRole('switch', { name: 'Remind me to check in' })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Remind me to log my color' })).not.toBeChecked();
   });
 
   it('explains a reminder that is on but has never been allowed', async () => {

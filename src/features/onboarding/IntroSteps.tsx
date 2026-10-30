@@ -23,7 +23,7 @@ export function WelcomeStep({ onNext }: StepNavProps) {
     <StepScreen
       step={1}
       title="Welcome to Light2Life"
-      subtitle="A simple, private daily check-in for your recovery: one honest color a day, and one call with someone who prays for you."
+      subtitle="A simple, private daily practice for your recovery: one honest color a day, and one call with someone who prays for you."
       footer={<Button title="Get started" size="lg" onPress={onNext} />}
     >
       <CheckList items={PRIVACY_PROMISES} />

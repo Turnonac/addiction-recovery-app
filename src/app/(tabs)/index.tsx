@@ -157,11 +157,11 @@ export default function TodayScreen() {
         ) : null}
       </Card>
 
-      {/* Today's check-in */}
+      {/* Today's color */}
       <Card>
         <View style={{ gap: 2 }}>
           <Text accessibilityRole="header" style={cardTitle}>
-            Today’s check-in
+            Today’s color
           </Text>
           <Text style={cardBody}>
             {todayColor === null
@@ -170,7 +170,7 @@ export default function TodayScreen() {
           </Text>
         </View>
         {todayColor === null ? (
-          <Button title="Check in" onPress={() => router.push('/check-in')} />
+          <Button title="Log today’s color" onPress={() => router.push('/check-in')} />
         ) : (
           <View
             style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}
@@ -201,7 +201,7 @@ export default function TodayScreen() {
             <Button
               title="Update"
               variant="outline"
-              accessibilityLabel="Update today’s check-in"
+              accessibilityLabel="Update today’s color"
               onPress={() => router.push('/check-in')}
             />
           </View>

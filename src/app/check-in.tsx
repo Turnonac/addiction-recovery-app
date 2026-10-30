@@ -28,13 +28,13 @@ import {
 } from '@/ui/components';
 import { useAppTheme } from '@/ui/theme';
 
-/** Check-in modal: `/check-in?date=YYYY-MM-DD` (default today). Future dates are locked. */
+/** Color log modal: `/check-in?date=YYYY-MM-DD` (default today). Future dates are locked. */
 export default function CheckInScreen() {
   const router = useRouter();
   const theme = useAppTheme();
   const params = useLocalSearchParams<{ date?: string | string[]; from?: string | string[] }>();
   const today = useAppStore((s) => s.today);
-  // "Today" as of opening: an open check-in keeps its day when midnight passes.
+  // "Today" as of opening: an open color log keeps its day when midnight passes.
   const [openedOn] = useState(() => useAppStore.getState().today);
   const raw = Array.isArray(params.date) ? params.date[0] : params.date;
   const date = raw && raw.length > 0 ? raw : openedOn;
@@ -146,7 +146,7 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
     partner !== null &&
     inCallWindow(daysAfter(days, date, RED, today), settings, today, date);
   const saveLabel =
-    selected === null ? 'Pick a color to save' : willCall ? `Save, then call ${partnerName}` : 'Save check-in';
+    selected === null ? 'Pick a color to save' : willCall ? `Save, then call ${partnerName}` : 'Save color';
 
   const footer = (
     <>

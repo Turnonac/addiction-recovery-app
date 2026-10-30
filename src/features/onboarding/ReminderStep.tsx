@@ -111,7 +111,7 @@ export function ReminderStep({ onNext, onBack }: StepNavProps) {
       step={6}
       onBack={onBack}
       title="A daily reminder"
-      subtitle="One quiet reminder each day to check in. You can change it or turn it off any time in Settings."
+      subtitle="One quiet reminder each day to log your color. You can change it or turn it off any time in Settings."
       footer={
         <>
           <Button title={`Remind me at ${time}`} size="lg" onPress={() => void enable()} disabled={busy} />

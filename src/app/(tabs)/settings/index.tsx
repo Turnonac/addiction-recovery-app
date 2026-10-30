@@ -309,7 +309,7 @@ export default function SettingsScreen() {
       <View style={{ gap: 8 }}>
         <SettingsGroup title="Daily reminder">
           <ToggleRow
-            label="Remind me to check in"
+            label="Remind me to log my color"
             value={reminder.enabled}
             onValueChange={(on) => void toggleReminder(on)}
             disabled={busy === 'reminder'}

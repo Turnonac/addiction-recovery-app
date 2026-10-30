@@ -1,6 +1,6 @@
 # Light2Life
 
-A free, private daily check-in app for recovery, for iOS and Android. Each day you log your
+A free, private daily recovery app for iOS and Android. Each day you log your
 lowest color, keep a clean-day counter, and make one short call with your partner. There is no
 account, server or analytics; everything stays on the phone.
 

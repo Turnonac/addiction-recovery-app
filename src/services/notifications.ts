@@ -1,7 +1,7 @@
 /**
- * Daily check-in reminder: one local notification, no push, no exact alarms.
+ * Daily reminder to log the day's color: one local notification, no push, no exact alarms.
  *
- * Text is deliberately generic ("Daily check-in") so nothing about the topic
+ * Text is deliberately generic ("Daily reminder") so nothing about the topic
  * shows on the lock screen. Verified against expo-notifications 58.1.x
  * (`SchedulableTriggerInputTypes.DAILY`, `shouldShowBanner` / `shouldShowList`,
  * `getLastNotificationResponse`).
@@ -16,8 +16,8 @@ export const REMINDER_ID = 'daily-checkin';
 export const CHANNEL_ID = 'daily-reminder';
 
 const CHANNEL_NAME = 'Daily reminder';
-const REMINDER_TITLE = 'Daily check-in';
-const REMINDER_BODY = 'Time for your daily check-in.';
+const REMINDER_TITLE = 'Daily reminder';
+const REMINDER_BODY = 'Time to log today’s color.';
 const REMINDER_URL = '/check-in';
 
 export type NotificationPermission = 'granted' | 'denied' | 'undetermined';
@@ -212,7 +212,7 @@ export function addReminderTapListener(onTap: () => void): () => void {
     if (handled.has(key)) return;
     handled.add(key);
     try {
-      // So a later remount does not route to the check-in again for the same tap.
+      // So a later remount does not route to the color log again for the same tap.
       Notifications.clearLastNotificationResponse();
     } catch {
       // Not available on this platform; the dedupe set still protects this listener.

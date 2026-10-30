@@ -104,7 +104,7 @@ export default function HistoryScreen() {
               Nothing logged yet
             </Text>
             <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-              Each daily check-in adds a color to this calendar. Missed a day? Tap it below to
+              Each color you log shows on this calendar. Missed a day? Tap it below to
               make it up.
             </Text>
           </View>

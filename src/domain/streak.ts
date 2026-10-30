@@ -58,7 +58,7 @@ export function bestStreak(days: DayLog[], installDate: LocalDate | null, today:
   return best;
 }
 
-/** Current and best streak as they would be with `date` logged Red (the check-in's Red note). */
+/** Current and best streak as they would be with `date` logged Red (the color log's Red note). */
 export function streaksIfRed(
   days: DayLog[],
   installDate: LocalDate | null,

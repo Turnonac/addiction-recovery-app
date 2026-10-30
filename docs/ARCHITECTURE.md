@@ -1,8 +1,10 @@
 # Light2Life architecture (v1)
 
 Light2Life (working name during development: WalkInLight) is a free, private
-iOS + Android app for one person recovering from porn. Daily lowest-color
-check-in, clean-day counter, one daily phone call with one partner who prays.
+iOS + Android app for one person recovering from porn. Daily lowest color,
+clean-day counter, one daily phone call with one partner who prays. "Check-in"
+always means that call; logging the day's color is never called a check-in in the
+app (the color screen's route keeps its old path, `/check-in`).
 No account, no server, no analytics. Everything lives on the phone.
 
 Stack: Expo SDK 58 · React Native 0.88 · TypeScript strict · Expo Router ·
@@ -58,7 +60,7 @@ Never install packages; everything needed is already in `package.json`.
 - Lists start EMPTY (no suggested behaviors). Red always shows the locked first
   line `LOCKED_RED_LINE`, which is not stored.
 - Daily reminder: one local notification at a user-picked time, opt-out.
-  Title "Daily check-in", body "Time for your daily check-in." Never mention
+  Title "Daily reminder", body "Time to log today’s color." Never mention
   the topic. Android channel name "Daily reminder".
 - **App switcher cover:** iOS blur, Android FLAG_SECURE (blank preview, also
   blocks screenshots). It is turned on at launch, re-applied on every return to
@@ -380,7 +382,7 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
 - `(tabs)/_layout.tsx` — JS Tabs (`expo-router/js-tabs`): `index` (Today), `history`,
   `settings` (nested Stack). Settings has `popToTopOnBlur`: leaving the tab resets its stack.
 - `(tabs)/index.tsx` — Today: date, greeting, counter card (days since last Red, best), week
-  strip, today's check-in card, partner call card OR "Add your partner" card,
+  strip, "Today’s color" card ("Log today’s color" / "Update"), partner call card OR "Add your partner" card,
   "Yesterday isn't logged" card, 30-day backup reminder card (→ Settings).
 - `(tabs)/history.tsx` — stats (current, best, month check-ins), month calendar with month
   navigation (back to the earlier of installDate and the oldest logged day;
@@ -405,7 +407,7 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   Android: only if the embedded config has a versionCode, which remote versioning usually
   leaves out), and Help and support / Privacy policy rows that open `docs/support.html` and
   `docs/privacy.html` on GitHub Pages.
-- `check-in.tsx` — modal, `?date=YYYY-MM-DD` (default: today as of opening, kept if midnight
+- `check-in.tsx` — color log modal ("Save color"), `?date=YYYY-MM-DD` (default: today as of opening, kept if midnight
   passes); invalid or future dates close right away. `&from=call` returns to the call screen
   instead of opening a second one. 4 color cards with the user's behaviors, Red shows grace
   note (today: "Your counter restarts at 0. Your history and best streak stay."; a past day:

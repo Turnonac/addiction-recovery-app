@@ -79,7 +79,7 @@ export function DoneStep({ onBack, onFinish }: DoneStepProps) {
         ))}
       </View>
       <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-        Check in each day, then call. Small honest steps, one day at a time.
+        Log your color each day, then call. Small honest steps, one day at a time.
       </Text>
     </StepScreen>
   );
