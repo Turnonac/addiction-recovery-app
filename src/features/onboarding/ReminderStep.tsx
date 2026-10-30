@@ -67,7 +67,7 @@ export function ReminderStep({ onNext, onBack }: StepNavProps) {
         setBusy(false);
         Alert.alert(
           'Reminders are off',
-          'Notifications are turned off for WalkInLight. You can turn the reminder on later in Settings.',
+          'Notifications are turned off for Light2Life. You can turn the reminder on later in Settings.',
           [{ text: 'OK', onPress: onNext }],
         );
         return;

@@ -18,7 +18,7 @@ const PRIVACY_POINTS = [
 ] as const;
 
 const DISCLAIMER =
-  'WalkInLight is not a medical device and does not diagnose, treat, cure, or prevent any medical condition.';
+  'Light2Life is not a medical device and does not diagnose, treat, cure, or prevent any medical condition.';
 
 /** Settings › About: mission, privacy statement, disclaimer, version. */
 export default function AboutScreen() {
@@ -47,10 +47,10 @@ export default function AboutScreen() {
 
       <Card gap={8}>
         <Text accessibilityRole="header" style={heading}>
-          Why WalkInLight
+          Why Light2Life
         </Text>
         <Text style={body}>
-          WalkInLight is a small daily habit for recovery. Each day you name your lowest color, call
+          Light2Life is a small daily habit for recovery. Each day you name your lowest color, call
           one person you trust, and they pray for you. Honest, simple, one day at a time.
         </Text>
       </Card>

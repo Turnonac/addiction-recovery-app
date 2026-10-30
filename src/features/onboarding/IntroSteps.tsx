@@ -22,7 +22,7 @@ export function WelcomeStep({ onNext }: StepNavProps) {
   return (
     <StepScreen
       step={1}
-      title="Welcome to WalkInLight"
+      title="Welcome to Light2Life"
       subtitle="A simple, private daily check-in for your recovery: one honest color a day, and one call with someone who prays for you."
       footer={<Button title="Get started" size="lg" onPress={onNext} />}
     >

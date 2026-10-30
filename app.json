@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "WalkInLight",
+    "name": "Light2Life",
     "slug": "walkinlight",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -63,7 +63,7 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "WalkInLight uses the contact you pick as your partner."
+          "contactsPermission": "Light2Life uses the contact you pick as your partner."
         }
       ],
       "expo-sharing",

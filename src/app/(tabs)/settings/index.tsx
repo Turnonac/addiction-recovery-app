@@ -40,11 +40,11 @@ import { useAppTheme } from '@/ui/theme';
 type Busy = 'reminder' | 'export' | 'import' | null;
 
 const DATA_NOTE =
-  "Your data lives on this phone. WalkInLight never sends it anywhere. If iCloud or Google backup is on in your phone's settings, it's included there. You can also export a backup file.";
+  "Your data lives on this phone. Light2Life never sends it anywhere. If iCloud or Google backup is on in your phone's settings, it's included there. You can also export a backup file.";
 
 const RESTORED_MESSAGE = 'The data from your backup file is now on this phone.';
 const DENIED_NOTE =
-  "Reminders are turned off in your phone's settings. Turn on notifications for WalkInLight there to get your daily reminder.";
+  "Reminders are turned off in your phone's settings. Turn on notifications for Light2Life there to get your daily reminder.";
 const UNDETERMINED_NOTE =
   'Your daily reminder needs permission to send notifications before it can arrive.';
 
@@ -190,7 +190,7 @@ export default function SettingsScreen() {
       } catch (error) {
         const message =
           isBackupReadError(error) && error.code === 'invalid-json'
-            ? "This file isn't a WalkInLight backup."
+            ? "This file isn't a Light2Life backup."
             : "That file couldn't be opened. Please try again.";
         Alert.alert("Couldn't import", message);
         return;
@@ -201,9 +201,9 @@ export default function SettingsScreen() {
       if (!parsed.ok) {
         const message =
           parsed.error === 'newer-version'
-            ? 'This backup was made by a newer version of WalkInLight. Update the app, then try again.'
+            ? 'This backup was made by a newer version of Light2Life. Update the app, then try again.'
             : parsed.error === 'not-a-backup'
-              ? "This file isn't a WalkInLight backup."
+              ? "This file isn't a Light2Life backup."
               : "This backup file is damaged and can't be used.";
         Alert.alert("Couldn't import", message);
         return;
@@ -258,7 +258,7 @@ export default function SettingsScreen() {
       Alert.alert(
         'Backup restored',
         reminderTurnedOff
-          ? `${RESTORED_MESSAGE}\n\nNotifications aren't allowed for WalkInLight, so the daily reminder is off. You can turn it on here in Settings.`
+          ? `${RESTORED_MESSAGE}\n\nNotifications aren't allowed for Light2Life, so the daily reminder is off. You can turn it on here in Settings.`
           : RESTORED_MESSAGE,
       );
     } finally {
@@ -383,7 +383,7 @@ export default function SettingsScreen() {
 
       <SettingsGroup>
         <SettingsRow
-          title="About WalkInLight"
+          title="About Light2Life"
           subtitle="Privacy, disclaimer and version"
           onPress={() => router.push('/settings/about')}
         />

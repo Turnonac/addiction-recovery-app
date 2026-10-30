@@ -35,7 +35,7 @@ export EXPO_APPLE_TEAM_TYPE=INDIVIDUAL   # or COMPANY_OR_ORGANIZATION
 4. iPhone via TestFlight: `npx eas-cli@latest build -p ios --profile production --non-interactive`,
    then `npx eas-cli@latest submit -p ios --latest --non-interactive`.
    EAS registers the bundle ID with the API key. If submit asks for the App Store Connect app,
-   create it once in App Store Connect (name WalkInLight, bundle ID above) and put its numeric
+   create it once in App Store Connect (name Light2Life, bundle ID above) and put its numeric
    Apple ID in `eas.json` under `submit.production.ios.ascAppId`.
 
 Free tier: 15 iOS + 15 Android builds a month, low-priority queue (expect 15–30 minutes).

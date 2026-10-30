@@ -263,7 +263,7 @@ function StartupError({ onRetry }: { onRetry: () => void }) {
         Couldn’t open your data
       </Text>
       <Text style={{ color: theme.muted, fontSize: 16, lineHeight: 22, textAlign: 'center' }}>
-        Nothing was deleted. Try again, or close WalkInLight and open it again.
+        Nothing was deleted. Try again, or close Light2Life and open it again.
       </Text>
       <Button title="Try again" onPress={onRetry} />
     </View>

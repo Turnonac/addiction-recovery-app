@@ -50,7 +50,7 @@ export function NotificationPreview({
         <View style={{ flex: 1, gap: 1 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             <Text style={{ flexShrink: 1, color: theme.text, fontSize: 13, fontWeight: '700' }}>
-              WalkInLight
+              Light2Life
             </Text>
             <Text style={{ color: theme.muted, fontSize: 13, fontWeight: '500' }}>{time}</Text>
           </View>

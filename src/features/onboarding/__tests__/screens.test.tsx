@@ -434,7 +434,7 @@ describe('settings', () => {
     await renderRouter(routes, { initialUrl: '/settings/about' });
     expect(
       screen.getByText(
-        'WalkInLight is not a medical device and does not diagnose, treat, cure, or prevent any medical condition.',
+        'Light2Life is not a medical device and does not diagnose, treat, cure, or prevent any medical condition.',
       ),
     ).toBeTruthy();
   });
