@@ -35,7 +35,9 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
   // The last Red day saved by an earlier Continue (going back to this step).
   const savedStart = redDates(Object.values(days), yesterday).at(-1) ?? null;
   const [choice, setChoice] = useState<Choice>(savedStart !== null ? 'past' : 'today');
-  const [pastDate, setPastDate] = useState<LocalDate | null>(savedStart);
+  const [picked, setPastDate] = useState<LocalDate | null>(savedStart);
+  // A pick can end up today or later if the date moves back (an earlier time zone).
+  const pastDate = picked !== null && picked > yesterday ? yesterday : picked;
   const [picker, setPicker] = useState<PickerRequest | null>(null);
   const [saving, setSaving] = useState(false);
 

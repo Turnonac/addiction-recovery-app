@@ -235,6 +235,18 @@ describe('check-in', () => {
     expect(alerts.spy).not.toHaveBeenCalled();
   });
 
+  it('says so when a Red before install moves the counter start back', async () => {
+    const today = await setup({ partner: SAM }); // installed 3 days ago, no Reds
+    await renderRouter(routes, { initialUrl: `/check-in?date=${addDays(today, -10)}` });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
+    expect(
+      screen.getByText(
+        'Your counter now counts from that day: 10 days. Your best streak becomes 10 days. Your history stays.',
+      ),
+    ).toBeTruthy();
+  });
+
   it('shows what a past Red does and saves it without a call the window would not cover', async () => {
     const today = await setup({ partner: SAM }, [
       { date: addDays(todayLocal(), -1), color: 0, checkedIn: true },

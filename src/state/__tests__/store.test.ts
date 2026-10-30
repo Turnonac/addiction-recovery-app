@@ -415,6 +415,20 @@ describe('setLastRedDay', () => {
     expect(store().days['2026-09-15']).toEqual(day('2026-09-15', RED, true));
   });
 
+  it('still replaces or removes its Red after the date moves back (an earlier time zone)', async () => {
+    await initWith();
+    await store().setLastRedDay(YESTERDAY);
+    mockToday = YESTERDAY; // the saved day is now today
+    await store().setLastRedDay(null);
+    expect(store().days).toEqual({});
+
+    mockToday = TODAY;
+    await store().setLastRedDay(YESTERDAY);
+    mockToday = YESTERDAY;
+    await store().setLastRedDay('2026-10-20');
+    expect(store().days).toEqual({ '2026-10-20': day('2026-10-20', RED) });
+  });
+
   it('rejects today, future and malformed dates, and runs only during onboarding', async () => {
     await initWith();
     await expect(store().setLastRedDay(TODAY)).rejects.toThrow(RangeError);

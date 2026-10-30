@@ -263,8 +263,8 @@ migrateDatabase(db): Promise<void>            // each step + its user_version bu
 openAppDatabase(): Promise<SQLiteDatabase>    // opens 'app.db', runs migrations
 ```
 Migrations are append-only: never edit a shipped entry. 1 → 2 turns the old
-`counterStartDate` setting into a Red day (when it is before `installDate` and that
-day has no color) and deletes it.
+`counterStartDate` setting into a Red day (when it is before `installDate`, or before
+today while onboarding has no installDate yet, and that day has no color) and deletes it.
 
 ### state/store.ts
 ```ts

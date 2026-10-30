@@ -4,7 +4,7 @@
  * high priority so the closing picker sheet can't cut it off.
  */
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AccessibilityInfo, Platform } from 'react-native';
 
 import { createMemoryRepository } from '@/data/memoryRepository';
@@ -119,6 +119,21 @@ describe('CounterStep saving', () => {
     expect(onNext).toHaveBeenCalledTimes(1);
     const yesterday = addDays(todayLocal(), -1);
     expect(useAppStore.getState().days).toEqual({ [yesterday]: { date: yesterday, color: 3, checkedIn: false } });
+  });
+
+  it('keeps a pick before today when the date moves back a day', async () => {
+    const onNext = jest.fn();
+    await initStore(null);
+    const today = todayLocal();
+    await render(<CounterStep onNext={onNext} />);
+    await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Done' })); // picks yesterday
+    expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
+
+    // The phone moves to an earlier time zone: the store's today becomes yesterday.
+    await act(async () => useAppStore.setState({ today: addDays(today, -1) }));
+    expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /^My last Red day was…/ })).toBeTruthy();
   });
 
   it('back on this step, "Start counting today" removes the saved Red day', async () => {

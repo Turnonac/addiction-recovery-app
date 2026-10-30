@@ -3,8 +3,7 @@ import { create } from 'zustand';
 
 import { defaultSettings, isEmptyDay, sortBehaviors, type Repository } from '@/data/repository';
 import { decideSetColor } from '@/domain/checkin';
-import { addDays, isValidLocalDate, todayLocal } from '@/domain/dates';
-import { redDates } from '@/domain/streak';
+import { isValidLocalDate, todayLocal } from '@/domain/dates';
 import {
   RED,
   type AppSnapshot,
@@ -231,7 +230,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (get().settings.onboardingDone) throw new Error('setLastRedDay: onboarding only');
         const today = syncToday();
         if (date !== null && date >= today) throw new RangeError(`Last Red day must be before today: ${date}`);
-        const previous = redDates(Object.values(get().days), addDays(today, -1)).at(-1) ?? null;
+        // Only this step writes days during onboarding, so the latest Red is the one it saved,
+        // even if the date has since moved back (an earlier time zone) to that day or before.
+        const previous =
+          Object.values(get().days)
+            .filter((d) => d.color === RED)
+            .map((d) => d.date)
+            .sort()
+            .at(-1) ?? null;
         if (previous === date) return;
         if (previous !== null) {
           const cleared: DayLog = { ...get().days[previous], color: null };

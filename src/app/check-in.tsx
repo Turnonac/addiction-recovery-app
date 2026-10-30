@@ -220,7 +220,9 @@ function daysText(n: number): string {
 
 /**
  * Today: the counter restarts at 0. A past day: the counter and best streak it
- * would really leave (a later Red keeps the counter; a split run can lower best).
+ * would really leave. A later Red keeps the counter; a split run can lower best;
+ * a Red before installDate, with none on or before it yet, moves the counter's
+ * start back, so both can go up.
  */
 function redNoteText(
   days: DayLog[],
@@ -230,10 +232,13 @@ function redNoteText(
 ): string {
   if (date === today) return 'Your counter restarts at 0. Your history and best streak stay.';
   const after = streaksIfRed(days, installDate, date, today);
+  const now = currentStreak(days, installDate, today);
   const counter =
-    after.current === currentStreak(days, installDate, today)
+    after.current === now
       ? `Your counter stays at ${daysText(after.current)}.`
-      : `Your counter goes back to ${daysText(after.current)}.`;
+      : now !== null && after.current > now
+        ? `Your counter now counts from that day: ${daysText(after.current)}.`
+        : `Your counter goes back to ${daysText(after.current)}.`;
   return after.best === bestStreak(days, installDate, today)
     ? `${counter} Your history and best streak stay.`
     : `${counter} Your best streak becomes ${daysText(after.best)}. Your history stays.`;
