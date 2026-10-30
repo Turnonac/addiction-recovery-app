@@ -73,4 +73,15 @@ describe('callPhone', () => {
     jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no dialer'));
     await expect(callPhone('5551234')).resolves.toBe(false);
   });
+
+  it('returns false when iOS resolves false (the Simulator has no Phone app)', async () => {
+    // Typed as Promise<void>, but RCTLinkingManager resolves @NO for a failed tel: on the Simulator.
+    jest.spyOn(Linking, 'openURL').mockResolvedValue(false as unknown as void);
+    await expect(callPhone('5551234')).resolves.toBe(false);
+  });
+
+  it('returns true when Android resolves true', async () => {
+    jest.spyOn(Linking, 'openURL').mockResolvedValue(true as unknown as void);
+    await expect(callPhone('5551234')).resolves.toBe(true);
+  });
 });

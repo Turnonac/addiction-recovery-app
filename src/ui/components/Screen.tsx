@@ -1,10 +1,13 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Text,
+  TextInput,
   View,
+  type ScrollViewInstance,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -44,7 +47,10 @@ export interface ScreenProps {
   gap?: number;
   /** Standard 20pt side padding (default true). */
   padded?: boolean;
-  /** Wrap in a KeyboardAvoidingView (screens with text fields). */
+  /**
+   * Wrap in a KeyboardAvoidingView (screens with text fields). On iOS the body
+   * also scrolls the focused field into view above the footer.
+   */
   avoidKeyboard?: boolean;
   /** Extra style for the content container. */
   contentStyle?: StyleProp<ViewStyle>;
@@ -53,6 +59,34 @@ export interface ScreenProps {
 
 /** Share of the screen a footer may take before it scrolls. */
 const FOOTER_MAX_HEIGHT = '55%';
+
+/** Room kept between a focused text field and the footer (or keyboard) on iOS. */
+const FOCUSED_INPUT_GAP = 16;
+
+/** Body scroll view's visible height and offset, kept from its own events. */
+interface ScrollMetrics {
+  height: number;
+  offset: number;
+}
+
+/**
+ * iOS: scroll the body so the focused text field sits just above the footer.
+ * The 'padding' KeyboardAvoidingView only lifts the footer over the keyboard and
+ * never scrolls, so a field low on the page stays hidden. Only scrolls down, and
+ * never past the field's top; a field outside this scroll view fails to measure.
+ */
+function revealFocusedInput(scrollView: ScrollViewInstance | null, metrics: ScrollMetrics) {
+  const input = TextInput.State.currentlyFocusedInput();
+  const content = scrollView?.getInnerViewRef();
+  if (!scrollView || !input || !content || metrics.height <= 0) return;
+  input.measureLayout(content, (_x, top, _width, height) => {
+    const target = Math.min(
+      top + height + FOCUSED_INPUT_GAP - metrics.height,
+      top - FOCUSED_INPUT_GAP,
+    );
+    if (target > metrics.offset) scrollView.scrollTo({ y: target, animated: true });
+  });
+}
 
 /** Themed page: background, safe-area padding, optional scroll and footer. */
 export function Screen({
@@ -71,6 +105,21 @@ export function Screen({
   const topInset = edges.includes('top') ? insets.top : 0;
   const bottomInset = edges.includes('bottom') ? insets.bottom : 0;
 
+  // iOS only: Android's keyboard handling already works. Scrolls by hand rather
+  // than automaticallyAdjustKeyboardInsets, whose inset would stack on the padding.
+  const keepFocusVisible = avoidKeyboard && scroll && Platform.OS === 'ios';
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const scrollMetrics = useRef<ScrollMetrics>({ height: 0, offset: 0 });
+
+  useEffect(() => {
+    if (!keepFocusVisible) return;
+    // 'Did', not 'Will': by then the KeyboardAvoidingView padding is laid out.
+    const subscription = Keyboard.addListener('keyboardDidShow', () =>
+      revealFocusedInput(scrollRef.current, scrollMetrics.current),
+    );
+    return () => subscription.remove();
+  }, [keepFocusVisible]);
+
   const contentPadding: ViewStyle = {
     gap,
     paddingTop: topInset + 12,
@@ -80,10 +129,29 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
+      ref={scrollRef}
       style={{ flex: 1 }}
       contentContainerStyle={[contentPadding, contentStyle]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
+      onLayout={
+        keepFocusVisible
+          ? (e) => {
+              scrollMetrics.current.height = e.nativeEvent.layout.height;
+              // Resized with the keyboard up, e.g. a footer appeared on the first keystroke.
+              if (Keyboard.isVisible()) {
+                revealFocusedInput(scrollRef.current, scrollMetrics.current);
+              }
+            }
+          : undefined
+      }
+      onScroll={
+        keepFocusVisible
+          ? (e) => {
+              scrollMetrics.current.offset = e.nativeEvent.contentOffset.y;
+            }
+          : undefined
+      }
     >
       {children}
     </ScrollView>

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Alert, Platform, Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { addDays, diffDays } from '@/domain/dates';
@@ -42,6 +42,21 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
 
   const start = choice === 'today' ? today : pastDate;
   const preview = start === null ? null : Math.max(0, diffDays(start, today));
+  const previewLabel =
+    preview === null ? null : `Your counter will show: ${preview} ${preview === 1 ? 'day' : 'days'}`;
+
+  // The preview's accessibilityLiveRegion only reaches TalkBack; VoiceOver needs an
+  // announcement when it changes (iOS only, so TalkBack does not read it twice). Not on
+  // mount, where it would cut off the step title. High priority (iOS 17+) so the picker
+  // closing and the focus move below can't cut it off.
+  const shownLabel = useRef(previewLabel);
+  useEffect(() => {
+    if (previewLabel === shownLabel.current) return;
+    shownLabel.current = previewLabel;
+    if (previewLabel !== null && Platform.OS === 'ios') {
+      AccessibilityInfo.announceForAccessibilityWithOptions(previewLabel, { priority: 'high' });
+    }
+  }, [previewLabel]);
 
   function openPicker() {
     presentPicker(
@@ -119,10 +134,10 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
         />
       ) : null}
 
-      {preview !== null ? (
+      {previewLabel !== null ? (
         <View
           accessible
-          accessibilityLabel={`Your counter will show: ${preview} ${preview === 1 ? 'day' : 'days'}`}
+          accessibilityLabel={previewLabel}
           accessibilityLiveRegion="polite"
           style={{
             alignItems: 'center',

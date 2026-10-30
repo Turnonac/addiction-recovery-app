@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
+  Platform,
   Text,
   TextInput,
   View,
@@ -14,7 +16,7 @@ import { useAppTheme } from '@/ui/theme';
 export interface TextFieldProps extends Omit<TextInputProps, 'style'> {
   /** Visible label above the input; also its accessibility label. */
   label: string;
-  /** Error under the input (red); also announced as the hint. */
+  /** Error under the input (red); also announced as the hint, and when it appears. */
   error?: string;
   /** Muted help text under the input when there is no error. */
   hint?: string;
@@ -41,6 +43,15 @@ export function TextField({
   const red = theme.levels[3];
   const borderColor = error ? red.solid : focused ? theme.accent : theme.line2;
   const help = error ?? hint;
+
+  // The error's accessibilityLiveRegion only reaches TalkBack; VoiceOver needs an
+  // announcement when one appears or changes (iOS only, so TalkBack does not read it twice).
+  const shownError = useRef(error);
+  useEffect(() => {
+    if (error === shownError.current) return;
+    shownError.current = error;
+    if (error && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(error);
+  }, [error]);
 
   return (
     <View style={[{ gap: 6 }, style]}>

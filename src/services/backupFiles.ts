@@ -1,6 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 
 import type { BackupFileV1 } from '@/domain/types';
 
@@ -71,14 +72,34 @@ export async function shareBackupFile(file: BackupFileV1, fileName: string): Pro
   }
 }
 
-/** Deletes the picker's private copy. Only ever touches files inside our cache directory. */
-function removeCacheCopy(uri: string): void {
+/** On iOS `/private/var/...` and `/var/...` are the same place; the picker may report either. */
+function withoutPrivatePrefix(uri: string): string {
+  return uri.replace(/^file:\/\/\/private\/var\//, 'file:///var/');
+}
+
+/**
+ * True only for a copy inside our own sandbox: our cache directory (Android's picker
+ * copy), or on iOS tmp/<bundle-id>-Inbox, where the system puts the picked copy.
+ */
+function isOwnCopy(uri: string): boolean {
+  const target = withoutPrivatePrefix(uri);
+  if (target.startsWith(withoutPrivatePrefix(Paths.cache.uri))) return true;
+  if (Platform.OS !== 'ios') return false;
+  // tmp/ sits next to Documents/ in the app container.
+  const documents = withoutPrivatePrefix(Paths.document.uri);
+  if (!documents.endsWith('/Documents/')) return false;
+  const tmp = `${documents.slice(0, -'Documents/'.length)}tmp/`;
+  return target.startsWith(tmp) && /^[^/]+-Inbox\/./.test(target.slice(tmp.length));
+}
+
+/** Deletes the copy the picker handed us. Never touches the user's original file. */
+function removePickedCopy(uri: string): void {
   try {
-    if (!uri.startsWith(Paths.cache.uri)) return;
+    if (!isOwnCopy(uri)) return;
     const copy = new File(uri);
     if (copy.exists) copy.delete();
   } catch {
-    // Best effort; the OS clears the cache eventually.
+    // Best effort; the OS clears the cache and tmp eventually.
   }
 }
 
@@ -92,7 +113,9 @@ export async function pickBackupFile(): Promise<unknown | null> {
   try {
     result = await DocumentPicker.getDocumentAsync({
       type: BACKUP_PICKER_TYPES,
-      copyToCacheDirectory: true,
+      // iOS already hands over a copy in tmp/<bundle-id>-Inbox; a cache copy would be a second one.
+      // Android needs the cache copy (otherwise it returns a content:// URI).
+      copyToCacheDirectory: Platform.OS !== 'ios',
       multiple: false,
     });
   } catch (error) {
@@ -113,7 +136,7 @@ export async function pickBackupFile(): Promise<unknown | null> {
   } catch (error) {
     throw new BackupReadError('unreadable', error);
   } finally {
-    removeCacheCopy(asset.uri);
+    removePickedCopy(asset.uri);
   }
 
   try {

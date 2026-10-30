@@ -234,11 +234,16 @@ describe('call', () => {
     expect(await screen.findByText('You already talked with Sam today.')).toBeTruthy();
   });
 
-  /** Taps "Call Sam", leaves for the dialer, and comes back (on `returnOn`, if given). */
-  async function callAndReturn(returnOn?: string) {
+  /** Taps "Call Sam" and waits for the dial to finish. */
+  async function tapCall() {
     await fireEvent.press(screen.getByRole('button', { name: 'Call Sam' }));
     await waitFor(() => expect(dialer.callPhone).toHaveBeenCalledWith('555 0100'));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Call Sam' })).toBeEnabled());
+  }
+
+  /** Taps "Call Sam", leaves for the dialer, and comes back (on `returnOn`, if given). */
+  async function callAndReturn(returnOn?: string) {
+    await tapCall();
     await emitAppState('background');
     if (returnOn) mockToday = returnOn;
     await emitAppState('active');
@@ -274,6 +279,94 @@ describe('call', () => {
     expect(alerts.find('Did you talk with Sam?').message).toBeUndefined();
     await alerts.press('Did you talk with Sam?', 'Yes, we talked');
     await waitFor(() => expect(useAppStore.getState().days[today]?.checkedIn).toBe(true));
+  });
+
+  /** Makes the next callPhone wait until the returned function is called. */
+  function holdNextDial() {
+    let finish: (opened: boolean) => void = () => undefined;
+    jest.mocked(dialer.callPhone).mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    return (opened: boolean) => act(async () => finish(opened));
+  }
+
+  it('asks after an iOS call (confirmation, then the in-call screen)', async () => {
+    jest.clearAllMocks();
+    await setup({ partner: SAM });
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/call' });
+
+    await tapCall();
+    await emitAppState('inactive');
+    await emitAppState('background');
+    await emitAppState('active');
+
+    expect(alerts.find('Did you talk with Sam?')).toBeTruthy();
+  });
+
+  it('does not ask when the iOS confirmation is cancelled, then or on a later app switch', async () => {
+    jest.clearAllMocks();
+    await setup({ partner: SAM });
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/call' });
+
+    await tapCall();
+    await emitAppState('inactive');
+    await emitAppState('active');
+    await emitAppState('background');
+    await emitAppState('active');
+
+    expect(alerts.spy).not.toHaveBeenCalled();
+  });
+
+  it('does not ask when the confirmation is cancelled before the dial resolves', async () => {
+    jest.clearAllMocks();
+    await setup({ partner: SAM });
+    const finishDial = holdNextDial();
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/call' });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Call Sam' }));
+    await emitAppState('inactive');
+    await emitAppState('active');
+    await finishDial(true);
+    await emitAppState('background');
+    await emitAppState('active');
+
+    expect(alerts.spy).not.toHaveBeenCalled();
+  });
+
+  it('asks when the app leaves for the call before the dial resolves', async () => {
+    jest.clearAllMocks();
+    await setup({ partner: SAM });
+    const finishDial = holdNextDial();
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/call' });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Call Sam' }));
+    await emitAppState('background');
+    await finishDial(true);
+    await emitAppState('active');
+
+    expect(alerts.find('Did you talk with Sam?')).toBeTruthy();
+  });
+
+  it('does not ask after the dialer fails to open', async () => {
+    jest.clearAllMocks();
+    await setup({ partner: SAM });
+    jest.mocked(dialer.callPhone).mockResolvedValueOnce(false);
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/call' });
+
+    await tapCall();
+    expect(alerts.find("Couldn't start the call")).toBeTruthy();
+    await emitAppState('background');
+    await emitAppState('active');
+
+    expect(() => alerts.find('Did you talk with Sam?')).toThrow();
   });
 
   it('closes the call before opening the partner editor', async () => {

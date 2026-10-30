@@ -22,15 +22,18 @@ export function sanitizePhone(phone: string): string {
 
 /**
  * Opens the phone dialer for `phone`. Resolves false for an empty number or when
- * the OS cannot open the dialer (for example a tablet without telephony).
+ * the OS cannot open the dialer (for example a tablet without telephony, or the
+ * iOS Simulator).
  */
 export async function callPhone(phone: string): Promise<boolean> {
   const number = sanitizePhone(phone);
   if (number.length === 0) return false;
   try {
     // '#' would start a URL fragment, so it is percent-encoded.
-    await Linking.openURL(`tel:${number.replace(/#/g, '%23')}`);
-    return true;
+    const opened: unknown = await Linking.openURL(`tel:${number.replace(/#/g, '%23')}`);
+    // Typed as void, but iOS resolves false (instead of rejecting) when the Simulator
+    // can't open a tel: URL. Android resolves true.
+    return opened !== false;
   } catch {
     return false;
   }

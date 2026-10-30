@@ -1,6 +1,6 @@
-import { describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { DeviceEventEmitter, Platform, ScrollView, Text, TextInput } from 'react-native';
 
 import { LOCKED_RED_LINE } from '@/domain/types';
 import {
@@ -200,6 +200,104 @@ describe('Screen footer', () => {
     expect(footer.children[0]).toHaveProp('keyboardShouldPersistTaps', 'handled');
     await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
     expect(onSave).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Screen keyboard (avoidKeyboard)', () => {
+  // The jest ScrollView mock shares these instance methods on its prototype.
+  const scrollViewMethods = ScrollView.prototype as {
+    getInnerViewRef: jest.Mock<() => unknown>;
+    scrollTo: jest.Mock<(options: { y: number; animated: boolean }) => void>;
+  };
+  const content = { name: 'body content' };
+  type FocusedInput = ReturnType<typeof TextInput.State.currentlyFocusedInput>;
+  /** Fake focused field whose measureLayout reports `top` and `height` in the body content. */
+  function focusField(top: number, height = 48) {
+    const input = {
+      measureLayout: jest.fn((_relativeTo: unknown, onSuccess: (...rect: number[]) => void) =>
+        onSuccess(20, top, 350, height),
+      ),
+    };
+    jest
+      .spyOn(TextInput.State, 'currentlyFocusedInput')
+      .mockReturnValue(input as unknown as NonNullable<FocusedInput>);
+    return input;
+  }
+  const keyboard = { endCoordinates: { screenX: 0, screenY: 500, width: 390, height: 344 } };
+  const showKeyboard = () => act(() => void DeviceEventEmitter.emit('keyboardDidShow', keyboard));
+
+  async function renderForm() {
+    const page = await render(
+      <Screen testID="page" avoidKeyboard footer={<Button title="Continue" onPress={() => {}} />}>
+        <Text>Form</Text>
+      </Screen>,
+    );
+    const body = screen.getByTestId('page').children[0];
+    if (typeof body === 'string') throw new Error('expected the body scroll view');
+    return { page, body };
+  }
+  const layoutBody = (body: Parameters<typeof fireEvent>[0], height: number) =>
+    fireEvent(body, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 390, height } } });
+
+  beforeEach(() => {
+    scrollViewMethods.getInnerViewRef.mockReturnValue(content);
+    scrollViewMethods.scrollTo.mockClear();
+  });
+
+  afterEach(async () => {
+    await act(() => void DeviceEventEmitter.emit('keyboardDidHide', null));
+    scrollViewMethods.getInnerViewRef.mockReset();
+    jest.restoreAllMocks();
+  });
+
+  it('on iOS scrolls the focused field to just above the footer once the keyboard is up', async () => {
+    const { body } = await renderForm();
+    await layoutBody(body, 300);
+    await fireEvent.scroll(body, { nativeEvent: { contentOffset: { x: 0, y: 40 } } });
+    const input = focusField(400);
+    await showKeyboard();
+    expect(input.measureLayout).toHaveBeenCalledWith(content, expect.any(Function));
+    // 400 + 48 + 16 gap - 300 visible.
+    expect(scrollViewMethods.scrollTo).toHaveBeenCalledWith({ y: 164, animated: true });
+  });
+
+  it('scrolls again when the body shrinks with the keyboard up (a footer appears)', async () => {
+    const { body } = await renderForm();
+    await layoutBody(body, 300);
+    focusField(200);
+    await showKeyboard();
+    expect(scrollViewMethods.scrollTo).not.toHaveBeenCalled();
+    await layoutBody(body, 200);
+    expect(scrollViewMethods.scrollTo).toHaveBeenCalledWith({ y: 64, animated: true });
+  });
+
+  it('never scrolls past the top of a field taller than the visible body', async () => {
+    const { body } = await renderForm();
+    await layoutBody(body, 100);
+    focusField(400, 160);
+    await showKeyboard();
+    expect(scrollViewMethods.scrollTo).toHaveBeenCalledWith({ y: 384, animated: true });
+  });
+
+  it('stops listening on unmount', async () => {
+    const { page, body } = await renderForm();
+    await layoutBody(body, 300);
+    const input = focusField(400);
+    await page.unmount();
+    await showKeyboard();
+    expect(input.measureLayout).not.toHaveBeenCalled();
+    expect(scrollViewMethods.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('leaves Android unchanged', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    const { body } = await renderForm();
+    expect(body.props.onLayout).toBeUndefined();
+    expect(body.props.onScroll).toBeUndefined();
+    const input = focusField(400);
+    await showKeyboard();
+    expect(input.measureLayout).not.toHaveBeenCalled();
+    expect(scrollViewMethods.scrollTo).not.toHaveBeenCalled();
   });
 });
 

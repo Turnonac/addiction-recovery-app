@@ -3,8 +3,10 @@
  * "Choose from contacts" (no contacts permission) or type the name and number.
  * Controlled: the parent owns the draft and whether the picked card is shown.
  */
-import { useRef, useState, type Ref } from 'react';
+import { useEffect, useRef, useState, type Ref } from 'react';
 import {
+  AccessibilityInfo,
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -53,6 +55,15 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
       ? 'Enter a number you can call.'
       : undefined;
 
+  const showNotice = (message: string) => {
+    setNotice(message);
+    // The notice's accessibilityLiveRegion covers TalkBack; VoiceOver needs an announcement.
+    // High priority (iOS 17+) so the picker closing and the focus move below can't cut it off.
+    if (Platform.OS === 'ios') {
+      AccessibilityInfo.announceForAccessibilityWithOptions(message, { priority: 'high' });
+    }
+  };
+
   const choose = async () => {
     if (picking) return;
     setPicking(true);
@@ -65,14 +76,14 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
           setNotice(null);
           onShowCardChange(true);
         } else if (picked.name.trim().length === 0) {
-          setNotice('That contact has no name. Type one below.');
+          showNotice('That contact has no name. Type one below.');
           nameRef.current?.focus();
         } else {
-          setNotice('That contact has no phone number. Type it below.');
+          showNotice('That contact has no phone number. Type it below.');
           phoneRef.current?.focus();
         }
       } else if (result.status === 'unavailable') {
-        setNotice("Contacts can't be opened here. Type the name and number instead.");
+        showNotice("Contacts can't be opened here. Type the name and number instead.");
         nameRef.current?.focus();
       }
     } finally {
@@ -183,6 +194,16 @@ function Field({ label, error, ref, onFocus, onBlur, ...inputProps }: FieldProps
   const [focused, setFocused] = useState(false);
   const red = theme.levels[3];
   const borderColor = error ? red.solid : focused ? theme.accent : theme.line2;
+
+  // Same as TextField: the live region only reaches TalkBack, so VoiceOver gets an
+  // announcement when an error appears or changes.
+  const shownError = useRef(error);
+  useEffect(() => {
+    if (error === shownError.current) return;
+    shownError.current = error;
+    if (error && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(error);
+  }, [error]);
+
   return (
     <View style={{ gap: 6 }}>
       <Text

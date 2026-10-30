@@ -7,6 +7,7 @@
  */
 import { useState } from 'react';
 import {
+  AccessibilityInfo,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -29,6 +30,8 @@ import { AddChip, Button, Chip, ChipList, ColorGlyph } from '@/ui/components';
 import { useAppTheme } from '@/ui/theme';
 
 type EditTarget = { kind: 'add'; level: ColorLevel } | { kind: 'edit'; behavior: Behavior };
+
+const SAVE_FAILED = "That didn't save. Please try again.";
 
 export interface ColorBehaviorsCardProps {
   level: ColorLevel;
@@ -154,6 +157,9 @@ function BehaviorSheetBody({ target, onClose }: { target: EditTarget; onClose: (
     } catch {
       setFailed(true);
       setBusy(false);
+      // The message's accessibilityLiveRegion only reaches TalkBack; VoiceOver needs an
+      // announcement (iOS only, so TalkBack does not read it twice).
+      if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(SAVE_FAILED);
     }
   };
 
@@ -233,7 +239,7 @@ function BehaviorSheetBody({ target, onClose }: { target: EditTarget; onClose: (
             accessibilityLiveRegion="polite"
             style={{ color: theme.levels[RED].ink, fontSize: 13, lineHeight: 18 }}
           >
-            That didn&apos;t save. Please try again.
+            {SAVE_FAILED}
           </Text>
         ) : null}
         <Button title="Save" onPress={save} disabled={!canSave} />

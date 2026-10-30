@@ -86,7 +86,7 @@ function CallWithPartner({
   const [showAll, setShowAll] = useState(false);
   const [dialing, setDialing] = useState(false);
 
-  // Set after the dialer opens; when the app comes back we ask whether they talked.
+  // Set when the dialer opens; when the app comes back from the call we ask whether they talked.
   const awaitingReturn = useRef(false);
   const leftApp = useRef(false);
   // The day the call started. A call that runs past midnight counts for that day,
@@ -102,8 +102,16 @@ function CallWithPartner({
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (!awaitingReturn.current) return;
-      if (state === 'background' || state === 'inactive') {
+      // Only 'background' means they left for the call. iOS goes 'inactive' while its
+      // "Call …?" confirmation is up; Android never reports 'inactive'.
+      if (state === 'background') {
         leftApp.current = true;
+        return;
+      }
+      // Active again without leaving: the confirmation was cancelled, so there is nothing to ask.
+      if (state === 'active' && !leftApp.current) {
+        awaitingReturn.current = false;
+        callDay.current = null;
         return;
       }
       if (state === 'active' && leftApp.current) {
@@ -148,14 +156,15 @@ function CallWithPartner({
     setDialing(true);
     try {
       // The day on screen when the call starts (the window the user is about to share).
-      const startedOn = useAppStore.getState().today;
+      callDay.current = useAppStore.getState().today;
+      // Set before opening: iOS may change app state for its confirmation before or after
+      // the open resolves. Cleared again if the dialer didn't open.
+      awaitingReturn.current = true;
+      leftApp.current = false;
       const ok = await callPhone(phone);
-      if (ok) {
-        callDay.current = startedOn;
-        awaitingReturn.current = true;
-        leftApp.current = false;
-        return;
-      }
+      if (ok) return;
+      awaitingReturn.current = false;
+      callDay.current = null;
       if (phone.trim().length === 0) {
         Alert.alert(`No number for ${name}`, `Add ${name}'s phone number to call from here.`, [
           { text: 'Not now', style: 'cancel' },
