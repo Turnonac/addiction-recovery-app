@@ -235,21 +235,18 @@ export const useAppStore = create<AppState>()((set, get) => {
         // even if the date has since moved back (an earlier time zone) to that day or before.
         const previous = latestRed(Object.values(get().days));
         if (previous === date) return;
-        if (previous !== null) {
-          const cleared: DayLog = { ...get().days[previous], color: null };
-          if (isEmptyDay(cleared)) {
-            await repo.deleteDay(previous);
-            set((s) => ({ days: withoutDay(s.days, previous) }));
-          } else {
-            await repo.upsertDay(cleared);
-            set((s) => ({ days: { ...s.days, [previous]: cleared } }));
+        const changes: DayLog[] = [];
+        if (previous !== null) changes.push({ ...get().days[previous], color: null });
+        if (date !== null) changes.push({ date, color: RED, checkedIn: get().days[date]?.checkedIn ?? false });
+        // One transaction: if it fails, neither the old Red is cleared nor the new one saved.
+        await repo.upsertDays(changes);
+        set((s) => {
+          let days = s.days;
+          for (const day of changes) {
+            days = isEmptyDay(day) ? withoutDay(days, day.date) : { ...days, [day.date]: day };
           }
-        }
-        if (date !== null) {
-          const day: DayLog = { date, color: RED, checkedIn: get().days[date]?.checkedIn ?? false };
-          await repo.upsertDay(day);
-          set((s) => ({ days: { ...s.days, [date]: day } }));
-        }
+          return { days };
+        });
       }),
 
     completeOnboarding: () =>

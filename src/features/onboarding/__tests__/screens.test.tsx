@@ -245,7 +245,7 @@ describe('check-in', () => {
     await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
     expect(
       screen.getByText(
-        'Your counter now counts from that day: 5 days. Your best streak becomes 5 days. Your history stays.',
+        'Your counter now counts from that day: 5 days. Your best streak becomes 5 days. Your other days stay.',
       ),
     ).toBeTruthy();
   });
@@ -257,7 +257,7 @@ describe('check-in', () => {
     await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
     expect(
       screen.getByText(
-        'Your counter now counts from that day: 10 days. Your best streak becomes 10 days. Your history stays.',
+        'Your counter now counts from that day: 10 days. Your best streak becomes 10 days. Your other days stay.',
       ),
     ).toBeTruthy();
   });
@@ -272,7 +272,7 @@ describe('check-in', () => {
     await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
     // Installed 3 days ago: the Red leaves 2 days, and the 0-day run before it is shorter.
     expect(
-      screen.getByText('Your counter goes back to 2 days. Your best streak becomes 2 days. Your history stays.'),
+      screen.getByText('Your counter goes back to 2 days. Your best streak becomes 2 days. Your other days stay.'),
     ).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
 

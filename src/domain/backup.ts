@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { isValidLocalDate } from './dates';
+import { isValidLocalDate, toLocalDate } from './dates';
 import { RED, type AppSnapshot, type BackupFileV2, type Behavior, type DayLog, type LocalDate, type Settings } from './types';
 
 /** Format id written by every new export. */
@@ -166,7 +166,9 @@ function daysFromV1(days: DayLog[], counterStartDate: LocalDate | null, installD
  * A version 1 file's "My last Red day was…" start becomes that day's Red (see daysFromV1).
  * The file is itself a backup made at `exportedAt` (its settings were saved just
  * before that export was recorded), so the restored `lastExportAt` is the later
- * of the two.
+ * of the two. Backups are only made after setup, so a restore is always set up:
+ * onboardingDone is true, and a missing installDate is the export's local day
+ * (going back through onboarding could rewrite the restored Red days).
  */
 export function parseBackup(input: unknown): ParseBackupResult {
   if (!isRecord(input) || (input.format !== BACKUP_FORMAT && input.format !== LEGACY_BACKUP_FORMAT)) {
@@ -194,6 +196,8 @@ export function parseBackup(input: unknown): ParseBackupResult {
   const days = copyDays(fileDays).filter((d) => d.color !== null || d.checkedIn);
   const settings = copySettings(file.settings);
   settings.lastExportAt = laterInstant(file.exportedAt, settings.lastExportAt);
+  settings.onboardingDone = true;
+  settings.installDate ??= toLocalDate(new Date(file.exportedAt));
   const snapshot: AppSnapshot = {
     days,
     behaviors: copyBehaviors(file.behaviors),

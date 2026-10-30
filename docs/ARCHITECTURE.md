@@ -120,6 +120,9 @@ src/
                          number shows on a card to confirm or Change; saved exactly as entered
       pickers.tsx        date / time picker (Android dialog, iOS sheet), time and date formatting
       __tests__/         BehaviorEditor, CounterStep, PartnerEditor, screens
+    colorLog/
+      colorLog.ts        color screen helpers: daysAfterColor, redNoteText (the Red note)
+      __tests__/         colorLog
   ui/
     theme.ts             light / dark tokens, useAppTheme(), LEVEL_GLYPHS, spacing, MIN_TOUCH
     icons.tsx            SVG icons + TabIcon
@@ -227,6 +230,8 @@ parseBackup(input: unknown): { ok: true; snapshot: AppSnapshot; summary: { dayCo
   // Drops day rows with no color and no check-in. Restored lastExportAt = later of the
   // file's exportedAt and its settings.lastExportAt. Version 1: a counterStartDate before
   // installDate ("My last Red day was…") becomes that day's Red unless it has a color.
+  // A restore is always set up: onboardingDone = true, and a missing installDate is the
+  // export's local day (backups are only made after setup; onboarding could rewrite Reds).
 backupFileName(today: LocalDate): string      // 'daily-backup-2026-10-29.json' (discreet)
 ```
 `BackupFileV2.format` is always `'light2life-backup'`.
@@ -236,6 +241,7 @@ backupFileName(today: LocalDate): string      // 'daily-backup-2026-10-29.json' 
 interface Repository {
   loadAll(): Promise<AppSnapshot>;
   upsertDay(day: DayLog): Promise<void>;              // an empty day is deleted instead
+  upsertDays(days: DayLog[]): Promise<void>;          // the same for several days, in one transaction
   deleteDay(date: LocalDate): Promise<void>;
   addBehavior(color: ColorLevel, text: string): Promise<Behavior>;   // appended to that color's list
   updateBehavior(id: number, text: string): Promise<void>;
@@ -291,6 +297,7 @@ interface AppState {
   setReminder(reminder: Reminder): Promise<void>;   // persists only; screens call services/notifications
   setLastRedDay(date: LocalDate | null): Promise<void>;  // onboarding only: `date` (< today) becomes Red,
                                                     // replacing the one saved before; null removes it
+                                                    // (one upsertDays write: all or nothing)
   completeOnboarding(): Promise<void>;              // onboardingDone, installDate = today
   markExported(iso: string): Promise<void>;         // rejects anything but an ISO-8601 instant
   replaceAll(snapshot: AppSnapshot): Promise<void>; // writes, then reloads from the repository
@@ -416,7 +423,9 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   instead of opening a second one. 4 color cards with the user's behaviors, Red shows grace
   note (the counter and best streak it would really leave, from `streaksIfRed`: today "Your
   counter restarts at 0.", a past day "stays at" / "goes back to" / "now counts from that day";
-  then "Your best streak becomes N days." or "Your history and best streak stay."; then
+  then "Your best streak becomes N days. Your history stays." or "Your history and best streak
+  stay." (a past day: "Your other days…", since that day's color changes); text from
+  `features/colorLog/colorLog.ts` `redNoteText`; then
   "God's grace doesn't reset."), save → outcome handling (confirm-better dialog). becameRed on a day the next
   call covers → `/call` if a partner exists ("Save, then call {name}"); anything else closes.
 - `call.tsx` — modal (asks to add a partner if there is none): since-last-call list (long gaps

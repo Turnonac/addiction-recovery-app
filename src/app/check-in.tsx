@@ -3,18 +3,16 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
 import { inCallWindow } from '@/domain/call';
-import { decideSetColor } from '@/domain/checkin';
 import { formatLong, isValidLocalDate } from '@/domain/dates';
-import { bestStreak, currentStreak, streaksIfRed } from '@/domain/streak';
 import {
   COLOR_LEVELS,
   COLOR_NAMES,
   RED,
   type ColorLevel,
-  type DayLog,
   type LocalDate,
   type SetColorOutcome,
 } from '@/domain/types';
+import { daysAfterColor, redNoteText } from '@/features/colorLog/colorLog';
 import { useAppStore } from '@/state/store';
 import {
   BackButton,
@@ -144,7 +142,7 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
     selected === RED &&
     stored !== RED &&
     partner !== null &&
-    inCallWindow(daysAfter(days, date, RED, today), settings, today, date);
+    inCallWindow(daysAfterColor(days, date, RED, today), settings, today, date);
   const saveLabel =
     selected === null ? 'Pick a color to save' : willCall ? `Save, then call ${partnerName}` : 'Save color';
 
@@ -201,49 +199,6 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
       </ColorOptionGroup>
     </Screen>
   );
-}
-
-/** The days as they would be after saving `color` for `date` without a confirmation. */
-function daysAfter(
-  days: Record<LocalDate, DayLog>,
-  date: LocalDate,
-  color: ColorLevel,
-  today: LocalDate,
-): DayLog[] {
-  const outcome = decideSetColor(days[date], date, color, {}, today);
-  return Object.values(outcome.kind === 'saved' ? { ...days, [date]: outcome.day } : days);
-}
-
-function daysText(n: number): string {
-  return `${n} ${n === 1 ? 'day' : 'days'}`;
-}
-
-/**
- * The counter and best streak a Red on `date` would really leave. Today: the counter
- * restarts at 0, and best loses today if the current run was the best one. A past day:
- * a later Red keeps the counter; a split run can lower best; a Red before installDate,
- * with none on or before it yet, moves the counter's start back, so both can go up.
- */
-function redNoteText(
-  days: DayLog[],
-  installDate: LocalDate | null,
-  date: LocalDate,
-  today: LocalDate,
-): string {
-  const after = streaksIfRed(days, installDate, date, today);
-  // No counter yet shows as Day 0.
-  const now = currentStreak(days, installDate, today) ?? 0;
-  const counter =
-    date === today
-      ? 'Your counter restarts at 0.'
-      : after.current === now
-        ? `Your counter stays at ${daysText(after.current)}.`
-        : after.current > now
-          ? `Your counter now counts from that day: ${daysText(after.current)}.`
-          : `Your counter goes back to ${daysText(after.current)}.`;
-  return after.best === bestStreak(days, installDate, today)
-    ? `${counter} Your history and best streak stay.`
-    : `${counter} Your best streak becomes ${daysText(after.best)}. Your history stays.`;
 }
 
 const GRACE_NOTE_MAX_SCALE = 2;

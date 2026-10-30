@@ -18,6 +18,8 @@ export interface Repository {
   loadAll(): Promise<AppSnapshot>;
   /** Insert or update a day. A day with color null and checkedIn false is deleted instead. */
   upsertDay(day: DayLog): Promise<void>;
+  /** upsertDay for several days in one transaction: all are written or none. */
+  upsertDays(days: DayLog[]): Promise<void>;
   deleteDay(date: LocalDate): Promise<void>;
   /** Appends `text` (stored as given) at the end of `color`'s list. */
   addBehavior(color: ColorLevel, text: string): Promise<Behavior>;
@@ -192,6 +194,15 @@ export function createSqliteRepository(db: SQLiteDatabase): Repository {
         return;
       }
       await db.runAsync(UPSERT_DAY_SQL, dayParams(day));
+    },
+
+    async upsertDays(days) {
+      await inExclusiveTransaction(db, async (txn) => {
+        for (const day of days) {
+          if (isEmptyDay(day)) await txn.runAsync('DELETE FROM day_log WHERE date = ?', [day.date]);
+          else await txn.runAsync(UPSERT_DAY_SQL, dayParams(day));
+        }
+      });
     },
 
     async deleteDay(date) {

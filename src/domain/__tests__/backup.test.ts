@@ -1,6 +1,7 @@
 import { describe, expect, it, test } from '@jest/globals';
 
 import { backupFileName, BackupSchemaV1, BackupSchemaV2, buildBackup, parseBackup } from '@/domain/backup';
+import { toLocalDate } from '@/domain/dates';
 import type { AppSnapshot, BackupFileV2 } from '@/domain/types';
 
 const EXPORTED_AT = '2026-10-29T20:15:00.000Z';
@@ -28,10 +29,18 @@ const snapshot: AppSnapshot = {
 
 const sortedDays = [...snapshot.days].sort((a, b) => a.date.localeCompare(b.date));
 
-/** What parsing a file exported at EXPORTED_AT restores: that export is the last backup. */
+/**
+ * What parsing a file exported at EXPORTED_AT restores: that export is the last backup,
+ * and the app is set up (installDate falls back to the export's local day).
+ */
 const restored = (input: AppSnapshot): AppSnapshot => ({
   ...input,
-  settings: { ...input.settings, lastExportAt: EXPORTED_AT },
+  settings: {
+    ...input.settings,
+    lastExportAt: EXPORTED_AT,
+    onboardingDone: true,
+    installDate: input.settings.installDate ?? toLocalDate(new Date(EXPORTED_AT)),
+  },
 });
 
 /** A JSON round trip, like writing the file and reading it back. */
@@ -115,6 +124,17 @@ describe('parseBackup: round trip', () => {
       expect(result.summary).toEqual(summary);
       expect(result.snapshot).toEqual(restored(input));
     }
+  });
+
+  it('restores a file saying setup was not finished as set up (onboarding could rewrite its Reds)', () => {
+    const file = validFile();
+    file.settings.onboardingDone = false;
+    file.settings.installDate = null;
+    const result = parseBackup(file);
+    expect(result.ok && result.snapshot.settings).toMatchObject({
+      onboardingDone: true,
+      installDate: toLocalDate(new Date(EXPORTED_AT)),
+    });
   });
 
   it('restores the export time even when the file recorded no earlier export', () => {

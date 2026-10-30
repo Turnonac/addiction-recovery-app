@@ -56,6 +56,13 @@ export function createMemoryRepository(initial?: AppSnapshot): Repository {
       else days.set(day.date, { date: day.date, color: day.color, checkedIn: day.checkedIn });
     },
 
+    async upsertDays(list) {
+      for (const day of list) {
+        if (isEmptyDay(day)) days.delete(day.date);
+        else days.set(day.date, { date: day.date, color: day.color, checkedIn: day.checkedIn });
+      }
+    },
+
     async deleteDay(date) {
       days.delete(date);
     },

@@ -429,6 +429,15 @@ describe('setLastRedDay', () => {
     expect(store().days).toEqual({ '2026-10-20': day('2026-10-20', RED) });
   });
 
+  it('replaces the saved day in one write: a failure changes nothing', async () => {
+    const repo = createMemoryRepository(snapshot({ days: [day('2026-09-01', RED)] }));
+    const failing: Repository = { ...repo, upsertDays: () => Promise.reject(new Error('disk full')) };
+    await store().init(failing);
+    await expect(store().setLastRedDay('2026-09-15')).rejects.toThrow('disk full');
+    expect(store().days).toEqual({ '2026-09-01': day('2026-09-01', RED) });
+    expect((await repo.loadAll()).days).toEqual([day('2026-09-01', RED)]);
+  });
+
   it('rejects today, future and malformed dates, and runs only during onboarding', async () => {
     await initWith();
     await expect(store().setLastRedDay(TODAY)).rejects.toThrow(RangeError);
