@@ -2,9 +2,9 @@
 
 App ID (iOS bundle identifier and Android package): `com.turnonac.light2life`.
 Do not change it again once the app is on the App Store or Google Play: both stores tie the
-listing to it for good. The Expo project slug (`@turnonac/walkinlight`) keeps the original
-WalkInLight name because the EAS project is linked to it; users never see it.
-(`com.turnonac.walkinlight` was used for TestFlight builds 2–3 only and is retired.)
+listing to it for good. Expo project: `@turnonac/light2life`.
+(The first TestFlight builds used `com.turnonac.walkinlight` and the Expo project
+`@turnonac/walkinlight`; both are retired.)
 Build profiles live in `eas.json`: `development` (dev client), `development-simulator`,
 `preview` (internal; Android APK), `production` (store builds, auto-incremented).
 

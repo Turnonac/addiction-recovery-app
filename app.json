@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Light2Life",
-    "slug": "walkinlight",
+    "slug": "light2life",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -77,7 +77,7 @@
     "owner": "turnonac",
     "extra": {
       "eas": {
-        "projectId": "2dac7fe4-1863-4762-985b-f6e7644a5e4a"
+        "projectId": "cc8d2245-b922-433e-a1eb-13c58b79aaed"
       }
     }
   }
