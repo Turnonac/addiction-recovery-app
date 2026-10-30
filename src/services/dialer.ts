@@ -8,8 +8,12 @@ function normalizeWidth(text: string): string {
   }
 }
 
-/** Where an extension starts: a pause (','), a wait (';'), or 'ext' / 'x' before digits. */
-const EXTENSION = /[,;]|(?:ext(?:ension)?|x)[.:]?\s*\d/i;
+/**
+ * Where an extension starts: a pause (','), a wait (';'), or 'ext' / 'x' before digits.
+ * 'ext' / 'x' must not follow a letter, so a label such as "Fax" or "Text" is not read
+ * as an extension marker.
+ */
+const EXTENSION = /[,;]|(?<![a-z])(?:ext(?:ension)?|x)[.:]?\s*\d/i;
 
 /**
  * Keeps a leading '+', digits, '*' and '#'. Everything else (spaces, dashes,

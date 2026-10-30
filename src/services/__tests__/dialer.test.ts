@@ -38,6 +38,12 @@ describe('sanitizePhone', () => {
     expect(sanitizePhone('+1 555 123 4567 x 12')).toBe('+15551234567');
   });
 
+  it('does not read an x or ext at the end of a word as an extension', () => {
+    expect(sanitizePhone('Fax 555-1234')).toBe('5551234');
+    expect(sanitizePhone('Text 555-1234')).toBe('5551234');
+    expect(sanitizePhone('Fax 555-1234 x12')).toBe('5551234');
+  });
+
   it('drops a pause or wait and what follows (how contacts store an extension)', () => {
     expect(sanitizePhone('555-1234,12')).toBe('5551234');
     expect(sanitizePhone('555-1234;12')).toBe('5551234');
