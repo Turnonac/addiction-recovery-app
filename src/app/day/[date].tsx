@@ -4,6 +4,7 @@ import { Alert, Pressable, Text, View } from 'react-native';
 
 import { diffDays, formatLong, isValidLocalDate } from '@/domain/dates';
 import { COLOR_MEANINGS, COLOR_NAMES, type LocalDate } from '@/domain/types';
+import { clearDayText } from '@/features/colorLog/colorLog';
 import { useAppStore } from '@/state/store';
 import {
   Button,
@@ -35,7 +36,9 @@ export default function DayScreen() {
   const today = useAppStore((s) => s.today);
   const days = useAppStore((s) => s.days);
   const partner = useAppStore((s) => s.settings.partner);
+  const installDate = useAppStore((s) => s.settings.installDate);
   const setCheckedIn = useAppStore((s) => s.setCheckedIn);
+  const clearDay = useAppStore((s) => s.clearDay);
   const [saving, setSaving] = useState(false);
 
   const close = () => {
@@ -101,6 +104,30 @@ export default function DayScreen() {
     }
   };
 
+  const onClear = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await clearDay(date);
+    } catch (error) {
+      console.warn('Light2Life: could not clear the day', error);
+      Alert.alert('Couldn’t clear the day', 'Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmClear = () => {
+    Alert.alert(
+      'Clear this day?',
+      clearDayText(Object.values(days), installDate, date, today, partnerName),
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear day', style: 'destructive', onPress: () => void onClear() },
+      ],
+    );
+  };
+
   return (
     <Screen edges={MODAL_EDGES}>
       {closeButton}
@@ -154,6 +181,17 @@ export default function DayScreen() {
           }}
         />
       </View>
+
+      {day !== undefined ? (
+        <Button
+          title="Clear this day"
+          variant="danger"
+          accessibilityLabel={`Clear ${longDate}`}
+          accessibilityHint="Removes its color and check-in"
+          disabled={saving}
+          onPress={confirmClear}
+        />
+      ) : null}
     </Screen>
   );
 }
