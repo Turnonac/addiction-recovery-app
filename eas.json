@@ -1,0 +1,45 @@
+{
+  "cli": {
+    "version": ">= 27.0.0",
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "screenshots": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_SCREENSHOT_MODE": "1"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6828705155"
+      },
+      "android": {
+        "track": "internal"
+      }
+    }
+  }
+}
