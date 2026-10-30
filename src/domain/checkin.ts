@@ -6,8 +6,8 @@ import { RED, type ColorLevel, type DayLog, type LocalDate, type SetColorOutcome
  * - future days are locked;
  * - a worse color replaces a better one;
  * - a better color needs confirmation (`opts.confirmBetter`) before it is saved;
- * - a worse color on a checked-in day whose previous color was non-null clears
- *   the check-in (the user is asked to call again); previous null keeps it.
+ * - a check-in (the day's partner call) is never cleared: one call per day,
+ *   and that call happened.
  */
 export function decideSetColor(
   existing: DayLog | undefined,
@@ -25,7 +25,6 @@ export function decideSetColor(
     return {
       kind: 'saved',
       day: { date, color: requested, checkedIn },
-      clearedCheckIn: false,
       becameRed: requested === RED,
     };
   }
@@ -33,8 +32,7 @@ export function decideSetColor(
   if (requested > previous) {
     return {
       kind: 'saved',
-      day: { date, color: requested, checkedIn: false },
-      clearedCheckIn: checkedIn,
+      day: { date, color: requested, checkedIn },
       becameRed: requested === RED,
     };
   }
@@ -47,7 +45,6 @@ export function decideSetColor(
   return {
     kind: 'saved',
     day: { date, color: requested, checkedIn },
-    clearedCheckIn: false,
     becameRed: false,
   };
 }

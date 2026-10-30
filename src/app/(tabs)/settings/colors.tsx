@@ -24,7 +24,7 @@ export default function ColorsScreen() {
       <BackButton label="Settings" onPress={goBack} />
       <ScreenHeader
         title="My colors"
-        subtitle={`Write these yourself, or with ${who}. They show when you check in. Tap one to edit it.`}
+        subtitle={`Write these yourself, or with ${who}. They show when you log your color. Tap one to edit it.`}
       />
       <BehaviorEditor levels={COLOR_LEVELS} />
       <Text style={{ marginHorizontal: 4, color: theme.muted, fontSize: 13, lineHeight: 18 }}>

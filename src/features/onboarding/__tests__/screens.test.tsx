@@ -1,5 +1,5 @@
 /**
- * Smoke tests for the Settings, check-in, call and onboarding routes, rendered
+ * Smoke tests for the Settings, color log (check-in route), call and onboarding routes, rendered
  * through expo-router's testing library with the in-memory repository.
  * Native services are mocked; the store and domain rules are real.
  */
@@ -131,7 +131,6 @@ async function setup(settings: Partial<Settings> = {}, days: DayLog[] = []) {
         ...DEFAULT_SETTINGS,
         onboardingDone: true,
         installDate: addDays(today, -3),
-        counterStartDate: addDays(today, -3),
         ...settings,
       },
     }),
@@ -152,7 +151,7 @@ describe('check-in', () => {
     expect(screen.getByRole('button', { name: 'Pick a color to save' })).toBeDisabled();
 
     await fireEvent.press(screen.getByRole('radio', { name: /^Blue/ }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
 
     await waitFor(() => expect(useAppStore.getState().days[today]?.color).toBe(1));
   });
@@ -163,7 +162,10 @@ describe('check-in', () => {
 
     await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
 
-    expect(screen.getByText('Your counter restarts at 0. Your history and best streak stay.')).toBeTruthy();
+    // Installed 3 days ago: today no longer counts as clean, so best drops from 3 to 2.
+    expect(
+      screen.getByText('Your counter restarts at 0. Your best streak becomes 2 days. Your history stays.'),
+    ).toBeTruthy();
     expect(screen.getByText("God's grace doesn't reset.")).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Save, then call Sam' })).toBeTruthy();
   });
@@ -194,12 +196,12 @@ describe('check-in', () => {
     expect(useAppStore.getState().days['2026-10-30']).toBeUndefined();
   });
 
-  it('starts over when reused for another day (reminder tap over an open check-in)', async () => {
+  it('starts over when reused for another day (reminder tap over an open color log)', async () => {
     const today = await setup({}, [{ date: addDays(todayLocal(), -1), color: 0, checkedIn: false }]);
     const view = await renderRouter(routes, { initialUrl: `/check-in?date=${addDays(today, -1)}` });
     // Yesterday's stored Green is preselected.
     expect(screen.getByRole('radio', { name: /^Green/ })).toBeChecked();
-    expect(screen.getByRole('button', { name: 'Save check-in' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save color' })).toBeEnabled();
 
     await act(async () => router.navigate({ pathname: '/check-in', params: { date: today } }));
 
@@ -207,6 +209,75 @@ describe('check-in', () => {
     expect(view.getRouterState()?.routes[0]?.state?.routes).toHaveLength(1); // same screen, new params
     expect(screen.getByRole('radio', { name: /^Green/ })).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Pick a color to save' })).toBeDisabled();
+  });
+
+  it('keeps a past call when that day gets worse, without asking for another call', async () => {
+    const alerts = spyOnAlerts();
+    const yesterday = addDays(todayLocal(), -1);
+    await setup({ partner: SAM }, [{ date: yesterday, color: 0, checkedIn: true }]);
+    const view = await renderRouter(routes, { initialUrl: `/check-in?date=${yesterday}` });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Yellow/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
+
+    await waitFor(() => expect(view.getPathname()).toBe('/'));
+    expect(useAppStore.getState().days[yesterday]).toEqual({ date: yesterday, color: 2, checkedIn: true });
+    expect(alerts.spy).not.toHaveBeenCalled();
+  });
+
+  it('never offers a second call today: today stays checked in', async () => {
+    const alerts = spyOnAlerts();
+    const today = await setup({ partner: SAM }, [{ date: todayLocal(), color: 0, checkedIn: true }]);
+    const view = await renderRouter(routes, { initialUrl: '/check-in' });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
+
+    await waitFor(() => expect(view.getPathname()).toBe('/'));
+    expect(useAppStore.getState().days[today]).toEqual({ date: today, color: 3, checkedIn: true });
+    expect(alerts.spy).not.toHaveBeenCalled();
+  });
+
+  it('says the counter counts from a past Red when there is no counter yet', async () => {
+    const today = await setup({ partner: SAM, installDate: null });
+    await renderRouter(routes, { initialUrl: `/check-in?date=${addDays(today, -5)}` });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
+    expect(
+      screen.getByText(
+        'Your counter now counts from that day: 5 days. Your best streak becomes 5 days. Your other days stay.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('says so when a Red before install moves the counter start back', async () => {
+    const today = await setup({ partner: SAM }); // installed 3 days ago, no Reds
+    await renderRouter(routes, { initialUrl: `/check-in?date=${addDays(today, -10)}` });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
+    expect(
+      screen.getByText(
+        'Your counter now counts from that day: 10 days. Your best streak becomes 10 days. Your other days stay.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('shows what a past Red does and saves it without a call the window would not cover', async () => {
+    const today = await setup({ partner: SAM }, [
+      { date: addDays(todayLocal(), -1), color: 0, checkedIn: true },
+    ]);
+    const twoDaysAgo = addDays(today, -2);
+    const view = await renderRouter(routes, { initialUrl: `/check-in?date=${twoDaysAgo}` });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
+    // Installed 3 days ago: the Red leaves 2 days, and the 0-day run before it is shorter.
+    expect(
+      screen.getByText('Your counter goes back to 2 days. Your best streak becomes 2 days. Your other days stay.'),
+    ).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
+
+    await waitFor(() => expect(view.getPathname()).toBe('/'));
+    expect(useAppStore.getState().days[twoDaysAgo]?.color).toBe(3);
   });
 });
 
@@ -396,7 +467,7 @@ describe('settings', () => {
     expect(screen.getByText('Write what each color looks like for you')).toBeTruthy();
     expect(screen.getByText('Export backup file')).toBeTruthy();
 
-    await fireEvent.press(screen.getByRole('switch', { name: 'Remind me to check in' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Remind me to log my color' }));
     await waitFor(() => expect(useAppStore.getState().settings.reminder.enabled).toBe(true));
     expect(notifications.scheduleDailyReminder).toHaveBeenCalledWith(21, 0);
   });
@@ -467,7 +538,6 @@ describe('settings', () => {
           ...DEFAULT_SETTINGS,
           partner: SAM,
           reminder: { enabled: true, hour: 20, minute: 30 },
-          counterStartDate: addDays(today, -40),
           installDate: addDays(today, -40),
           onboardingDone: true,
         },
@@ -505,7 +575,7 @@ describe('settings', () => {
     await waitFor(() => expect(useAppStore.getState().settings.reminder).toEqual({ enabled: false, hour: 20, minute: 30 }));
     expect(notifications.reconcileReminder).toHaveBeenLastCalledWith({ enabled: false, hour: 20, minute: 30 });
     expect(alerts.find('Backup restored').message).toContain('so the daily reminder is off');
-    expect(screen.getByRole('switch', { name: 'Remind me to check in' })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Remind me to log my color' })).not.toBeChecked();
   });
 
   it('explains a reminder that is on but has never been allowed', async () => {
@@ -594,7 +664,7 @@ describe('tabs', () => {
 
 describe('onboarding', () => {
   it('walks through every step, saving as it goes', async () => {
-    const today = await setup({ onboardingDone: false, installDate: null, counterStartDate: null });
+    const today = await setup({ onboardingDone: false, installDate: null });
     const view = await renderRouter(routes, { initialUrl: '/onboarding' });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
@@ -607,7 +677,7 @@ describe('onboarding', () => {
     expect(await screen.findByText('Step 4 of 6 · The most important step')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await fireEvent.press(screen.getByRole('button', { name: 'Skip for now · Today will remind you' }));
-    expect(useAppStore.getState().settings.counterStartDate).toBe(today);
+    expect(useAppStore.getState().days).toEqual({}); // "Start counting today" logs no Red day
 
     expect(await screen.findByText('What does Green look like for you?')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
@@ -627,7 +697,7 @@ describe('onboarding', () => {
 
   it('cancels the scheduled reminder when the user goes back and opts out', async () => {
     jest.clearAllMocks();
-    await setup({ onboardingDone: false, installDate: null, counterStartDate: null });
+    await setup({ onboardingDone: false, installDate: null });
     await renderRouter(routes, { initialUrl: '/onboarding' });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));

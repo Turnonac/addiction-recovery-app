@@ -28,8 +28,8 @@ jest.mock(
 describe('Button', () => {
   it('calls onPress and exposes a button role', async () => {
     const onPress = jest.fn();
-    await render(<Button title="Check in" onPress={onPress} />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Check in' }));
+    await render(<Button title="Log today’s color" onPress={onPress} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Log today’s color' }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
@@ -84,9 +84,9 @@ describe('ToggleRow', () => {
   it('is a switch that reports the next value', async () => {
     const onValueChange = jest.fn();
     await render(
-      <ToggleRow label="Remind me to check in" value={false} onValueChange={onValueChange} />,
+      <ToggleRow label="Remind me to log my color" value={false} onValueChange={onValueChange} />,
     );
-    const toggle = screen.getByRole('switch', { name: 'Remind me to check in' });
+    const toggle = screen.getByRole('switch', { name: 'Remind me to log my color' });
     expect(toggle).not.toBeChecked();
     await fireEvent.press(toggle);
     expect(onValueChange).toHaveBeenCalledWith(true);
@@ -190,7 +190,7 @@ describe('Screen footer', () => {
   it('is capped and scrolls, so large text cannot push its last button off-screen', async () => {
     const onSave = jest.fn();
     await render(
-      <Screen testID="page" footer={<Button title="Save check-in" onPress={onSave} />}>
+      <Screen testID="page" footer={<Button title="Save color" onPress={onSave} />}>
         <Text>Body</Text>
       </Screen>,
     );
@@ -198,7 +198,7 @@ describe('Screen footer', () => {
     expect(footer).toHaveStyle({ maxHeight: '55%' });
     // The footer's content sits in its own scroll view.
     expect(footer.children[0]).toHaveProp('keyboardShouldPersistTaps', 'handled');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save color' }));
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 });

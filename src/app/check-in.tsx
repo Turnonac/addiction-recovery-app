@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
+import { inCallWindow } from '@/domain/call';
 import { formatLong, isValidLocalDate } from '@/domain/dates';
 import {
   COLOR_LEVELS,
@@ -11,6 +12,7 @@ import {
   type LocalDate,
   type SetColorOutcome,
 } from '@/domain/types';
+import { daysAfterColor, redNoteText } from '@/features/colorLog/colorLog';
 import { useAppStore } from '@/state/store';
 import {
   BackButton,
@@ -24,13 +26,13 @@ import {
 } from '@/ui/components';
 import { useAppTheme } from '@/ui/theme';
 
-/** Check-in modal: `/check-in?date=YYYY-MM-DD` (default today). Future dates are locked. */
+/** Color log modal: `/check-in?date=YYYY-MM-DD` (default today). Future dates are locked. */
 export default function CheckInScreen() {
   const router = useRouter();
   const theme = useAppTheme();
   const params = useLocalSearchParams<{ date?: string | string[]; from?: string | string[] }>();
   const today = useAppStore((s) => s.today);
-  // "Today" as of opening: an open check-in keeps its day when midnight passes.
+  // "Today" as of opening: an open color log keeps its day when midnight passes.
   const [openedOn] = useState(() => useAppStore.getState().today);
   const raw = Array.isArray(params.date) ? params.date[0] : params.date;
   const date = raw && raw.length > 0 ? raw : openedOn;
@@ -60,9 +62,11 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
   const today = useAppStore((s) => s.today);
   const isToday = date === today;
 
-  const stored = useAppStore((s) => s.days[date]?.color ?? null);
+  const days = useAppStore((s) => s.days);
+  const stored = days[date]?.color ?? null;
   const behaviors = useAppStore((s) => s.behaviors);
-  const partner = useAppStore((s) => s.settings.partner);
+  const settings = useAppStore((s) => s.settings);
+  const partner = settings.partner;
   const setColor = useAppStore((s) => s.setColor);
 
   const [selected, setSelected] = useState<ColorLevel | null>(stored);
@@ -105,25 +109,19 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
         );
         return;
       }
-      case 'saved':
-        if (outcome.becameRed) {
-          if (partner !== null) goToCall();
-          else close();
-          return;
-        }
-        if (outcome.clearedCheckIn) {
-          setSaving(false);
-          Alert.alert(
-            `You'd already talked with ${partnerName} ${dayWord}. Call again to share this?`,
-            undefined,
-            [
-              { text: 'Later', style: 'cancel', onPress: close },
-              { text: 'Call now', onPress: goToCall },
-            ],
-          );
+      case 'saved': {
+        // A new Red goes straight to the call when that call covers the day (one call a day).
+        const state = useAppStore.getState();
+        if (
+          outcome.becameRed &&
+          partner !== null &&
+          inCallWindow(Object.values(state.days), state.settings, state.today, date)
+        ) {
+          goToCall();
           return;
         }
         close();
+      }
     }
   }
 
@@ -139,13 +137,18 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
     }
   }
 
-  const willCall = selected === RED && stored !== RED && partner !== null;
+  // Straight to the call only when that call will cover this day (see handleOutcome).
+  const willCall =
+    selected === RED &&
+    stored !== RED &&
+    partner !== null &&
+    inCallWindow(daysAfterColor(days, date, RED, today), settings, today, date);
   const saveLabel =
-    selected === null ? 'Pick a color to save' : willCall ? `Save, then call ${partnerName}` : 'Save check-in';
+    selected === null ? 'Pick a color to save' : willCall ? `Save, then call ${partnerName}` : 'Save color';
 
   const footer = (
     <>
-      {selected === RED ? <GraceNote /> : null}
+      {selected === RED ? <GraceNote date={date} /> : null}
       <Button
         title={saveLabel}
         size="lg"
@@ -200,9 +203,13 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
 
 const GRACE_NOTE_MAX_SCALE = 2;
 
-function GraceNote() {
+function GraceNote({ date }: { date: LocalDate }) {
   const theme = useAppTheme();
   const red = theme.levels[RED];
+  const today = useAppStore((s) => s.today);
+  const days = useAppStore((s) => s.days);
+  const installDate = useAppStore((s) => s.settings.installDate);
+  const text = redNoteText(Object.values(days), installDate, date, today);
   return (
     <View
       accessible
@@ -219,7 +226,7 @@ function GraceNote() {
         maxFontSizeMultiplier={GRACE_NOTE_MAX_SCALE}
         style={{ color: red.ink, fontSize: 14, lineHeight: 20, fontWeight: '600' }}
       >
-        Your counter restarts at 0. Your history and best streak stay.
+        {text}
       </Text>
       <Text maxFontSizeMultiplier={GRACE_NOTE_MAX_SCALE} style={{ color: red.ink, fontSize: 13, lineHeight: 18 }}>
         God&apos;s grace doesn&apos;t reset.

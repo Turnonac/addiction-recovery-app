@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from '@jest/globals';
 
-import { callWindow, FIRST_CALL_MAX_DAYS } from '@/domain/call';
+import { callWindow, FIRST_CALL_MAX_DAYS, inCallWindow } from '@/domain/call';
 import { datesBetween } from '@/domain/dates';
 import type { ColorLevel, DayLog } from '@/domain/types';
 
@@ -8,49 +8,49 @@ const TODAY = '2026-10-29';
 
 const day = (date: string, color: ColorLevel | null, checkedIn = false): DayLog => ({ date, color, checkedIn });
 
-type Settings = { counterStartDate: string | null; installDate: string | null };
-const noDates: Settings = { counterStartDate: null, installDate: null };
+type Settings = { installDate: string | null };
+const noDates: Settings = { installDate: null };
 
 describe('callWindow: window range', () => {
   test.each<[string, DayLog[], Settings, string | null, string, string]>([
     // name, days, settings, expected lastCallDate, first window day, last window day
     [
-      'no calls ever: starts at counterStartDate, capped to 14 days',
+      'no calls ever: starts at installDate, capped to 14 days',
       [],
-      { counterStartDate: '2026-09-01', installDate: '2026-09-01' },
+      { installDate: '2026-09-01' },
       null,
       '2026-10-16',
       TODAY,
     ],
     [
-      'no calls ever: recent counterStartDate is used as is',
-      [],
-      { counterStartDate: '2026-10-25', installDate: '2026-10-01' },
+      'no calls ever: starts at a recent last Red day before install',
+      [day('2026-10-25', 3)],
+      { installDate: '2026-10-27' },
       null,
       '2026-10-25',
       TODAY,
     ],
     [
-      'no calls ever: falls back to installDate',
-      [],
-      { counterStartDate: null, installDate: '2026-10-27' },
+      'no calls ever: Reds after install do not move the start',
+      [day('2026-10-28', 3)],
+      { installDate: '2026-10-27' },
       null,
       '2026-10-27',
       TODAY,
     ],
     [
-      'no calls ever: old installDate is capped too',
-      [],
-      { counterStartDate: null, installDate: '2026-01-01' },
+      'no calls ever: an old last Red day is capped too',
+      [day('2026-01-01', 3)],
+      { installDate: '2026-02-01' },
       null,
       '2026-10-16',
       TODAY,
     ],
     ['no calls ever and no dates: just today', [], noDates, null, TODAY, TODAY],
     [
-      'no calls ever: future counterStartDate still includes today',
+      'no calls ever: future installDate still includes today',
       [],
-      { counterStartDate: '2026-11-03', installDate: null },
+      { installDate: '2026-11-03' },
       null,
       TODAY,
       TODAY,
@@ -58,7 +58,7 @@ describe('callWindow: window range', () => {
     [
       'last call yesterday: only today',
       [day('2026-10-28', 0, true)],
-      { counterStartDate: '2026-09-01', installDate: '2026-09-01' },
+      { installDate: '2026-09-01' },
       '2026-10-28',
       TODAY,
       TODAY,
@@ -82,7 +82,7 @@ describe('callWindow: window range', () => {
     [
       'after the first call the 14-day cap no longer applies',
       [day('2026-09-01', 0, true)],
-      { counterStartDate: '2026-08-01', installDate: '2026-08-01' },
+      { installDate: '2026-08-01' },
       '2026-09-01',
       '2026-09-02',
       TODAY,
@@ -104,7 +104,7 @@ describe('callWindow: window range', () => {
 
   it('caps the first-call window at exactly 14 days', () => {
     expect(FIRST_CALL_MAX_DAYS).toBe(14);
-    const w = callWindow([], { counterStartDate: '2025-01-01', installDate: null }, TODAY);
+    const w = callWindow([], { installDate: '2025-01-01' }, TODAY);
     expect(w.days).toHaveLength(14);
   });
 });
@@ -114,7 +114,7 @@ describe('callWindow: today already checked in', () => {
     ['with a color', [day('2026-10-20', 2), day(TODAY, 1, true)]],
     ['without a color yet', [day('2026-10-27', 3), day(TODAY, null, true)]],
   ])('%s -> empty window', (_name, days) => {
-    expect(callWindow(days, { counterStartDate: '2026-10-01', installDate: '2026-10-01' }, TODAY)).toEqual({
+    expect(callWindow(days, { installDate: '2026-10-01' }, TODAY)).toEqual({
       lastCallDate: TODAY,
       checkedInToday: true,
       days: [],
@@ -166,7 +166,7 @@ describe('callWindow: colors, lowest and unlogged days', () => {
   });
 
   it('first-call window includes unlogged days from the start date', () => {
-    const w = callWindow([day('2026-10-27', 2)], { counterStartDate: '2026-10-26', installDate: '2026-10-26' }, TODAY);
+    const w = callWindow([day('2026-10-27', 2)], { installDate: '2026-10-26' }, TODAY);
     expect(w.days).toEqual([
       { date: '2026-10-26', color: null },
       { date: '2026-10-27', color: 2 },
@@ -180,5 +180,20 @@ describe('callWindow: colors, lowest and unlogged days', () => {
   it('ignores colors outside the window', () => {
     const w = callWindow([day('2026-10-01', 3), day('2026-10-27', 0, true), day('2026-10-28', 1)], noDates, TODAY);
     expect(w.lowest).toBe(1);
+  });
+});
+
+describe('inCallWindow', () => {
+  const started: Settings = { installDate: '2026-10-01' };
+  test.each<[string, DayLog[], string, boolean]>([
+    ['a day after the last call', [day('2026-10-25', 0, true)], '2026-10-27', true],
+    ['today with no call yet today', [day('2026-10-25', 0, true)], TODAY, true],
+    ['the last call day itself', [day('2026-10-25', 0, true)], '2026-10-25', false],
+    ['a day before the last call', [day('2026-10-25', 0, true)], '2026-10-20', false],
+    ['any day once today is checked in', [day(TODAY, 0, true)], '2026-10-28', false],
+    ['no calls: inside the first 14 days', [], '2026-10-16', true],
+    ['no calls: older than the first 14 days', [], '2026-10-15', false],
+  ])('%s', (_name, days, date, expected) => {
+    expect(inCallWindow(days, started, TODAY, date)).toBe(expected);
   });
 });

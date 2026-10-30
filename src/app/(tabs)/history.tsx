@@ -49,17 +49,16 @@ export default function HistoryScreen() {
   const partner = settings.partner;
   const partnerName = partner?.name.trim() || 'your partner';
 
-  // History reaches back to install / counter start, or the oldest logged day if older (e.g. an import).
+  // History reaches back to install, or the oldest logged day if older (e.g. a last Red day or an import).
   const loggedDates = Object.keys(days).filter((d) => d <= today);
-  const firstDate =
-    earliest([settings.installDate, settings.counterStartDate, ...loggedDates]) ?? today;
+  const firstDate = earliest([settings.installDate, ...loggedDates]) ?? today;
   const currentIndex = monthIndexOf(today);
   const minIndex = Math.min(monthIndexOf(firstDate), currentIndex);
   const viewIndex = Math.min(Math.max(pickedMonth ?? currentIndex, minIndex), currentIndex);
   const { year, month } = monthFromIndex(viewIndex);
 
-  const streak = currentStreak(dayList, settings.counterStartDate, today) ?? 0;
-  const best = bestStreak(dayList, settings.counterStartDate, today) ?? 0;
+  const streak = currentStreak(dayList, settings.installDate, today) ?? 0;
+  const best = bestStreak(dayList, settings.installDate, today) ?? 0;
   const summary = monthSummary(dayList, year, month, today, settings.installDate);
   const monthLogged = COLOR_LEVELS.some((level) => summary.counts[level] > 0);
   const anyLogged = dayList.some((d) => d.color !== null);
@@ -105,7 +104,7 @@ export default function HistoryScreen() {
               Nothing logged yet
             </Text>
             <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-              Each daily check-in adds a color to this calendar. Missed a day? Tap it below to
+              Each color you log shows on this calendar. Missed a day? Tap it below to
               make it up.
             </Text>
           </View>

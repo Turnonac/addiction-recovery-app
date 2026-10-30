@@ -79,7 +79,6 @@ function CallWithPartner({
   const theme = useAppTheme();
   const today = useAppStore((s) => s.today);
   const days = useAppStore((s) => s.days);
-  const counterStartDate = useAppStore((s) => s.settings.counterStartDate);
   const installDate = useAppStore((s) => s.settings.installDate);
   const setCheckedIn = useAppStore((s) => s.setCheckedIn);
 
@@ -94,7 +93,7 @@ function CallWithPartner({
   const callDay = useRef<LocalDate | null>(null);
 
   const dayList = Object.values(days);
-  const info = callWindow(dayList, { counterStartDate, installDate }, today);
+  const info = callWindow(dayList, { installDate }, today);
   const checkedInToday = days[today]?.checkedIn ?? false;
   const [year, month] = today.split('-').map(Number);
   const summary = monthSummary(dayList, year, month, today, installDate);

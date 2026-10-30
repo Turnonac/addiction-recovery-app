@@ -1,7 +1,8 @@
 import { describe, expect, it, test } from '@jest/globals';
 
-import { backupFileName, BackupSchemaV1, buildBackup, parseBackup } from '@/domain/backup';
-import type { AppSnapshot, BackupFileV1 } from '@/domain/types';
+import { backupFileName, BackupSchemaV1, BackupSchemaV2, buildBackup, parseBackup } from '@/domain/backup';
+import { toLocalDate } from '@/domain/dates';
+import type { AppSnapshot, BackupFileV2 } from '@/domain/types';
 
 const EXPORTED_AT = '2026-10-29T20:15:00.000Z';
 
@@ -20,7 +21,6 @@ const snapshot: AppSnapshot = {
   settings: {
     partner: { name: 'Sam', phone: '+1 (555) 010-0200' },
     reminder: { enabled: true, hour: 21, minute: 30 },
-    counterStartDate: '2026-10-01',
     installDate: '2026-10-01',
     onboardingDone: true,
     lastExportAt: '2026-09-01T08:00:00.000Z',
@@ -29,10 +29,18 @@ const snapshot: AppSnapshot = {
 
 const sortedDays = [...snapshot.days].sort((a, b) => a.date.localeCompare(b.date));
 
-/** What parsing a file exported at EXPORTED_AT restores: that export is the last backup. */
+/**
+ * What parsing a file exported at EXPORTED_AT restores: that export is the last backup,
+ * and the app is set up (installDate falls back to the export's local day).
+ */
 const restored = (input: AppSnapshot): AppSnapshot => ({
   ...input,
-  settings: { ...input.settings, lastExportAt: EXPORTED_AT },
+  settings: {
+    ...input.settings,
+    lastExportAt: EXPORTED_AT,
+    onboardingDone: true,
+    installDate: input.settings.installDate ?? toLocalDate(new Date(EXPORTED_AT)),
+  },
 });
 
 /** A JSON round trip, like writing the file and reading it back. */
@@ -41,11 +49,17 @@ const viaJson = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 /** A valid exported file as plain JSON, for tests that mutate it. */
 const validFile = () => viaJson(buildBackup(snapshot, EXPORTED_AT)) as Record<string, any>;
 
+/** The same data as a version 1 file, which kept the counter start in settings. */
+const v1File = (counterStartDate: string | null = '2026-10-01'): Record<string, any> => {
+  const file = validFile();
+  return { ...file, schemaVersion: 1, settings: { ...file.settings, counterStartDate } };
+};
+
 describe('buildBackup', () => {
   it('wraps the snapshot with format, version and export time', () => {
     const file = buildBackup(snapshot, EXPORTED_AT);
     expect(file.format).toBe('light2life-backup');
-    expect(file.schemaVersion).toBe(1);
+    expect(file.schemaVersion).toBe(2);
     expect(file.exportedAt).toBe(EXPORTED_AT);
     expect(file.days).toEqual(sortedDays);
     expect(file.behaviors).toEqual(snapshot.behaviors);
@@ -63,7 +77,7 @@ describe('buildBackup', () => {
   });
 
   it('passes its own schema', () => {
-    expect(BackupSchemaV1.safeParse(buildBackup(snapshot, EXPORTED_AT)).success).toBe(true);
+    expect(BackupSchemaV2.safeParse(buildBackup(snapshot, EXPORTED_AT)).success).toBe(true);
   });
 });
 
@@ -96,7 +110,6 @@ describe('parseBackup: round trip', () => {
         settings: {
           partner: null,
           reminder: { enabled: false, hour: 21, minute: 0 },
-          counterStartDate: null,
           installDate: null,
           onboardingDone: false,
           lastExportAt: null,
@@ -111,6 +124,17 @@ describe('parseBackup: round trip', () => {
       expect(result.summary).toEqual(summary);
       expect(result.snapshot).toEqual(restored(input));
     }
+  });
+
+  it('restores a file saying setup was not finished as set up (onboarding could rewrite its Reds)', () => {
+    const file = validFile();
+    file.settings.onboardingDone = false;
+    file.settings.installDate = null;
+    const result = parseBackup(file);
+    expect(result.ok && result.snapshot.settings).toMatchObject({
+      onboardingDone: true,
+      installDate: toLocalDate(new Date(EXPORTED_AT)),
+    });
   });
 
   it('restores the export time even when the file recorded no earlier export', () => {
@@ -146,7 +170,7 @@ describe('parseBackup: round trip', () => {
     expect(parseBackup(file).ok).toBe(true);
   });
 
-  it('drops unknown keys (forward compatible within v1)', () => {
+  it('drops unknown keys (forward compatible within v2)', () => {
     const file = validFile();
     file.theme = 'dark';
     file.days[0].note = 'extra';
@@ -176,9 +200,57 @@ describe('parseBackup: round trip', () => {
   });
 });
 
+describe('parseBackup: version 1', () => {
+  const restoredDays = (extra: AppSnapshot['days']) =>
+    [...sortedDays.filter((d) => !extra.some((e) => e.date === d.date)), ...extra].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+
+  it('"Start counting today" (start = installDate) adds nothing', () => {
+    expect(parseBackup(v1File('2026-10-01'))).toEqual(parseBackup(validFile()));
+  });
+
+  it('"My last Red day was…" (start before installDate) becomes that day\'s Red', () => {
+    const result = parseBackup(v1File('2026-09-20'));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.snapshot.days).toEqual(restoredDays([{ date: '2026-09-20', color: 3, checkedIn: false }]));
+      expect(result.snapshot.settings).toEqual(restored(snapshot).settings);
+      expect(result.summary).toMatchObject({ dayCount: 5, firstDate: '2026-09-20' });
+    }
+  });
+
+  it('keeps a check-in on that day, and a color already logged there', () => {
+    const file = v1File('2026-09-20');
+    file.days.push({ date: '2026-09-20', color: null, checkedIn: true });
+    const marked = parseBackup(file);
+    expect(marked.ok && marked.snapshot.days[0]).toEqual({ date: '2026-09-20', color: 3, checkedIn: true });
+
+    const logged = v1File('2026-09-20');
+    logged.days.push({ date: '2026-09-20', color: 1, checkedIn: false });
+    const kept = parseBackup(logged);
+    expect(kept.ok && kept.snapshot.days[0]).toEqual({ date: '2026-09-20', color: 1, checkedIn: false });
+  });
+
+  it('no counter start adds nothing', () => {
+    expect(parseBackup(v1File(null))).toEqual(parseBackup(validFile()));
+  });
+
+  it('needs settings.counterStartDate', () => {
+    const file = v1File();
+    delete file.settings.counterStartDate;
+    expect(parseBackup(file)).toEqual({ ok: false, error: 'invalid' });
+  });
+
+  it('re-exports as version 2', () => {
+    const result = parseBackup(v1File('2026-09-20'));
+    expect(result.ok && buildBackup(result.snapshot, EXPORTED_AT).schemaVersion).toBe(2);
+  });
+});
+
 describe('parseBackup: legacy format id', () => {
-  /** A file exported before the rename: same v1 shape, old format id. */
-  const legacyFile = (): Record<string, any> => ({ ...validFile(), format: 'walkinlight-backup' });
+  /** A file exported before the rename: the v1 shape, old format id. */
+  const legacyFile = (): Record<string, any> => ({ ...v1File(), format: 'walkinlight-backup' });
 
   it('imports a schemaVersion 1 file with the legacy id', () => {
     expect(parseBackup(legacyFile())).toEqual({
@@ -203,10 +275,11 @@ describe('parseBackup: legacy format id', () => {
     expect(result.ok && buildBackup(result.snapshot, EXPORTED_AT).format).toBe('light2life-backup');
   });
 
-  it('passes the schema with either id', () => {
+  it('passes the v1 schema with either id, and never the v2 one', () => {
     expect(BackupSchemaV1.safeParse(legacyFile()).success).toBe(true);
-    expect(BackupSchemaV1.safeParse(validFile()).success).toBe(true);
-    expect(BackupSchemaV1.safeParse({ ...validFile(), format: 'other-app' }).success).toBe(false);
+    expect(BackupSchemaV1.safeParse(v1File()).success).toBe(true);
+    expect(BackupSchemaV1.safeParse({ ...v1File(), format: 'other-app' }).success).toBe(false);
+    expect(BackupSchemaV2.safeParse({ ...legacyFile(), schemaVersion: 2 }).success).toBe(false);
   });
 });
 
@@ -228,8 +301,8 @@ describe('parseBackup: not a backup', () => {
 
 describe('parseBackup: newer version', () => {
   test.each<[string, unknown]>([
-    ['schemaVersion 2', { ...buildBackup(snapshot, EXPORTED_AT), schemaVersion: 2 }],
-    ['schemaVersion 3 with a different shape', { format: 'light2life-backup', schemaVersion: 3, entries: [] }],
+    ['schemaVersion 3', { ...buildBackup(snapshot, EXPORTED_AT), schemaVersion: 3 }],
+    ['schemaVersion 4 with a different shape', { format: 'light2life-backup', schemaVersion: 4, entries: [] }],
   ])('%s', (_name, input) => {
     expect(parseBackup(input)).toEqual({ ok: false, error: 'newer-version' });
   });
@@ -259,7 +332,13 @@ describe('parseBackup: invalid', () => {
     ['reminder hour 24', (f) => (f.settings.reminder.hour = 24)],
     ['reminder minute 60', (f) => (f.settings.reminder.minute = 60)],
     ['reminder enabled as string', (f) => (f.settings.reminder.enabled = 'true')],
-    ['invalid counterStartDate', (f) => (f.settings.counterStartDate = '2026-13-01')],
+    [
+      'version 1 with an invalid counterStartDate',
+      (f) => {
+        f.schemaVersion = 1;
+        f.settings.counterStartDate = '2026-13-01';
+      },
+    ],
     ['invalid installDate', (f) => (f.settings.installDate = 'today')],
     ['invalid lastExportAt', (f) => (f.settings.lastExportAt = 'not a date')],
     ['partner missing phone', (f) => (f.settings.partner = { name: 'Sam' })],
@@ -273,10 +352,10 @@ describe('parseBackup: invalid', () => {
   });
 });
 
-describe('BackupSchemaV1', () => {
-  it('infers a type compatible with BackupFileV1', () => {
-    const parsed = BackupSchemaV1.parse(validFile());
-    const typed: BackupFileV1 = parsed;
+describe('BackupSchemaV2', () => {
+  it('infers a type compatible with BackupFileV2', () => {
+    const parsed = BackupSchemaV2.parse(validFile());
+    const typed: BackupFileV2 = parsed;
     expect(typed.format).toBe('light2life-backup');
   });
 });

@@ -20,7 +20,7 @@ export function ColorListStep({ level, onNext, onBack, onSkip }: ColorListStepPr
 
   let subtitle: string;
   if (position === 1) {
-    subtitle = `${COLOR_MEANINGS[level]}. Write a few short examples, yourself or with ${partnerName ?? 'your partner'}. They show when you check in, and you can change them any time in Settings.`;
+    subtitle = `${COLOR_MEANINGS[level]}. Write a few short examples, yourself or with ${partnerName ?? 'your partner'}. They show when you log your color, and you can change them any time in Settings.`;
   } else if (level === RED) {
     subtitle = `${COLOR_MEANINGS[level]}. The first line is always there. Add anything else you count as Red.`;
   } else {

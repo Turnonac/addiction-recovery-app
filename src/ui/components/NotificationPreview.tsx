@@ -16,8 +16,8 @@ export interface NotificationPreviewProps {
 /** Lock-screen look-alike showing exactly what the discreet daily reminder says. */
 export function NotificationPreview({
   time,
-  title = 'Daily check-in',
-  body = 'Time for your daily check-in.',
+  title = 'Daily reminder',
+  body = 'Time to log today’s color.',
   caption = 'This is all the reminder ever says on your lock screen.',
 }: NotificationPreviewProps) {
   const theme = useAppTheme();

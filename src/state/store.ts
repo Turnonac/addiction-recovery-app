@@ -4,16 +4,18 @@ import { create } from 'zustand';
 import { defaultSettings, isEmptyDay, sortBehaviors, type Repository } from '@/data/repository';
 import { decideSetColor } from '@/domain/checkin';
 import { isValidLocalDate, todayLocal } from '@/domain/dates';
-import type {
-  AppSnapshot,
-  Behavior,
-  ColorLevel,
-  DayLog,
-  LocalDate,
-  Partner,
-  Reminder,
-  SetColorOutcome,
-  Settings,
+import { latestRed } from '@/domain/streak';
+import {
+  RED,
+  type AppSnapshot,
+  type Behavior,
+  type ColorLevel,
+  type DayLog,
+  type LocalDate,
+  type Partner,
+  type Reminder,
+  type SetColorOutcome,
+  type Settings,
 } from '@/domain/types';
 
 /** Longest behavior line, in UTF-16 code units (matches TextInput maxLength). */
@@ -45,8 +47,13 @@ export interface AppState {
   setPartner(partner: Partner | null): Promise<void>;
   /** Persists only; screens call services/notifications. */
   setReminder(reminder: Reminder): Promise<void>;
-  setCounterStartDate(date: LocalDate): Promise<void>;
-  /** Sets onboardingDone, installDate = today, and counterStartDate = today if it was unset. */
+  /**
+   * Onboarding only. "My last Red day was…": `date` (before today) becomes a Red day,
+   * replacing the one saved here before (the latest Red day in the log). null ("Start
+   * counting today") just removes that one.
+   */
+  setLastRedDay(date: LocalDate | null): Promise<void>;
+  /** Sets onboardingDone and installDate = today. */
   completeOnboarding(): Promise<void>;
   /** `iso` must be an ISO-8601 instant (e.g. new Date().toISOString()). */
   markExported(iso: string): Promise<void>;
@@ -217,27 +224,40 @@ export const useAppStore = create<AppState>()((set, get) => {
         await saveSettings({ reminder: { enabled, hour, minute } });
       }),
 
-    setCounterStartDate: (date) =>
+    setLastRedDay: (date) =>
       serial(async () => {
-        assertValidDate(date);
+        if (date !== null) assertValidDate(date);
+        const repo = requireRepo();
+        if (get().settings.onboardingDone) throw new Error('setLastRedDay: onboarding only');
         const today = syncToday();
-        // A future start would mean nothing yet; the counter treats it as today anyway.
-        await saveSettings({ counterStartDate: date > today ? today : date });
+        if (date !== null && date >= today) throw new RangeError(`Last Red day must be before today: ${date}`);
+        // Only this step writes days during onboarding, so the latest Red is the one it saved,
+        // even if the date has since moved back (an earlier time zone) to that day or before.
+        const previous = latestRed(Object.values(get().days));
+        if (previous === date) return;
+        const changes: DayLog[] = [];
+        if (previous !== null) changes.push({ ...get().days[previous], color: null });
+        if (date !== null) changes.push({ date, color: RED, checkedIn: get().days[date]?.checkedIn ?? false });
+        // One transaction: if it fails, neither the old Red is cleared nor the new one saved.
+        await repo.upsertDays(changes);
+        set((s) => {
+          let days = s.days;
+          for (const day of changes) {
+            days = isEmptyDay(day) ? withoutDay(days, day.date) : { ...days, [day.date]: day };
+          }
+          return { days };
+        });
       }),
 
     completeOnboarding: () =>
       serial(async () => {
         const today = syncToday();
-        await saveSettings({
-          onboardingDone: true,
-          installDate: today,
-          counterStartDate: get().settings.counterStartDate ?? today,
-        });
+        await saveSettings({ onboardingDone: true, installDate: today });
       }),
 
     markExported: (iso) =>
       serial(async () => {
-        // Must stay valid for BackupSchemaV1, or the next export could not be imported.
+        // Must stay valid for BackupSchemaV2, or the next export could not be imported.
         if (!IsoInstant.safeParse(iso).success) throw new RangeError(`Invalid ISO instant: ${iso}`);
         await saveSettings({ lastExportAt: iso });
       }),

@@ -4,7 +4,7 @@
  * high priority so the closing picker sheet can't cut it off.
  */
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AccessibilityInfo, Platform } from 'react-native';
 
 import { createMemoryRepository } from '@/data/memoryRepository';
@@ -32,18 +32,14 @@ let announceWithOptions: jest.SpiedFunction<
   typeof AccessibilityInfo.announceForAccessibilityWithOptions
 >;
 
-async function initStore(counterStartDate: LocalDate | null) {
+/** A last Red day saved by an earlier Continue is a Red day in the log; null = none. */
+async function initStore(lastRedDay: LocalDate | null) {
   useAppStore.setState(pristine, true);
   await useAppStore.getState().init(
     createMemoryRepository({
-      days: [],
+      days: lastRedDay === null ? [] : [{ date: lastRedDay, color: 3, checkedIn: false }],
       behaviors: [],
-      settings: {
-        ...DEFAULT_SETTINGS,
-        onboardingDone: false,
-        installDate: null,
-        counterStartDate,
-      },
+      settings: { ...DEFAULT_SETTINGS, onboardingDone: false, installDate: null },
     }),
   );
 }
@@ -88,7 +84,7 @@ describe('CounterStep preview on iOS', () => {
   });
 
   it('announces the date picked in the sheet at high priority', async () => {
-    await initStore(todayLocal());
+    await initStore(null);
     await render(<CounterStep onNext={() => undefined} />);
     // No past date yet, so choosing it opens the sheet; Done picks yesterday.
     await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
@@ -109,5 +105,48 @@ describe('CounterStep preview on Android', () => {
     await switchChoices();
     expect(announce.mock.calls).toEqual([[TITLE]]);
     expect(announceWithOptions).not.toHaveBeenCalled();
+  });
+});
+
+describe('CounterStep saving', () => {
+  it('saves the last Red day as a Red day in the log', async () => {
+    const onNext = jest.fn();
+    await initStore(null);
+    await render(<CounterStep onNext={onNext} />);
+    await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Done' })); // picks yesterday
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+    const yesterday = addDays(todayLocal(), -1);
+    expect(useAppStore.getState().days).toEqual({ [yesterday]: { date: yesterday, color: 3, checkedIn: false } });
+  });
+
+  it('asks for the date again when the date moves back to the pick', async () => {
+    const onNext = jest.fn();
+    await initStore(null);
+    const today = todayLocal();
+    await render(<CounterStep onNext={onNext} />);
+    await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Done' })); // picks yesterday
+    expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
+
+    // The phone moves to an earlier time zone: the store's today becomes yesterday, the pick.
+    await act(async () => useAppStore.setState({ today: addDays(today, -1) }));
+    expect(screen.getByRole('radio', { name: 'My last Red day was… Pick the date' })).toBeTruthy();
+    // The footer button (disabled) and the date button both read "Pick your last Red day".
+    expect(screen.getAllByRole('button', { name: 'Pick your last Red day' })).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    expect(screen.queryByLabelText(/Your counter will show/)).toBeNull();
+    expect(onNext).not.toHaveBeenCalled();
+  });
+
+  it('back on this step, "Start counting today" removes the saved Red day', async () => {
+    // beforeEach saved a last Red day three days ago.
+    const onNext = jest.fn();
+    await render(<CounterStep onNext={onNext} />);
+    await fireEvent.press(screen.getByRole('radio', { name: /^Start counting today/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().days).toEqual({});
   });
 });
