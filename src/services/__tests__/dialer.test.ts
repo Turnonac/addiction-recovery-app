@@ -26,7 +26,7 @@ describe('sanitizePhone', () => {
 
   it('drops letters and other symbols', () => {
     expect(sanitizePhone('tel: 555-CALL ext. 12')).toBe('555');
-    expect(sanitizePhone('555 123‑456')).toBe('555123456');
+    expect(sanitizePhone('555\u00A0123\u2011456')).toBe('555123456');
   });
 
   it('drops an extension so its digits do not join the main number', () => {
@@ -56,8 +56,8 @@ describe('sanitizePhone', () => {
     expect(sanitizePhone('Tel: +44 20 7946 0958')).toBe('+442079460958');
     expect(sanitizePhone('tel:+44-7700-900123')).toBe('+447700900123');
     // Mac Contacts wraps copied numbers in invisible direction marks.
-    expect(sanitizePhone('‭+44 7700 900123‬')).toBe('+447700900123');
-    expect(sanitizePhone('‪+972 50-123-4567‬')).toBe('+972501234567');
+    expect(sanitizePhone('\u202D+44 7700 900123\u202C')).toBe('+447700900123');
+    expect(sanitizePhone('\u202A+972 50-123-4567\u202C')).toBe('+972501234567');
   });
 
   it('drops the trunk (0) in an international number', () => {
@@ -78,20 +78,49 @@ describe('sanitizePhone', () => {
     expect(sanitizePhone('030/1234567')).toBe('0301234567');
   });
 
+  it('does not end the number at a letter typed as a dash', () => {
+    expect(sanitizePhone('090\u30FC1234\u30FC5678')).toBe('09012345678');
+    expect(sanitizePhone('\uFF10\uFF19\uFF10\uFF70\uFF11\uFF12\uFF13\uFF14\uFF70\uFF15\uFF16\uFF17\uFF18')).toBe(
+      '09012345678',
+    );
+    expect(sanitizePhone('010\u31611234\u31615678')).toBe('01012345678');
+    expect(sanitizePhone('010\u318D1234\u318D5678')).toBe('01012345678');
+    expect(sanitizePhone('138\u4E000013\u4E008000')).toBe('13800138000');
+    expect(sanitizePhone('\u0660\u0665\u0660\u0640\u0661\u0662\u0663\u0640\u0664\u0665\u0666\u0667')).toBe(
+      '0501234567',
+    );
+  });
+
+  it('does not treat a + inside a label as international', () => {
+    expect(sanitizePhone('Tel+Fax: 089 1234567')).toBe('0891234567');
+    expect(sanitizePhone('Mom+Dad: 555-123-4567')).toBe('5551234567');
+  });
+
+  it('keeps the 0 after +39 (Italy), even written as (0)', () => {
+    expect(sanitizePhone('+39 (0)2 1234 5678')).toBe('+390212345678');
+    expect(sanitizePhone('+39 06 1234 5678')).toBe('+390612345678');
+  });
+
+  it('keeps a service code only at the start, not a # from a label', () => {
+    expect(sanitizePhone('#31#555-1234')).toBe('#31#5551234');
+    expect(sanitizePhone('Phone #555-123-4567')).toBe('5551234567');
+    expect(sanitizePhone('Ph#555-123-4567')).toBe('5551234567');
+  });
+
   it('converts Arabic-Indic and Persian digits', () => {
-    expect(sanitizePhone('٠٥٠ ١٢٣ ٤٥٦٧')).toBe('0501234567');
-    expect(sanitizePhone('۰۹۱۲ ۳۴۵ ۶۷۸۹')).toBe('09123456789');
+    expect(sanitizePhone('\u0660\u0665\u0660 \u0661\u0662\u0663 \u0664\u0665\u0666\u0667')).toBe('0501234567');
+    expect(sanitizePhone('\u06F0\u06F9\u06F1\u06F2 \u06F3\u06F4\u06F5 \u06F6\u06F7\u06F8\u06F9')).toBe('09123456789');
   });
 
   it('drops a pause or wait and what follows (how contacts store an extension)', () => {
     expect(sanitizePhone('555-1234,12')).toBe('5551234');
     expect(sanitizePhone('555-1234;12')).toBe('5551234');
     expect(sanitizePhone('555-1234,,12#')).toBe('5551234');
-    expect(sanitizePhone('５５５-１２３４，１２')).toBe('5551234');
+    expect(sanitizePhone('\uFF15\uFF15\uFF15-\uFF11\uFF12\uFF13\uFF14\uFF0C\uFF11\uFF12')).toBe('5551234');
   });
 
   it('normalizes full-width characters', () => {
-    expect(sanitizePhone('＋１ ５５５ １２３')).toBe('+1555123');
+    expect(sanitizePhone('\uFF0B\uFF11 \uFF15\uFF15\uFF15 \uFF11\uFF12\uFF13')).toBe('+1555123');
   });
 
   it('returns an empty string when nothing dialable remains', () => {
