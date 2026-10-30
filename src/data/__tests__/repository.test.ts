@@ -27,6 +27,8 @@ const { DatabaseSync } = jest.requireActual<{ DatabaseSync: new (path: string) =
  */
 async function appDatabase(failOn?: { txn?: string; db?: string }) {
   const raw = new DatabaseSync(':memory:');
+  /** Every execAsync, in order: `txn` inside withExclusiveTransactionAsync, else `db`. */
+  const execs: { on: 'db' | 'txn'; sql: string }[] = [];
   const exec = (sql: string, fail?: string) => {
     raw.exec(sql);
     if (fail !== undefined && sql.includes(fail)) throw new Error('disk I/O error');
@@ -49,17 +51,27 @@ async function appDatabase(failOn?: { txn?: string; db?: string }) {
       throw error;
     }
   };
-  const txn = { ...queries, execAsync: async (sql: string) => exec(sql, failOn?.txn) };
+  const txn = {
+    ...queries,
+    execAsync: async (sql: string) => {
+      execs.push({ on: 'txn', sql });
+      exec(sql, failOn?.txn);
+    },
+  };
   const db = {
     ...queries,
-    execAsync: async (sql: string) => exec(sql, failOn?.db),
+    execAsync: async (sql: string) => {
+      execs.push({ on: 'db', sql });
+      exec(sql, failOn?.db);
+    },
     withTransactionAsync: inTransaction,
     withExclusiveTransactionAsync: (task: (t: unknown) => Promise<void>) => inTransaction(() => task(txn)),
   } as unknown as SQLiteDatabase;
   await migrateDatabase(db);
   const count = (table: string) =>
     (raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
-  return { db, count };
+  execs.length = 0; // only what the repository runs
+  return { db, count, execs };
 }
 
 const SETTINGS: Settings = {
@@ -86,10 +98,15 @@ async function fill(db: SQLiteDatabase) {
 
 describe('deleteAll', () => {
   it('empties every table, and behavior ids start over', async () => {
-    const { db, count } = await appDatabase();
+    const { db, count, execs } = await appDatabase();
     const repo = await fill(db);
 
     await repo.deleteAll();
+
+    // The deletes run in the transaction; the file is compacted after it commits.
+    expect(execs.map((e) => e.on)).toEqual(['txn', 'db']);
+    expect(execs[0].sql).toContain("DELETE FROM sqlite_sequence WHERE name = 'behavior'");
+    expect(execs[1].sql).toBe('VACUUM; PRAGMA wal_checkpoint(TRUNCATE);');
 
     expect(await repo.loadAll()).toEqual({ days: [], behaviors: [], settings: DEFAULT_SETTINGS });
     expect([count('day_log'), count('behavior'), count('settings')]).toEqual([0, 0, 0]);

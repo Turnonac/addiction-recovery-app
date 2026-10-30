@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 import {
   BACKUP_PICKER_TYPES,
-  deleteExportCopies,
+  deleteBackupCopies,
   isBackupReadError,
   MAX_BACKUP_BYTES,
   pickBackupFile,
@@ -16,21 +16,30 @@ const APP = 'file:///var/mobile/Containers/Data/Application/APP-ID/';
 /** Where iOS puts the picked copy; the picker reports it with `/private`. */
 const INBOX = 'file:///private/var/mobile/Containers/Data/Application/APP-ID/tmp/org.example.app-Inbox/';
 
-/** `locked`: delete() throws. */
+/** A small file system: files by uri (`locked`: delete() throws); folders are implied by paths. */
 const mockFiles: Record<string, { text: string; size: number; locked?: boolean }> = {};
 const mockReads: string[] = [];
 const mockDeleted: string[] = [];
-/** Folders `Paths.cache.list()` reports next to the cache files in mockFiles; an Error makes it throw. */
-const mockCache: { folders: string[]; listError: Error | null } = { folders: [], listError: null };
+/** Makes every Directory.list() throw. */
+const mockList: { error: Error | null } = { error: null };
 
 jest.mock('expo-file-system', () => {
+  type MockPart = string | { uri: string };
+  const join = (parts: MockPart[]) =>
+    parts
+      .map((part) => (typeof part === 'string' ? part : part.uri))
+      .reduce((a, b) => (a.endsWith('/') ? a + b : `${a}/${b}`));
+  const baseName = (uri: string) => {
+    const path = uri.replace(/\/$/, '');
+    return path.slice(path.lastIndexOf('/') + 1);
+  };
   class File {
     uri: string;
-    constructor(uri: string) {
-      this.uri = uri;
+    constructor(...parts: MockPart[]) {
+      this.uri = join(parts);
     }
     get name() {
-      return this.uri.slice(this.uri.lastIndexOf('/') + 1);
+      return baseName(this.uri);
     }
     get exists() {
       return this.uri in mockFiles;
@@ -50,30 +59,43 @@ jest.mock('expo-file-system', () => {
   }
   class Directory {
     uri: string;
-    constructor(uri: string) {
-      this.uri = uri;
+    constructor(...parts: MockPart[]) {
+      const uri = join(parts);
+      this.uri = uri.endsWith('/') ? uri : `${uri}/`;
     }
     get name() {
-      return this.uri.slice(0, -1).slice(this.uri.slice(0, -1).lastIndexOf('/') + 1);
+      return baseName(this.uri);
+    }
+    get exists() {
+      return Object.keys(mockFiles).some((uri) => uri.startsWith(this.uri));
+    }
+    list() {
+      if (mockList.error) throw mockList.error;
+      if (!this.exists) throw new Error('No such directory');
+      const children = new Map<string, File | Directory>();
+      for (const uri of Object.keys(mockFiles)) {
+        if (!uri.startsWith(this.uri)) continue;
+        const rest = uri.slice(this.uri.length);
+        const slash = rest.indexOf('/');
+        if (slash === -1) children.set(rest, new File(uri));
+        else children.set(rest.slice(0, slash), new Directory(this.uri + rest.slice(0, slash + 1)));
+      }
+      return [...children.values()];
+    }
+    delete() {
+      if (!this.exists) throw new Error('No such directory');
+      mockDeleted.push(this.uri);
+      for (const uri of Object.keys(mockFiles)) {
+        if (uri.startsWith(this.uri)) delete mockFiles[uri];
+      }
     }
   }
-  const cache = 'file:///cache/';
   return {
     Paths: {
-      cache: {
-        uri: cache,
-        list: () => {
-          if (mockCache.listError) throw mockCache.listError;
-          return [
-            ...mockCache.folders.map((name) => new Directory(`${cache}${name}/`)),
-            ...Object.keys(mockFiles)
-              .filter((uri) => uri.startsWith(cache) && !uri.slice(cache.length).includes('/'))
-              .map((uri) => new File(uri)),
-          ];
-        },
-      },
-      document: { uri: 'file:///var/mobile/Containers/Data/Application/APP-ID/Documents/' },
+      cache: new Directory('file:///cache/'),
+      document: new Directory('file:///var/mobile/Containers/Data/Application/APP-ID/Documents/'),
     },
+    Directory,
     File,
   };
 });
@@ -102,8 +124,7 @@ beforeEach(() => {
   for (const key of Object.keys(mockFiles)) delete mockFiles[key];
   mockReads.length = 0;
   mockDeleted.length = 0;
-  mockCache.folders = [];
-  mockCache.listError = null;
+  mockList.error = null;
 });
 
 describe('pickBackupFile', () => {
@@ -208,27 +229,66 @@ describe('pickBackupFile on iOS', () => {
   });
 });
 
-describe('deleteExportCopies', () => {
-  it('deletes the export copies in the cache and nothing else', () => {
+describe('deleteBackupCopies', () => {
+  const add = (...uris: string[]) => {
+    for (const uri of uris) mockFiles[uri] = { text: '{}', size: 2 };
+  };
+
+  it('deletes the export copies and the picker folder in the cache, and nothing else', () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
     const exports = ['daily-backup-2026-10-29.json', 'daily-backup-2026-09-01.json', 'daily-backup.json'];
-    const others = ['photo.jpg', 'notes.json', 'daily-backup-2026-10-29.json.tmp'];
-    for (const name of [...exports, ...others]) mockFiles[`${CACHE}${name}`] = { text: '{}', size: 2 };
-    mockFiles[`${CACHE}DocumentPicker/daily-backup-2026-10-01.json`] = { text: '{}', size: 2 };
-    mockCache.folders = ['daily-backup-folder.json'];
+    add(...exports.map((name) => `${CACHE}${name}`));
+    add(`${CACHE}DocumentPicker/3f2a.json`, `${CACHE}DocumentPicker/9b1c.json`);
+    const kept = [
+      `${CACHE}photo.jpg`,
+      `${CACHE}notes.json`,
+      `${CACHE}daily-backup-2026-10-29.json.tmp`,
+      `${CACHE}daily-backup-folder.json/inside.json`,
+      `${CACHE}Other/daily-backup-2026-10-01.json`,
+    ];
+    add(...kept);
 
-    deleteExportCopies();
+    deleteBackupCopies();
 
-    expect([...mockDeleted].sort()).toEqual(exports.map((name) => `${CACHE}${name}`).sort());
-    for (const name of others) expect(mockFiles[`${CACHE}${name}`]).toBeDefined();
+    expect([...mockDeleted].sort()).toEqual(
+      [...exports.map((name) => `${CACHE}${name}`), `${CACHE}DocumentPicker/`].sort(),
+    );
+    expect(Object.keys(mockFiles).sort()).toEqual([...kept].sort());
+  });
+
+  it('on iOS also deletes the picker copies in tmp/<bundle-id>-Inbox', () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    add(`${APP}tmp/org.example.app-Inbox/daily-backup.json`, `${APP}tmp/org.example.app-Inbox/old.json`);
+    const kept = [`${APP}tmp/other/file.json`, `${APP}tmp/Inbox-notes.json`, `${APP}Documents/daily-backup.json`];
+    add(...kept);
+
+    deleteBackupCopies();
+
+    expect(mockDeleted).toEqual([`${APP}tmp/org.example.app-Inbox/`]);
+    expect(Object.keys(mockFiles).sort()).toEqual([...kept].sort());
+  });
+
+  it('leaves tmp alone on Android', () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    add(`${APP}tmp/org.example.app-Inbox/daily-backup.json`);
+    deleteBackupCopies();
+    expect(mockDeleted).toEqual([]);
   });
 
   it('keeps going past a copy it cannot delete, and never throws', () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
     mockFiles[`${CACHE}daily-backup-2026-10-28.json`] = { text: '{}', size: 2, locked: true };
-    mockFiles[`${CACHE}daily-backup-2026-10-29.json`] = { text: '{}', size: 2 };
-    expect(() => deleteExportCopies()).not.toThrow();
-    expect(mockDeleted).toEqual([`${CACHE}daily-backup-2026-10-29.json`]);
+    add(`${CACHE}daily-backup-2026-10-29.json`, `${APP}tmp/org.example.app-Inbox/daily-backup.json`);
+    expect(() => deleteBackupCopies()).not.toThrow();
+    expect(mockDeleted).toEqual([`${CACHE}daily-backup-2026-10-29.json`, `${APP}tmp/org.example.app-Inbox/`]);
 
-    mockCache.listError = new Error('no cache directory');
-    expect(() => deleteExportCopies()).not.toThrow();
+    mockList.error = new Error('unreadable');
+    expect(() => deleteBackupCopies()).not.toThrow();
+  });
+
+  it('does nothing when there are no copies (no tmp, no cache)', () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    expect(() => deleteBackupCopies()).not.toThrow();
+    expect(mockDeleted).toEqual([]);
   });
 });

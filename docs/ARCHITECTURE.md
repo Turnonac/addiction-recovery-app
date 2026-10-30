@@ -41,8 +41,9 @@ Never install packages; everything needed is already in `package.json`.
   ("Delete all data?": what goes, the last backup file's date or that there is none, and
   that it can't be undone). Deletes every day, behavior and setting in one transaction,
   then compacts the database file (best effort) so deleted rows don't linger. Also cancels
-  the daily reminder and deletes the export copies left in the cache. Backup files saved
-  elsewhere and phone backups are not touched. Onboarding then opens, as on a new install.
+  the daily reminder and deletes the backup copies the app left on the phone (export copies,
+  and any picker copy of an imported file). Backup files saved elsewhere and phone backups
+  are not touched. Onboarding then opens, as on a new install.
 - **Counter** = calendar days since the last Red (Red day shows 0, next day 1).
   Onboarding's "My last Red day was…" saves that day as a Red day. With no Red on or
   before `installDate` ("Start counting today"), the counter counts from installDate.
@@ -318,7 +319,7 @@ interface AppState {
   replaceAll(snapshot: AppSnapshot): Promise<void>; // writes, then reloads from the repository
   deleteAllData(): Promise<void>;                   // repository deleteAll, then default state: onboardingDone
                                                     // false (the root guard opens onboarding); stays ready.
-                                                    // Screens cancel the reminder and the export copies.
+                                                    // Screens cancel the reminder and delete backup copies.
 }
 ```
 Writes run one at a time (queued), go to the repository first, then update
@@ -354,9 +355,10 @@ BACKUP_PICKER_TYPES = ['application/json', 'text/plain', 'application/octet-stre
 shareBackupFile(file: BackupFileV2, fileName: string): Promise<boolean>
   // write to cache, open share sheet; true once the sheet closes (the OS doesn't say whether
   // the file was saved), false if sharing is unavailable or anything fails
-deleteExportCopies(): void
-  // deletes the daily-backup*.json files shareBackupFile left in the cache (top level only);
-  // never throws
+deleteBackupCopies(): void
+  // deletes the backup copies the app left: daily-backup*.json export copies at the top of the
+  // cache, the picker's cache/DocumentPicker/ folder, and on iOS tmp/<bundle-id>-Inbox/ folders.
+  // Files saved elsewhere are not touched. Never throws.
 pickBackupFile(): Promise<unknown | null>
   // document picker, read text (BOM stripped), JSON.parse; null if cancelled.
   // Throws BackupReadError: 'unreadable' (can't read, or over MAX_BACKUP_BYTES) | 'invalid-json'.
@@ -436,7 +438,8 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   - Delete all: "Delete all data?" alert (what goes, the last backup file's date or "You
     haven't exported a backup file.", can't be undone) → "Delete all" → `deleteAllData` →
     `cancelDailyReminder` (best effort; onboarding's reminder step cancels or replaces it) →
-    `deleteExportCopies`. The root guard then opens onboarding. On failure: "Couldn't delete
+    `deleteBackupCopies`; a high-priority "All your data was deleted." announcement. The root
+    guard then opens onboarding. On failure: "Couldn't delete
     your data" / "Nothing was deleted."
 - `settings/colors.tsx` (My colors editor), `settings/partner.tsx` (edit / remove partner,
   pick from contacts).

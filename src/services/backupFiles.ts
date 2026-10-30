@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
@@ -75,30 +75,20 @@ export async function shareBackupFile(file: BackupFileV2, fileName: string): Pro
   }
 }
 
-/**
- * Deletes the export copies `shareBackupFile` left in the cache (the files the user saved
- * elsewhere are not touched). Best effort; never throws.
- */
-export function deleteExportCopies(): void {
-  try {
-    for (const entry of Paths.cache.list()) {
-      if (entry instanceof File && EXPORT_COPY_NAME.test(entry.name)) {
-        try {
-          entry.delete();
-        } catch {
-          // Keep going; the OS clears the cache eventually.
-        }
-      }
-    }
-  } catch {
-    // No cache directory, or it can't be listed: nothing to delete.
-  }
-}
-
 /** On iOS `/private/var/...` and `/var/...` are the same place; the picker may report either. */
 function withoutPrivatePrefix(uri: string): string {
   return uri.replace(/^file:\/\/\/private\/var\//, 'file:///var/');
 }
+
+/** iOS: the app container's tmp/ (it sits next to Documents/), or null if that can't be worked out. */
+function iosTmpUri(): string | null {
+  const documents = withoutPrivatePrefix(Paths.document.uri);
+  if (!documents.endsWith('/Documents/')) return null;
+  return `${documents.slice(0, -'Documents/'.length)}tmp/`;
+}
+
+/** Folder name of the copies the iOS picker hands over: tmp/<bundle-id>-Inbox. */
+const INBOX_NAME = /^[^/]+-Inbox$/;
 
 /**
  * True only for a copy inside our own sandbox: our cache directory (Android's picker
@@ -108,11 +98,8 @@ function isOwnCopy(uri: string): boolean {
   const target = withoutPrivatePrefix(uri);
   if (target.startsWith(withoutPrivatePrefix(Paths.cache.uri))) return true;
   if (Platform.OS !== 'ios') return false;
-  // tmp/ sits next to Documents/ in the app container.
-  const documents = withoutPrivatePrefix(Paths.document.uri);
-  if (!documents.endsWith('/Documents/')) return false;
-  const tmp = `${documents.slice(0, -'Documents/'.length)}tmp/`;
-  return target.startsWith(tmp) && /^[^/]+-Inbox\/./.test(target.slice(tmp.length));
+  const tmp = iosTmpUri();
+  return tmp !== null && target.startsWith(tmp) && /^[^/]+-Inbox\/./.test(target.slice(tmp.length));
 }
 
 /** Deletes the copy the picker handed us. Never touches the user's original file. */
@@ -123,6 +110,41 @@ function removePickedCopy(uri: string): void {
     if (copy.exists) copy.delete();
   } catch {
     // Best effort; the OS clears the cache and tmp eventually.
+  }
+}
+
+/** Deletes the entries of `directory` that `match` accepts. Never throws. */
+function deleteEntries(directory: Directory, match: (entry: Directory | File) => boolean): void {
+  try {
+    for (const entry of directory.list()) {
+      if (!match(entry)) continue;
+      try {
+        entry.delete();
+      } catch {
+        // Keep going; the OS clears the cache and tmp eventually.
+      }
+    }
+  } catch {
+    // Missing or unreadable folder: nothing to delete.
+  }
+}
+
+/**
+ * Deletes every backup copy the app left on the phone: the export copies `shareBackupFile`
+ * wrote to the cache, and the document picker's copies of imported files (normally deleted
+ * right away, but a failed or cancelled read can leave one): Android cache/DocumentPicker/,
+ * iOS tmp/<bundle-id>-Inbox/. Files the user saved elsewhere are not touched. Never throws.
+ */
+export function deleteBackupCopies(): void {
+  deleteEntries(Paths.cache, (entry) =>
+    entry instanceof File
+      ? EXPORT_COPY_NAME.test(entry.name)
+      : entry.name === 'DocumentPicker',
+  );
+  if (Platform.OS !== 'ios') return;
+  const tmp = iosTmpUri();
+  if (tmp !== null) {
+    deleteEntries(new Directory(tmp), (entry) => entry instanceof Directory && INBOX_NAME.test(entry.name));
   }
 }
 

@@ -14,7 +14,7 @@ import {
   type PickerRequest,
 } from '@/features/onboarding/pickers';
 import {
-  deleteExportCopies,
+  deleteBackupCopies,
   isBackupReadError,
   pickBackupFile,
   shareBackupFile,
@@ -298,8 +298,11 @@ export default function SettingsScreen() {
       } catch {
         // Setup's reminder step cancels or replaces it.
       }
-      deleteExportCopies();
-      AccessibilityInfo.announceForAccessibility('All your data was deleted.');
+      deleteBackupCopies();
+      // High priority: setup's first step announces its title as it opens.
+      AccessibilityInfo.announceForAccessibilityWithOptions('All your data was deleted.', {
+        priority: 'high',
+      });
     } finally {
       setBusy(null);
     }
@@ -424,7 +427,7 @@ export default function SettingsScreen() {
           tone="danger"
           onPress={confirmDeleteAll}
           disabled={busy !== null}
-          accessibilityHint="Deletes everything on this phone and starts setup again"
+          accessibilityHint="Deletes all Light2Life data on this phone and starts setup again"
         />
       </SettingsGroup>
 

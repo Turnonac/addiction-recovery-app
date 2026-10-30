@@ -57,7 +57,7 @@ jest.mock('@/services/contacts', () => ({
   pickPartnerContact: jest.fn(async () => ({ status: 'unavailable' })),
 }));
 jest.mock('@/services/backupFiles', () => ({
-  deleteExportCopies: jest.fn(),
+  deleteBackupCopies: jest.fn(),
   shareBackupFile: jest.fn(async () => true),
   pickBackupFile: jest.fn(async () => null),
   isBackupReadError: () => false,
@@ -597,7 +597,7 @@ describe('settings', () => {
   const DELETE_ALL_INTRO =
     "This deletes everything Light2Life keeps on this phone: every day's color and check-in, your color lists, your partner and your reminder. Your counter and best streak start over, and setup opens again.";
 
-  it('deletes all data after a confirmation, then cancels the reminder and export copies', async () => {
+  it('deletes all data after a confirmation, then cancels the reminder and backup copies', async () => {
     const exportedAt = '2026-10-01T12:00:00.000Z';
     await setup(
       { partner: SAM, reminder: { enabled: true, hour: 20, minute: 30 }, lastExportAt: exportedAt },
@@ -620,8 +620,22 @@ describe('settings', () => {
     await alerts.press('Delete all data?', 'Delete all');
     await waitFor(() => expect(useAppStore.getState().settings).toEqual(DEFAULT_SETTINGS));
     expect(useAppStore.getState().days).toEqual({});
-    await waitFor(() => expect(backupFiles.deleteExportCopies).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(backupFiles.deleteBackupCopies).toHaveBeenCalledTimes(1));
     expect(notifications.cancelDailyReminder).toHaveBeenCalledTimes(1);
+  });
+
+  it('still deletes the backup copies when cancelling the reminder fails', async () => {
+    await setup({ partner: SAM, reminder: { enabled: true, hour: 20, minute: 30 } });
+    jest.mocked(notifications.cancelDailyReminder).mockRejectedValueOnce(new Error('not allowed'));
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/settings' });
+
+    await fireEvent.press(screen.getByRole('button', { name: /Delete all data/ }));
+    await alerts.press('Delete all data?', 'Delete all');
+
+    await waitFor(() => expect(backupFiles.deleteBackupCopies).toHaveBeenCalledTimes(1));
+    expect(useAppStore.getState().settings).toEqual(DEFAULT_SETTINGS);
+    expect(() => alerts.find("Couldn't delete your data")).toThrow();
   });
 
   it('keeps everything when deleting fails', async () => {
@@ -645,7 +659,7 @@ describe('settings', () => {
     );
     expect(useAppStore.getState().settings.partner).toEqual(SAM);
     expect(notifications.cancelDailyReminder).not.toHaveBeenCalled();
-    expect(backupFiles.deleteExportCopies).not.toHaveBeenCalled();
+    expect(backupFiles.deleteBackupCopies).not.toHaveBeenCalled();
   });
 
   it('opens setup again after deleting all data', async () => {
