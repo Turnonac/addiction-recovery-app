@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Light2Life is a simple, private daily check-in for your recovery. Support, Privacy Policy and Consumer Health Data.">
+<title>Light2Life</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #F4F6F6;
+    --surface: #FFFFFF;
+    --text: #15201E;
+    --muted: #55625F;
+    --line: #DCE3E1;
+    --accent: #2F5D50;
+    --accent-text: #24493F;
+    --accent-soft: #E1EDE9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0D1015;
+      --surface: #161A21;
+      --text: #F1F3F6;
+      --muted: #A3ADBB;
+      --line: #2A303B;
+      --accent: #8CC8C0;
+      --accent-text: #A9DCD5;
+      --accent-soft: #173230;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow-wrap: break-word;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+  .skip { position: absolute; left: -9999px; top: 8px; }
+  .skip:focus { left: 16px; z-index: 10; background: var(--surface); color: var(--text); padding: 8px 12px; border-radius: 8px; }
+  header.site { background: var(--surface); border-bottom: 1px solid var(--line); }
+  header.site .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; min-height: 60px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; color: var(--text); text-decoration: none; padding: 10px 0; }
+  .brand-mark { width: 24px; height: 24px; border-radius: 50%; border: 6px solid var(--accent); flex: none; }
+  nav.site { display: flex; gap: 4px; }
+  nav.site a { color: var(--accent-text); font-weight: 600; font-size: 15px; text-decoration: none; padding: 10px 8px; }
+  main { padding: 40px 0 48px; }
+  h1 { font-size: 34px; line-height: 1.15; letter-spacing: -0.015em; margin: 0 0 10px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 36px 0 12px; scroll-margin-top: 16px; }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent-text); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .lede { font-size: 19px; color: var(--muted); margin-bottom: 20px; }
+  .anchor { margin-left: 8px; color: var(--muted); font-weight: 400; text-decoration: none; opacity: 0.5; text-transform: none; }
+  @media (hover: hover) {
+    .anchor { opacity: 0; }
+    h2:hover .anchor, .anchor:focus-visible { opacity: 1; }
+  }
+  .promise { list-style: none; padding: 0; margin: 0 0 8px; }
+  .promise li { position: relative; padding-left: 28px; margin: 8px 0; }
+  .promise li::before {
+    content: ""; position: absolute; left: 4px; top: 0.45em; width: 12px; height: 7px;
+    border-left: 2.5px solid var(--accent); border-bottom: 2.5px solid var(--accent); transform: rotate(-45deg);
+  }
+  .links { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  .card {
+    display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 18px; color: var(--text); text-decoration: none;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card strong { display: block; color: var(--accent-text); font-size: 19px; }
+  .card span { display: block; color: var(--muted); font-size: 16px; }
+  .email { overflow-wrap: anywhere; }
+  footer.site { border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; padding: 20px 0 40px; }
+  footer.site nav { display: flex; flex-wrap: wrap; gap: 0 18px; margin-bottom: 8px; }
+  footer.site nav a { display: inline-block; padding: 8px 0; font-weight: 600; }
+  footer.site p { margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-current="page"><span class="brand-mark" aria-hidden="true"></span>Light2Life</a>
+    <nav class="site" aria-label="Site">
+      <a href="privacy.html">Privacy</a>
+      <a href="support.html">Support</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <h1>Light2Life</h1>
+    <p class="lede">A simple, private daily check-in for your recovery: one honest color a day, and one call with someone who prays for you.</p>
+
+    <ul class="promise">
+      <li>No account. Nothing to sign up for.</li>
+      <li>Everything you enter stays on your phone unless you export a backup file. We never see it.</li>
+      <li>No ads, no analytics, no tracking.</li>
+    </ul>
+
+    <h2 id="pages">Help and privacy<a class="anchor" href="#pages" aria-label="Link to: Help and privacy">#</a></h2>
+    <ul class="links">
+      <li><a class="card" href="support.html"><strong>Support</strong><span>Contact us, common questions, backups and new phones.</span></a></li>
+      <li><a class="card" href="privacy.html"><strong>Privacy Policy</strong><span>What the app saves on your phone, and why we never receive it.</span></a></li>
+      <li><a class="card" href="consumer-health-data.html"><strong>Consumer Health Data</strong><span>Our consumer health data notice for Washington, Nevada and similar laws.</span></a></li>
+    </ul>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <nav aria-label="Footer">
+      <a href="support.html">Support</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="consumer-health-data.html">Consumer health data</a>
+    </nav>
+    <p>Light2Life · <a class="email" href="mailto:light2life.help@gmail.com">light2life.help@gmail.com</a></p>
+  </div>
+</footer>
+</body>
+</html>

@@ -384,7 +384,8 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
 - `settings/about.tsx` — why Light2Life, privacy statement, "not a medical device"
   disclaimer, version plus the build number when known (iOS: the native build number;
   Android: only if the embedded config has a versionCode, which remote versioning usually
-  leaves out), and a Privacy policy row once `PRIVACY_POLICY_URL` is set.
+  leaves out), and Help and support / Privacy policy rows that open `docs/support.html` and
+  `docs/privacy.html` on GitHub Pages.
 - `check-in.tsx` — modal, `?date=YYYY-MM-DD` (default: today as of opening, kept if midnight
   passes); invalid or future dates close right away. `&from=call` returns to the call screen
   instead of opening a second one. 4 color cards with the user's behaviors, Red shows grace
