@@ -542,6 +542,19 @@ describe('settings', () => {
       'https://turnonac.github.io/addiction-recovery-app/privacy.html',
     );
   });
+
+  it('says so when a link on About cannot open', async () => {
+    jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no browser'));
+    const alerts = spyOnAlerts();
+    await setup();
+    await renderRouter(routes, { initialUrl: '/settings/about' });
+    await fireEvent.press(screen.getByText('Help and support'));
+    await waitFor(() =>
+      expect(alerts.find("Couldn't open the link").message).toBe(
+        'https://turnonac.github.io/addiction-recovery-app/support.html',
+      ),
+    );
+  });
 });
 
 describe('tabs', () => {
