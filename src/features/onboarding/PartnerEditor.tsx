@@ -17,7 +17,7 @@ import {
 
 import type { Partner } from '@/domain/types';
 import { pickPartnerContact } from '@/services/contacts';
-import { sanitizePhone } from '@/services/dialer';
+import { formatDialed, sanitizePhone } from '@/services/dialer';
 import { Avatar, Button } from '@/ui/components';
 import { Users } from '@/ui/icons';
 import { MIN_TOUCH, useAppTheme } from '@/ui/theme';
@@ -50,8 +50,11 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
   const [picking, setPicking] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
 
+  const dialed = sanitizePhone(value.phone);
+  // The exact number Call dials, so a wrong read of an unusual format is caught before saving.
+  const callsText = `Calls ${formatDialed(dialed)}`;
   const phoneError =
-    phoneTouched && value.phone.trim().length > 0 && sanitizePhone(value.phone).length === 0
+    phoneTouched && value.phone.trim().length > 0 && dialed.length === 0
       ? 'Enter a number you can call.'
       : undefined;
 
@@ -107,9 +110,9 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
         }}
       >
         <Avatar name={value.name} size={44} />
-        <View style={{ flex: 1, gap: 2 }} accessible accessibilityLabel={`${value.name}, ${value.phone}`}>
+        <View style={{ flex: 1, gap: 2 }} accessible accessibilityLabel={`${value.name}, ${callsText}`}>
           <Text style={{ color: theme.text, fontSize: 17, fontWeight: '700' }}>{value.name}</Text>
-          <Text style={{ color: theme.muted, fontSize: 14 }}>{value.phone}</Text>
+          <Text style={{ color: theme.muted, fontSize: 14 }}>{callsText}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -174,6 +177,7 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
         returnKeyType="done"
         maxLength={40}
         error={phoneError}
+        hint={dialed.length > 0 ? callsText : undefined}
       />
     </View>
   );
@@ -182,14 +186,16 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
 interface FieldProps extends Omit<TextInputProps, 'style' | 'ref'> {
   label: string;
   error?: string;
+  /** Muted help text under the input when there is no error. */
+  hint?: string;
   ref?: Ref<TextInputInstance>;
 }
 
 /**
  * Same look as ui/components TextField (label, 48pt input, 1.5pt border, accent
- * on focus), plus a ref so the form can move focus after a contact pick.
+ * on focus, muted hint), plus a ref so the form can move focus after a contact pick.
  */
-function Field({ label, error, ref, onFocus, onBlur, ...inputProps }: FieldProps) {
+function Field({ label, error, hint, ref, onFocus, onBlur, ...inputProps }: FieldProps) {
   const theme = useAppTheme();
   const [focused, setFocused] = useState(false);
   const red = theme.levels[3];
@@ -221,7 +227,7 @@ function Field({ label, error, ref, onFocus, onBlur, ...inputProps }: FieldProps
         underlineColorAndroid="transparent"
         {...inputProps}
         accessibilityLabel={label}
-        accessibilityHint={error}
+        accessibilityHint={error ?? hint}
         onFocus={(e) => {
           setFocused(true);
           onFocus?.(e);
@@ -249,6 +255,8 @@ function Field({ label, error, ref, onFocus, onBlur, ...inputProps }: FieldProps
         >
           {error}
         </Text>
+      ) : hint ? (
+        <Text style={{ color: theme.muted, fontSize: 13, lineHeight: 18 }}>{hint}</Text>
       ) : null}
     </View>
   );

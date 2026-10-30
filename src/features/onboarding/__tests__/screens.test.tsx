@@ -63,6 +63,7 @@ jest.mock('@/services/backupFiles', () => ({
 jest.mock('@/services/dialer', () => ({
   callPhone: jest.fn(async () => true),
   sanitizePhone: (phone: string) => phone.replace(/[^0-9+*#]/g, ''),
+  formatDialed: (number: string) => number,
 }));
 
 const pristine = useAppStore.getState();

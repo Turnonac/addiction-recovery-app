@@ -106,7 +106,8 @@ src/
       DoneStep.tsx       summary, then completeOnboarding()
       StepLayout.tsx     StepScreen frame, CheckList, TextLink, ONBOARDING_STEPS = 6
       BehaviorEditor.tsx behavior chips + edit sheet (also Settings › My colors)
-      PartnerEditor.tsx  contact pick or typed name + number (also Settings › Partner)
+      PartnerEditor.tsx  contact pick or typed name + number (also Settings › Partner); card and
+                         phone hint show "Calls <number>" (sanitizePhone + formatDialed)
       pickers.tsx        date / time picker (Android dialog, iOS sheet), time and date formatting
       __tests__/         BehaviorEditor, CounterStep, PartnerEditor, screens
   ui/
@@ -315,6 +316,7 @@ enablePrivacyCover(): Promise<void>
   // Nothing turns the cover off. Does nothing when EXPO_PUBLIC_SCREENSHOT_MODE === '1'.
 // dialer.ts
 sanitizePhone(phone: string): string    // NFKC + Arabic-Indic digits; number runs from the first digit to the first letter , or ; after it; + if one comes before it
+formatDialed(number: string): string    // spacing only: last 4 digits, then groups of 3; '*' / '#' unchanged
 callPhone(phone: string): Promise<boolean>  // Linking.openURL('tel:…', '#' encoded); false on failure
                                             // (no number, no telephony, iOS Simulator)
 ```

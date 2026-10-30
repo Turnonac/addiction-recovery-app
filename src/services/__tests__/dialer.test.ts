@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Linking } from 'react-native';
 
-import { callPhone, sanitizePhone } from '@/services/dialer';
+import { callPhone, formatDialed, sanitizePhone } from '@/services/dialer';
 
 describe('sanitizePhone', () => {
   it('strips spaces, dashes, brackets and dots', () => {
@@ -128,6 +128,22 @@ describe('sanitizePhone', () => {
     expect(sanitizePhone('   ')).toBe('');
     expect(sanitizePhone('+')).toBe('');
     expect(sanitizePhone('James')).toBe('');
+  });
+});
+
+describe('formatDialed', () => {
+  it('groups the last four digits, then threes', () => {
+    expect(formatDialed('5551234567')).toBe('555 123 4567');
+    expect(formatDialed('15551234567')).toBe('1 555 123 4567');
+    expect(formatDialed('+447700900123')).toBe('+44 770 090 0123');
+    expect(formatDialed('5550100')).toBe('555 0100');
+    expect(formatDialed('911')).toBe('911');
+  });
+
+  it('leaves a number with * or # as it is', () => {
+    expect(formatDialed('*675551234')).toBe('*675551234');
+    expect(formatDialed('5551234#2')).toBe('5551234#2');
+    expect(formatDialed('')).toBe('');
   });
 });
 

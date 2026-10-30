@@ -56,6 +56,23 @@ export function sanitizePhone(phone: string): string {
 }
 
 /**
+ * Spaces out a number from sanitizePhone so a person can check it: the last four digits, then
+ * groups of three ("5551234567" → "555 123 4567", "+447700900123" → "+44 770 090 0123"). Only
+ * the spacing changes. A number with '*' or '#' is returned as it is.
+ */
+export function formatDialed(number: string): string {
+  const match = /^(\+?)(\d+)$/.exec(number);
+  if (match === null) return number;
+  const plus = match[1] ?? '';
+  const digits = match[2] ?? '';
+  const groups = [digits.slice(-4)];
+  for (let end = digits.length - 4; end > 0; end -= 3) {
+    groups.unshift(digits.slice(Math.max(0, end - 3), end));
+  }
+  return plus + groups.join(' ');
+}
+
+/**
  * Opens the phone dialer for `phone`. Resolves false for an empty number or when
  * the OS cannot open the dialer (for example a tablet without telephony, or the
  * iOS Simulator).

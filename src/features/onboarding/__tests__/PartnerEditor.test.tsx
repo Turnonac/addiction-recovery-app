@@ -98,6 +98,25 @@ describe('PartnerEditor notices on iOS', () => {
   });
 });
 
+describe('PartnerEditor shows the number Call dials', () => {
+  it('on the picked card', async () => {
+    await chooseWith({ status: 'picked', partner: { name: 'Sam', phone: 'Cell: (555) 123-4567 ext. 9' } });
+    expect(await screen.findByText('Calls 555 123 4567')).toBeTruthy();
+    expect(screen.getByLabelText('Sam, Calls 555 123 4567')).toBeTruthy();
+  });
+
+  it('under the phone field while typing, unless there is an error', async () => {
+    await render(<Harness />);
+    const phone = screen.getByLabelText('Phone');
+    await fireEvent.changeText(phone, '+44 (0)7700 900123');
+    expect(screen.getByText('Calls +44 770 090 0123')).toBeTruthy();
+    await fireEvent.changeText(phone, 'abc');
+    await fireEvent(phone, 'blur');
+    expect(await screen.findByText('Enter a number you can call.')).toBeTruthy();
+    expect(screen.queryByText(/^Calls /)).toBeNull();
+  });
+});
+
 describe('PartnerEditor notices on Android', () => {
   beforeEach(() => {
     jest.replaceProperty(Platform, 'OS', 'android');
