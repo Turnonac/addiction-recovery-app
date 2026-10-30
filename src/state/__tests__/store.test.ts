@@ -284,6 +284,64 @@ describe('setCheckedIn', () => {
   });
 });
 
+describe('clearDay', () => {
+  it('deletes the color and the check-in', async () => {
+    const repo = await initWith({ days: [day(YESTERDAY, RED, true), day(TODAY, GREEN)] });
+    await store().clearDay(YESTERDAY);
+    expect(store().days).toEqual({ [TODAY]: day(TODAY, GREEN) });
+    expect((await repo.loadAll()).days).toEqual([day(TODAY, GREEN)]);
+  });
+
+  it('clears a day with only a color or only a check-in', async () => {
+    const repo = await initWith({ days: [day(YESTERDAY, BLUE), day(TODAY, null, true)] });
+    await store().clearDay(YESTERDAY);
+    await store().clearDay(TODAY);
+    expect(store().days).toEqual({});
+    expect((await repo.loadAll()).days).toEqual([]);
+  });
+
+  it('does not write for an unlogged day', async () => {
+    const repo = await initWith({ days: [day(TODAY, GREEN)] });
+    const deleteDay = jest.spyOn(repo, 'deleteDay');
+    await store().clearDay(YESTERDAY);
+    expect(deleteDay).not.toHaveBeenCalled();
+    expect(store().days).toEqual({ [TODAY]: day(TODAY, GREEN) });
+  });
+
+  it('lets the day be logged again', async () => {
+    await initWith({ days: [day(TODAY, RED)] });
+    await store().clearDay(TODAY);
+    // No stored Red left, so a better color needs no confirmation.
+    expect((await store().setColor(TODAY, GREEN)).kind).toBe('saved');
+    expect(store().days[TODAY]).toEqual(day(TODAY, GREEN));
+  });
+
+  it('throws on a malformed date', async () => {
+    await initWith();
+    await expect(store().clearDay('2026-13-01')).rejects.toThrow(RangeError);
+  });
+
+  it('runs after a pending write to the same day', async () => {
+    const repo = await initWith();
+    const color = store().setColor(TODAY, YELLOW);
+    const clear = store().clearDay(TODAY);
+    await Promise.all([color, clear]);
+    expect(store().days).toEqual({});
+    expect((await repo.loadAll()).days).toEqual([]);
+  });
+
+  it('leaves state unchanged when the repository write fails', async () => {
+    const repo = createMemoryRepository(snapshot({ days: [day(TODAY, RED, true)] }));
+    const failing: Repository = {
+      ...repo,
+      deleteDay: () => Promise.reject(new Error('disk full')),
+    };
+    await store().init(failing);
+    await expect(store().clearDay(TODAY)).rejects.toThrow('disk full');
+    expect(store().days[TODAY]).toEqual(day(TODAY, RED, true));
+  });
+});
+
 describe('behaviors', () => {
   it('adds trimmed text at the end of its color and keeps the list sorted', async () => {
     const repo = await initWith();

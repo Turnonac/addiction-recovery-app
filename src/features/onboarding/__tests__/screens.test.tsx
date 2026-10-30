@@ -1,5 +1,5 @@
 /**
- * Smoke tests for the Settings, color log (check-in route), call and onboarding routes, rendered
+ * Smoke tests for the Settings, color log (check-in route), call, day and onboarding routes, rendered
  * through expo-router's testing library with the in-memory repository.
  * Native services are mocked; the store and domain rules are real.
  */
@@ -16,6 +16,7 @@ import SettingsScreen from '@/app/(tabs)/settings/index';
 import PartnerScreen from '@/app/(tabs)/settings/partner';
 import CallScreen from '@/app/call';
 import CheckInScreen from '@/app/check-in';
+import DayScreen from '@/app/day/[date]';
 import OnboardingScreen from '@/app/onboarding';
 import { createMemoryRepository } from '@/data/memoryRepository';
 import { buildBackup } from '@/domain/backup';
@@ -115,6 +116,7 @@ const routes = {
   '(tabs)/settings/about': AboutScreen,
   'check-in': CheckInScreen,
   call: CallScreen,
+  'day/[date]': DayScreen,
   onboarding: OnboardingScreen,
 };
 
@@ -624,6 +626,65 @@ describe('settings', () => {
         'https://turnonac.github.io/addiction-recovery-app/support.html',
       ),
     );
+  });
+});
+
+describe('day', () => {
+  it('clears a logged day after confirming, so it is not logged again', async () => {
+    const alerts = spyOnAlerts();
+    const yesterday = addDays(todayLocal(), -1);
+    await setup({ partner: SAM }, [{ date: yesterday, color: 3, checkedIn: true }]);
+    await renderRouter(routes, { initialUrl: `/day/${yesterday}` });
+
+    await fireEvent.press(screen.getByRole('button', { name: `Clear ${formatLong(yesterday)}` }));
+    const { message } = alerts.find('Clear this day?');
+    expect(message).toMatch(/^This removes its color \(Red\) and your check-in with Sam\. /);
+    expect(useAppStore.getState().days[yesterday]).toBeDefined();
+
+    await alerts.press('Clear this day?', 'Clear day');
+    await waitFor(() => expect(useAppStore.getState().days[yesterday]).toBeUndefined());
+    expect(screen.getByText('Not logged')).toBeTruthy();
+    expect(screen.getByRole('button', { name: `Log a color for ${formatLong(yesterday)}` })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: `Clear ${formatLong(yesterday)}` })).toBeNull();
+  });
+
+  it('keeps the day when the clear is cancelled', async () => {
+    const alerts = spyOnAlerts();
+    const today = await setup({}, [{ date: todayLocal(), color: 1, checkedIn: false }]);
+    await renderRouter(routes, { initialUrl: `/day/${today}` });
+
+    await fireEvent.press(screen.getByRole('button', { name: `Clear ${formatLong(today)}` }));
+    expect(alerts.find('Clear this day?').message).toBe(
+      'This removes its color (Blue). The day goes back to not logged.',
+    );
+    const cancel = alerts.find('Clear this day?').buttons.find((b) => b.text === 'Cancel');
+    expect(cancel?.style).toBe('cancel');
+    expect(cancel?.onPress).toBeUndefined();
+    expect(useAppStore.getState().days[today]).toEqual({ date: today, color: 1, checkedIn: false });
+  });
+
+  it('offers no clear for an unlogged day', async () => {
+    const yesterday = addDays(todayLocal(), -1);
+    await setup();
+    await renderRouter(routes, { initialUrl: `/day/${yesterday}` });
+
+    expect(screen.getByText('Not logged')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: `Clear ${formatLong(yesterday)}` })).toBeNull();
+  });
+
+  it('says so when the clear fails, and keeps the day', async () => {
+    const alerts = spyOnAlerts();
+    const yesterday = addDays(todayLocal(), -1);
+    await setup({}, [{ date: yesterday, color: 2, checkedIn: false }]);
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    useAppStore.setState({ clearDay: () => Promise.reject(new Error('disk full')) });
+    await renderRouter(routes, { initialUrl: `/day/${yesterday}` });
+
+    await fireEvent.press(screen.getByRole('button', { name: `Clear ${formatLong(yesterday)}` }));
+    await alerts.press('Clear this day?', 'Clear day');
+    await waitFor(() => expect(alerts.spy).toHaveBeenCalledWith('Couldn’t clear the day', 'Please try again.'));
+    expect(useAppStore.getState().days[yesterday]?.color).toBe(2);
+    expect(screen.getByRole('button', { name: `Clear ${formatLong(yesterday)}` })).toBeEnabled();
   });
 });
 

@@ -29,10 +29,14 @@ Never install packages; everything needed is already in `package.json`.
   `settings.installDate`, never stored.
 - **Lowest wins:** a worse color replaces a better one. A better color than the
   stored one needs a "Did you pick X by mistake?" confirmation.
-- **Late color after the call:** one call per day, and a check-in is never cleared
+- **Late color after the call:** one call per day, and a color never clears a check-in
   (that call happened). A color logged later just updates the day; the next call's
   window still starts after the last check-in, so a day already called about is not
   listed again.
+- **Clear a day:** History's day screen can set a logged day back to unlogged ("Clear
+  this day", after a confirmation that says what goes and, for a Red day, the counter and
+  best streak it leaves). It deletes the day's color and check-in; counter, best streak,
+  call window and stats follow from the log as always.
 - **Counter** = calendar days since the last Red (Red day shows 0, next day 1).
   Onboarding's "My last Red day was…" saves that day as a Red day. With no Red on or
   before `installDate` ("Start counting today"), the counter counts from installDate.
@@ -121,7 +125,8 @@ src/
       pickers.tsx        date / time picker (Android dialog, iOS sheet), time and date formatting
       __tests__/         BehaviorEditor, CounterStep, PartnerEditor, screens
     colorLog/
-      colorLog.ts        color screen helpers: daysAfterColor, redNoteText (the Red note)
+      colorLog.ts        color screen helpers: daysAfterColor, redNoteText (the Red note);
+                         clearDayText (the day screen's "Clear this day?" message)
       __tests__/         colorLog
   ui/
     theme.ts             light / dark tokens, useAppTheme(), LEVEL_GLYPHS, spacing, MIN_TOUCH
@@ -290,6 +295,7 @@ interface AppState {
   refreshToday(): void;                             // recompute today (midnight / foreground)
   setColor(date, color, opts?: { confirmBetter?: boolean }): Promise<SetColorOutcome>;
   setCheckedIn(date, value: boolean): Promise<void>; // future days ignored; an empty day is deleted
+  clearDay(date): Promise<void>;                    // deletes the day (color and check-in); unlogged: no-op
   addBehavior(color, text): Promise<void>;
   updateBehavior(id, text): Promise<void>;
   removeBehavior(id): Promise<void>;
@@ -434,7 +440,9 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   app returns from the background it asks "Did you talk with {name}?" and marks that day.
   Manual "I talked with {name} — mark today" toggle, month check-in count.
 - `day/[date].tsx` — modal: day color ("Log it" / "Change" → `/check-in?date=`), "Checked in
-  with {partner}" toggle; invalid or future dates show a message.
+  with {partner}" toggle, and for a logged day "Clear this day" → "Clear this day?" alert
+  (`clearDayText`) → `clearDay`; the screen stays open, now unlogged. Invalid or future dates
+  show a message.
 - `onboarding.tsx` — steps: welcome (privacy promise) → how colors work → counter start
   ("Start counting today" / "My last Red day was…" date picker; a last Red day is saved as a
   Red day in the log, via `setLastRedDay`) → partner (most important

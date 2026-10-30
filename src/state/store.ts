@@ -39,6 +39,8 @@ export interface AppState {
   ): Promise<SetColorOutcome>;
   /** Future days are ignored. A day left with no color and no check-in is deleted. */
   setCheckedIn(date: LocalDate, value: boolean): Promise<void>;
+  /** Deletes the day (color and check-in), so it is unlogged again. An unlogged day is a no-op. */
+  clearDay(date: LocalDate): Promise<void>;
   /** Text is trimmed and cut to BEHAVIOR_MAX_LENGTH; empty text is a no-op. */
   addBehavior(color: ColorLevel, text: string): Promise<void>;
   /** Text is trimmed and cut to BEHAVIOR_MAX_LENGTH; empty text or an unknown id is a no-op. */
@@ -179,6 +181,15 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
         await repo.upsertDay(day);
         set((s) => ({ days: { ...s.days, [date]: day } }));
+      }),
+
+    clearDay: (date) =>
+      serial(async () => {
+        assertValidDate(date);
+        const repo = requireRepo();
+        if (get().days[date] === undefined) return;
+        await repo.deleteDay(date);
+        set((s) => ({ days: withoutDay(s.days, date) }));
       }),
 
     addBehavior: (color, text) =>

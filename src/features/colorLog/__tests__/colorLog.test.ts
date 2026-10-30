@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
 import type { ColorLevel, DayLog } from '@/domain/types';
-import { daysAfterColor, redNoteText } from '@/features/colorLog/colorLog';
+import { clearDayText, daysAfterColor, redNoteText } from '@/features/colorLog/colorLog';
 
 const TODAY = '2026-10-29';
 
@@ -67,5 +67,81 @@ describe('daysAfterColor', () => {
   test('leaves the days alone when the save would need a confirmation', () => {
     const days = { '2026-10-28': day('2026-10-28', 3) };
     expect(daysAfterColor(days, '2026-10-28', 0, TODAY)).toEqual([day('2026-10-28', 3)]);
+  });
+});
+
+describe('clearDayText', () => {
+  const REMOVED_RED = 'This removes its color (Red). The day goes back to not logged.';
+
+  test.each<[string, DayLog[], string | null, string, string]>([
+    ['an unlogged day', [], '2026-10-01', '2026-10-28', 'Nothing is saved for this day.'],
+    [
+      'a color only',
+      [day('2026-10-28', 2)],
+      '2026-10-01',
+      '2026-10-28',
+      'This removes its color (Yellow). The day goes back to not logged.',
+    ],
+    [
+      'a check-in only',
+      [day('2026-10-28', null, true)],
+      '2026-10-01',
+      '2026-10-28',
+      'This removes your check-in with Sam. The day goes back to not logged.',
+    ],
+    [
+      // Only Red days anchor the counter, so no counter line.
+      'a color and a check-in',
+      [day('2026-10-28', 0, true), day('2026-10-20', 3)],
+      '2026-10-01',
+      '2026-10-28',
+      'This removes its color (Green) and your check-in with Sam. The day goes back to not logged.',
+    ],
+    [
+      'a Red today',
+      [day(TODAY, 3)],
+      '2026-10-01',
+      TODAY,
+      `${REMOVED_RED} Your counter becomes 28 days. Your best streak becomes 28 days.`,
+    ],
+    [
+      // joins the 8-day and 9-day runs around Oct 10 into one 18-day run
+      'a Red before a later Red',
+      [day('2026-10-10', 3), day('2026-10-20', 3)],
+      '2026-10-01',
+      '2026-10-10',
+      `${REMOVED_RED} Your counter stays at 9 days. Your best streak becomes 18 days.`,
+    ],
+    [
+      'the last Red day from setup, before install',
+      [day('2026-09-20', 3)],
+      '2026-10-01',
+      '2026-09-20',
+      `${REMOVED_RED} Your counter becomes 28 days. Your best streak becomes 28 days.`,
+    ],
+    [
+      'the latest Red, when an older run stays the best',
+      [day('2026-10-26', 3), day('2026-10-27', 3)],
+      '2026-09-01',
+      '2026-10-27',
+      `${REMOVED_RED} Your counter becomes 3 days.`,
+    ],
+    [
+      'a Red with a check-in, one day singular',
+      [day('2026-10-20', 3, true), day('2026-10-28', 3)],
+      '2026-10-01',
+      '2026-10-20',
+      'This removes its color (Red) and your check-in with Sam. The day goes back to not logged. ' +
+        'Your counter stays at 1 day. Your best streak becomes 26 days.',
+    ],
+    [
+      'a Red with no counter left',
+      [day('2026-10-28', 3)],
+      null,
+      '2026-10-28',
+      `${REMOVED_RED} Your counter becomes 0 days. Your best streak becomes 0 days.`,
+    ],
+  ])('%s', (_name, days, installDate, date, expected) => {
+    expect(clearDayText(days, installDate, date, TODAY, 'Sam')).toBe(expected);
   });
 });
