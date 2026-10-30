@@ -1,88 +1,17 @@
 import { Linking } from 'react-native';
 
-function normalizeWidth(text: string): string {
-  try {
-    return text.normalize('NFKC');
-  } catch {
-    return text;
-  }
-}
-
-/** Arabic-Indic (U+0660-0669) and Persian (U+06F0-06F9) digits, which NFKC leaves as they are. */
-function toAsciiDigits(text: string): string {
-  return text.replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) & 0xf));
-}
-
 /**
- * After the number starts, a letter (an extension such as "ext", "x" or "p", or a second
- * label such as "Fax"), a pause (',') or a wait (';') ends it. Letters that keyboards type as
- * a dash are not an end: Japanese 'ー', Korean 'ㅡ' and 'ㆍ' (and their NFKC forms), Chinese
- * '一' and the Arabic tatweel 'ـ'.
- */
-const NUMBER_END = /(?![\u30FC\u3161\u1173\u318D\u119E\u4E00\u0640])[\p{L},;]/u;
-
-/** A service code such as *67 or #31#, typed at the very start. */
-const SERVICE_CODE = /^\s*[*#]+\d/;
-
-/** A '+' with no letter after it: "+44", "(+44)", "Tel: +44", but not "Tel+Fax: 089". */
-const PLUS_PREFIX = /\+\P{L}*$/u;
-
-/**
- * Countries whose numbers keep the 0 after the country code (Italy, San Marino, Vatican),
- * so "+39 (0)2" is not a trunk prefix to drop.
- */
-const KEEPS_ZERO = /^3(?:9|78|79)\D/;
-
-/**
- * Returns the dialable main number: digits, '*' and '#', with a '+' in front when the text
- * before the first digit ends in one (see PLUS_PREFIX). Other text before the number is
- * ignored, except a leading service code. An extension or anything after the number is
- * dropped, so its digits never join the main number. A trunk "(0)" in an international number
- * ("+44 (0)20") is dropped too. Full-width and Arabic-Indic digits are normalized first.
- * Returns '' when there is no digit.
- */
-export function sanitizePhone(phone: string): string {
-  const text = toAsciiDigits(normalizeWidth(phone));
-  const firstDigit = text.search(/\d/);
-  if (firstDigit === -1) return '';
-  const start = SERVICE_CODE.test(text) ? text.search(/[*#]/) : firstDigit;
-  const international = PLUS_PREFIX.test(text.slice(0, start));
-  let main = text.slice(start);
-  const end = main.search(NUMBER_END);
-  if (end !== -1) main = main.slice(0, end);
-  if (international && !KEEPS_ZERO.test(main)) main = main.replace(/\(\s*0\s*\)/g, '');
-  const digits = main.replace(/[^0-9*#]/g, '');
-  return international ? `+${digits}` : digits;
-}
-
-/**
- * Spaces out a number from sanitizePhone so a person can check it: the last four digits, then
- * groups of three ("5551234567" → "555 123 4567", "+447700900123" → "+44 770 090 0123"). Only
- * the spacing changes. A number with '*' or '#' is returned as it is.
- */
-export function formatDialed(number: string): string {
-  const match = /^(\+?)(\d+)$/.exec(number);
-  if (match === null) return number;
-  const plus = match[1] ?? '';
-  const digits = match[2] ?? '';
-  const groups = [digits.slice(-4)];
-  for (let end = digits.length - 4; end > 0; end -= 3) {
-    groups.unshift(digits.slice(Math.max(0, end - 3), end));
-  }
-  return plus + groups.join(' ');
-}
-
-/**
- * Opens the phone dialer for `phone`. Resolves false for an empty number or when
- * the OS cannot open the dialer (for example a tablet without telephony, or the
- * iOS Simulator).
+ * Opens the phone dialer with `phone` exactly as the user typed or picked it: nothing is
+ * removed or reformatted. Only characters a URL cannot carry (spaces, '#', non-ASCII) are
+ * percent-encoded. Resolves false for an empty number or when the OS cannot open the dialer
+ * (for example a tablet without telephony, or the iOS Simulator).
  */
 export async function callPhone(phone: string): Promise<boolean> {
-  const number = sanitizePhone(phone);
+  const number = phone.trim();
   if (number.length === 0) return false;
   try {
-    // '#' would start a URL fragment, so it is percent-encoded.
-    const opened: unknown = await Linking.openURL(`tel:${number.replace(/#/g, '%23')}`);
+    // encodeURI leaves '#' as is, but in a URL it would start a fragment.
+    const opened: unknown = await Linking.openURL(`tel:${encodeURI(number).replace(/#/g, '%23')}`);
     // Typed as void, but iOS resolves false (instead of rejecting) when the Simulator
     // can't open a tel: URL. Android resolves true.
     return opened !== false;

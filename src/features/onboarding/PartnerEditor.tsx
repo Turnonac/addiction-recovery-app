@@ -3,7 +3,7 @@
  * "Choose from contacts" (no contacts permission) or type the name and number.
  * Controlled: the parent owns the draft and whether the picked card is shown.
  */
-import { useEffect, useRef, useState, type Ref } from 'react';
+import { useRef, useState, type Ref } from 'react';
 import {
   AccessibilityInfo,
   Platform,
@@ -17,16 +17,15 @@ import {
 
 import type { Partner } from '@/domain/types';
 import { pickPartnerContact } from '@/services/contacts';
-import { formatDialed, sanitizePhone } from '@/services/dialer';
 import { Avatar, Button } from '@/ui/components';
 import { Users } from '@/ui/icons';
 import { MIN_TOUCH, useAppTheme } from '@/ui/theme';
 
 export const EMPTY_PARTNER: Partner = { name: '', phone: '' };
 
-/** A name and a number the phone can dial. */
+/** A name and a number. The number is saved and dialed exactly as entered. */
 export function isPartnerValid(p: Partner): boolean {
-  return p.name.trim().length > 0 && sanitizePhone(p.phone).length > 0;
+  return p.name.trim().length > 0 && p.phone.trim().length > 0;
 }
 
 export function samePartner(a: Partner | null, b: Partner | null): boolean {
@@ -48,15 +47,6 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
   const phoneRef = useRef<TextInputInstance>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
-  const [phoneTouched, setPhoneTouched] = useState(false);
-
-  const dialed = sanitizePhone(value.phone);
-  // The exact number Call dials, so a wrong read of an unusual format is caught before saving.
-  const callsText = `Calls ${formatDialed(dialed)}`;
-  const phoneError =
-    phoneTouched && value.phone.trim().length > 0 && dialed.length === 0
-      ? 'Enter a number you can call.'
-      : undefined;
 
   const showNotice = (message: string) => {
     setNotice(message);
@@ -110,9 +100,9 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
         }}
       >
         <Avatar name={value.name} size={44} />
-        <View style={{ flex: 1, gap: 2 }} accessible accessibilityLabel={`${value.name}, ${callsText}`}>
+        <View style={{ flex: 1, gap: 2 }} accessible accessibilityLabel={`${value.name}, ${value.phone}`}>
           <Text style={{ color: theme.text, fontSize: 17, fontWeight: '700' }}>{value.name}</Text>
-          <Text style={{ color: theme.muted, fontSize: 14 }}>{callsText}</Text>
+          <Text style={{ color: theme.muted, fontSize: 14 }}>{value.phone}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -169,15 +159,12 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
         label="Phone"
         value={value.phone}
         onChangeText={(phone) => onChange({ ...value, phone })}
-        onBlur={() => setPhoneTouched(true)}
         placeholder="Phone number"
         keyboardType="phone-pad"
         autoComplete="tel"
         textContentType="telephoneNumber"
         returnKeyType="done"
         maxLength={40}
-        error={phoneError}
-        hint={dialed.length > 0 ? callsText : undefined}
       />
     </View>
   );
@@ -185,30 +172,16 @@ export function PartnerEditor({ value, onChange, showCard, onShowCardChange }: P
 
 interface FieldProps extends Omit<TextInputProps, 'style' | 'ref'> {
   label: string;
-  error?: string;
-  /** Muted help text under the input when there is no error. */
-  hint?: string;
   ref?: Ref<TextInputInstance>;
 }
 
 /**
  * Same look as ui/components TextField (label, 48pt input, 1.5pt border, accent
- * on focus, muted hint), plus a ref so the form can move focus after a contact pick.
+ * on focus), plus a ref so the form can move focus after a contact pick.
  */
-function Field({ label, error, hint, ref, onFocus, onBlur, ...inputProps }: FieldProps) {
+function Field({ label, ref, onFocus, onBlur, ...inputProps }: FieldProps) {
   const theme = useAppTheme();
   const [focused, setFocused] = useState(false);
-  const red = theme.levels[3];
-  const borderColor = error ? red.solid : focused ? theme.accent : theme.line2;
-
-  // Same as TextField: the live region only reaches TalkBack, so VoiceOver gets an
-  // announcement when an error appears or changes.
-  const shownError = useRef(error);
-  useEffect(() => {
-    if (error === shownError.current) return;
-    shownError.current = error;
-    if (error && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(error);
-  }, [error]);
 
   return (
     <View style={{ gap: 6 }}>
@@ -227,7 +200,6 @@ function Field({ label, error, hint, ref, onFocus, onBlur, ...inputProps }: Fiel
         underlineColorAndroid="transparent"
         {...inputProps}
         accessibilityLabel={label}
-        accessibilityHint={error ?? hint}
         onFocus={(e) => {
           setFocused(true);
           onFocus?.(e);
@@ -244,20 +216,10 @@ function Field({ label, error, hint, ref, onFocus, onBlur, ...inputProps }: Fiel
           color: theme.text,
           backgroundColor: theme.surface,
           borderWidth: 1.5,
-          borderColor,
+          borderColor: focused ? theme.accent : theme.line2,
           borderRadius: 12,
         }}
       />
-      {error ? (
-        <Text
-          accessibilityLiveRegion="polite"
-          style={{ color: red.ink, fontSize: 13, lineHeight: 18 }}
-        >
-          {error}
-        </Text>
-      ) : hint ? (
-        <Text style={{ color: theme.muted, fontSize: 13, lineHeight: 18 }}>{hint}</Text>
-      ) : null}
     </View>
   );
 }

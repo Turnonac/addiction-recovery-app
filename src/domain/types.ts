@@ -64,7 +64,7 @@ export interface Behavior {
 
 export interface Partner {
   name: string;
-  /** Stored as typed; sanitized only when dialing. */
+  /** Saved and dialed exactly as typed or picked. */
   phone: string;
 }
 

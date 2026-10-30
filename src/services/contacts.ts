@@ -12,7 +12,6 @@ import { presentContactPickerAsync, type Contact, type PhoneNumber } from 'expo-
 import { Alert, Platform } from 'react-native';
 
 import type { Partner } from '@/domain/types';
-import { sanitizePhone } from '@/services/dialer';
 
 import ContactPicker from '../../modules/contact-picker';
 
@@ -54,13 +53,13 @@ function phoneLabel(phone: PhoneNumber): string {
 // Labels are localized: matches "mobile", "iPhone", "cell" (and e.g. German "Mobil").
 const MOBILE_LABEL = /mobil|iphone|cell/i;
 
-/** Dialable numbers, mobile ones first, each number once. iOS never sets isPrimary. */
+/** Non-empty numbers, mobile ones first, each number once. iOS never sets isPrimary. */
 function usableNumbers(contact: Contact): PhoneNumber[] {
-  const numbers = (contact.phoneNumbers ?? []).filter((p) => sanitizePhone(p.number ?? ''));
+  const numbers = (contact.phoneNumbers ?? []).filter((p) => (p.number ?? '').trim());
   const mobile = numbers.filter((p) => MOBILE_LABEL.test(phoneLabel(p)));
   const seen = new Set<string>();
   return [...mobile, ...numbers.filter((p) => !mobile.includes(p))].filter((p) => {
-    const key = sanitizePhone(p.number ?? '');
+    const key = (p.number ?? '').trim();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

@@ -87,33 +87,23 @@ describe('PartnerEditor notices on iOS', () => {
     expect(plainAnnounce).not.toHaveBeenCalled();
   });
 
-  it('announces the phone error when it appears', async () => {
-    await render(<Harness />);
-    const phone = screen.getByLabelText('Phone');
-    await fireEvent.changeText(phone, 'abc');
-    await fireEvent(phone, 'blur');
-    expect(await screen.findByText('Enter a number you can call.')).toBeTruthy();
-    expect(plainAnnounce).toHaveBeenCalledTimes(1);
-    expect(plainAnnounce).toHaveBeenCalledWith('Enter a number you can call.');
-  });
 });
 
-describe('PartnerEditor shows the number Call dials', () => {
-  it('on the picked card', async () => {
-    await chooseWith({ status: 'picked', partner: { name: 'Sam', phone: 'Cell: (555) 123-4567 ext. 9' } });
-    expect(await screen.findByText('Calls 555 123 4567')).toBeTruthy();
-    expect(screen.getByLabelText('Sam, Calls 555 123 4567')).toBeTruthy();
+describe('PartnerEditor keeps the number as entered', () => {
+  it('shows a picked number exactly as the contact has it, to confirm or change', async () => {
+    await chooseWith({ status: 'picked', partner: { name: 'Sam', phone: '(555) 123-4567' } });
+    expect(await screen.findByText('(555) 123-4567')).toBeTruthy();
+    expect(screen.getByLabelText('Sam, (555) 123-4567')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Change partner, currently Sam' })).toBeTruthy();
   });
 
-  it('under the phone field while typing, unless there is an error', async () => {
+  it('accepts any typed number without an error', async () => {
     await render(<Harness />);
     const phone = screen.getByLabelText('Phone');
-    await fireEvent.changeText(phone, '+44 (0)7700 900123');
-    expect(screen.getByText('Calls +44 770 090 0123')).toBeTruthy();
     await fireEvent.changeText(phone, 'abc');
     await fireEvent(phone, 'blur');
-    expect(await screen.findByText('Enter a number you can call.')).toBeTruthy();
-    expect(screen.queryByText(/^Calls /)).toBeNull();
+    expect(screen.getByDisplayValue('abc')).toBeTruthy();
+    expect(screen.queryByText('Enter a number you can call.')).toBeNull();
   });
 });
 
@@ -129,12 +119,4 @@ describe('PartnerEditor notices on Android', () => {
     expect(plainAnnounce).not.toHaveBeenCalled();
   });
 
-  it('leaves the phone error to the live region', async () => {
-    await render(<Harness />);
-    const phone = screen.getByLabelText('Phone');
-    await fireEvent.changeText(phone, 'abc');
-    await fireEvent(phone, 'blur');
-    expect(await screen.findByText('Enter a number you can call.')).toBeTruthy();
-    expect(plainAnnounce).not.toHaveBeenCalled();
-  });
 });

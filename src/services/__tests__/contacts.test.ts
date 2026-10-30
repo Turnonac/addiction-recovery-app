@@ -116,17 +116,32 @@ describe('pickPartnerContact on iOS', () => {
     await expect(first).resolves.toMatchObject({ partner: { phone: '2' } });
   });
 
-  it('does not ask when the numbers are the same or not dialable', async () => {
+  it('does not ask when the other numbers are the same text or blank', async () => {
     const alerts = spyOnAlerts();
     picked({
       firstName: 'James',
-      phoneNumbers: [phone('home', '555-0100'), phone('mobile', '555 0100'), phone('other', 'n/a')],
+      phoneNumbers: [phone('home', '555 0100'), phone('mobile', ' 555 0100 '), phone('other', '  ')],
     });
     await expect(pickPartnerContact()).resolves.toEqual({
       status: 'picked',
       partner: { name: 'James', phone: '555 0100' },
     });
     expect(alerts.spy).not.toHaveBeenCalled();
+  });
+
+  it('asks between numbers written differently, and keeps the chosen one as written', async () => {
+    const alerts = spyOnAlerts();
+    picked({
+      firstName: 'James',
+      phoneNumbers: [phone('home', '555-0100'), phone('mobile', '(555) 0100')],
+    });
+    const result = pickPartnerContact();
+    await flush();
+    alerts.press('home: 555-0100');
+    await expect(result).resolves.toEqual({
+      status: 'picked',
+      partner: { name: 'James', phone: '555-0100' },
+    });
   });
 
   it('returns a contact without a number with phone empty', async () => {
