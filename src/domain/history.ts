@@ -9,7 +9,10 @@ export interface MonthSummary {
   counts: Record<ColorLevel, number>;
   /** Checked-in days among the eligible days. */
   checkIns: number;
-  /** Days from max(monthStart, installDate) through yesterday, plus today if checked in. */
+  /**
+   * Days from max(monthStart, installDate) through yesterday, plus today if checked in,
+   * plus checked-in days before installDate.
+   */
   eligibleDays: number;
 }
 
@@ -58,7 +61,9 @@ export function monthGrid(year: number, month1to12: number): (LocalDate | null)[
  * - counts: every logged color in the month dated on or before today
  *   (including backfilled days before installDate), so the totals match the calendar.
  * - eligibleDays: days from max(monthStart, installDate) through yesterday,
- *   plus today if today is checked in. checkIns is counted over the same days.
+ *   plus today if today is checked in, plus backfilled check-ins before
+ *   installDate (a missing call there is not a missed call, but a marked one
+ *   counts). checkIns is counted over the same days.
  */
 export function monthSummary(
   days: DayLog[],
@@ -84,6 +89,11 @@ export function monthSummary(
   const eligible = datesBetween(start, end);
   if (today >= start && today <= last && byDate.get(today)?.checkedIn === true) {
     eligible.push(today);
+  }
+  for (const day of byDate.values()) {
+    if (day.checkedIn && day.date >= first && day.date < start && day.date <= last && day.date <= today) {
+      eligible.push(day.date);
+    }
   }
 
   const checkIns = eligible.filter((date) => byDate.get(date)?.checkedIn === true).length;

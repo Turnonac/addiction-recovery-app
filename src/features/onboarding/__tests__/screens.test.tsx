@@ -20,7 +20,7 @@ import OnboardingScreen from '@/app/onboarding';
 import { createMemoryRepository } from '@/data/memoryRepository';
 import { buildBackup } from '@/domain/backup';
 import type * as Dates from '@/domain/dates';
-import { addDays, formatLong, todayLocal } from '@/domain/dates';
+import { addDays, formatLong, formatShort, todayLocal } from '@/domain/dates';
 import { DEFAULT_SETTINGS, type DayLog, type Settings } from '@/domain/types';
 import { formatTime } from '@/features/onboarding/pickers';
 import * as backupFiles from '@/services/backupFiles';
@@ -208,6 +208,46 @@ describe('check-in', () => {
     expect(screen.getByRole('radio', { name: /^Green/ })).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Pick a color to save' })).toBeDisabled();
   });
+
+  it('keeps a past call when that day gets worse, then shares the day on a new call', async () => {
+    const alerts = spyOnAlerts();
+    const yesterday = addDays(todayLocal(), -1);
+    await setup({ partner: SAM }, [{ date: yesterday, color: 0, checkedIn: true }]);
+    await renderRouter(routes, { initialUrl: `/check-in?date=${yesterday}` });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Yellow/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+
+    await waitFor(() => expect(alerts.find('Call Sam to share this?')).toBeTruthy());
+    expect(alerts.find('Call Sam to share this?').message).toBe(
+      `Your next call won't include ${formatShort(yesterday)}.`,
+    );
+    expect(useAppStore.getState().days[yesterday]).toEqual({ date: yesterday, color: 2, checkedIn: true });
+
+    await alerts.press('Call Sam to share this?', 'Call now');
+    expect(await screen.findByText('Also share')).toBeTruthy();
+    expect(screen.getByText('Also share: “Yesterday, my lowest was Yellow.”')).toBeTruthy();
+  });
+
+  it('asks before calling about a Red the next call would not cover', async () => {
+    const alerts = spyOnAlerts();
+    const today = await setup({ partner: SAM }, [
+      { date: addDays(todayLocal(), -1), color: 0, checkedIn: true },
+    ]);
+    const twoDaysAgo = addDays(today, -2);
+    await renderRouter(routes, { initialUrl: `/check-in?date=${twoDaysAgo}` });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
+    // Started 3 days ago: the Red leaves 2 days, and the 0-day run before it is shorter.
+    expect(
+      screen.getByText('Your counter goes back to 2 days. Your best streak becomes 2 days. Your history stays.'),
+    ).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save check-in' }));
+
+    await waitFor(() => expect(useAppStore.getState().days[twoDaysAgo]?.color).toBe(3));
+    await alerts.press('Call Sam to share this?', 'Later');
+    expect(screen.queryByText('Also share')).toBeNull();
+  });
 });
 
 describe('call', () => {
@@ -231,6 +271,28 @@ describe('call', () => {
     await fireEvent.press(screen.getByRole('button', { name: /I talked with Sam/ }));
     await waitFor(() => expect(useAppStore.getState().days[today]?.checkedIn).toBe(true));
     expect(await screen.findByText('You already talked with Sam today.')).toBeTruthy();
+  });
+
+  it('shares a day outside the window even after talking today', async () => {
+    const today = await setup({ partner: SAM }, [
+      { date: addDays(todayLocal(), -1), color: 2, checkedIn: false },
+      { date: todayLocal(), color: 0, checkedIn: true },
+    ]);
+    await renderRouter(routes, { initialUrl: `/call?share=${addDays(today, -1)}` });
+
+    expect(screen.getByText('You already talked with Sam today.')).toBeTruthy();
+    expect(screen.getByText('Also share')).toBeTruthy();
+    expect(screen.getByText('Share: “Yesterday, my lowest was Yellow.”')).toBeTruthy();
+  });
+
+  it('ignores a share day the window already lists', async () => {
+    const today = await setup({ partner: SAM }, [
+      { date: addDays(todayLocal(), -1), color: 2, checkedIn: false },
+    ]);
+    await renderRouter(routes, { initialUrl: `/call?share=${addDays(today, -1)}` });
+
+    expect(screen.getByText('Since you started')).toBeTruthy();
+    expect(screen.queryByText('Also share')).toBeNull();
   });
 
   /** Taps "Call Sam" and waits for the dial to finish. */

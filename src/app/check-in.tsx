@@ -2,12 +2,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
-import { formatLong, isValidLocalDate } from '@/domain/dates';
+import { inCallWindow } from '@/domain/call';
+import { decideSetColor } from '@/domain/checkin';
+import { formatLong, formatShort, isValidLocalDate } from '@/domain/dates';
+import { bestStreak, currentStreak, streaksIfRed } from '@/domain/streak';
 import {
   COLOR_LEVELS,
   COLOR_NAMES,
   RED,
   type ColorLevel,
+  type DayLog,
   type LocalDate,
   type SetColorOutcome,
 } from '@/domain/types';
@@ -60,9 +64,11 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
   const today = useAppStore((s) => s.today);
   const isToday = date === today;
 
-  const stored = useAppStore((s) => s.days[date]?.color ?? null);
+  const days = useAppStore((s) => s.days);
+  const stored = days[date]?.color ?? null;
   const behaviors = useAppStore((s) => s.behaviors);
-  const partner = useAppStore((s) => s.settings.partner);
+  const settings = useAppStore((s) => s.settings);
+  const partner = settings.partner;
   const setColor = useAppStore((s) => s.setColor);
 
   const [selected, setSelected] = useState<ColorLevel | null>(stored);
@@ -75,9 +81,11 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
     else router.replace('/(tabs)');
   };
 
-  const goToCall = () => {
+  /** `share`: a day the next call won't cover on its own, shown on the call screen too. */
+  const goToCall = (share?: LocalDate) => {
+    // Days opened from the call screen are in its window, so there is nothing extra to share.
     if (fromCall) close();
-    else router.replace('/call');
+    else router.replace(share === undefined ? '/call' : { pathname: '/call', params: { share } });
   };
 
   const dayWord = isToday ? 'today' : 'that day';
@@ -105,25 +113,48 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
         );
         return;
       }
-      case 'saved':
-        if (outcome.becameRed) {
-          if (partner !== null) goToCall();
-          else close();
+      case 'saved': {
+        if (!outcome.becameRed && !outcome.worseAfterCall) {
+          close();
           return;
         }
-        if (outcome.clearedCheckIn) {
+        const state = useAppStore.getState();
+        if (inCallWindow(Object.values(state.days), state.settings, state.today, date)) {
+          // The next call covers this day: a new Red goes straight there; a worse color
+          // today just lost today's check-in, so ask to call again.
+          if (outcome.becameRed) {
+            if (partner !== null) goToCall();
+            else close();
+            return;
+          }
           setSaving(false);
           Alert.alert(
-            `You'd already talked with ${partnerName} ${dayWord}. Call again to share this?`,
+            `You'd already talked with ${partnerName} today. Call again to share this?`,
             undefined,
             [
               { text: 'Later', style: 'cancel', onPress: close },
-              { text: 'Call now', onPress: goToCall },
+              { text: 'Call now', onPress: () => goToCall() },
             ],
           );
           return;
         }
-        close();
+        // A past day the partner has already talked with you since (or before the
+        // first call window): the next call won't show it, so offer to share it.
+        if (partner === null) {
+          close();
+          return;
+        }
+        setSaving(false);
+        Alert.alert(
+          `Call ${partnerName} to share this?`,
+          `Your next call won't include ${isToday ? 'today' : formatShort(date)}.`,
+          [
+            { text: 'Later', style: 'cancel', onPress: close },
+            { text: 'Call now', onPress: () => goToCall(date) },
+          ],
+        );
+        return;
+      }
     }
   }
 
@@ -139,13 +170,18 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
     }
   }
 
-  const willCall = selected === RED && stored !== RED && partner !== null;
+  // Straight to the call only when that call will cover this day (see handleOutcome).
+  const willCall =
+    selected === RED &&
+    stored !== RED &&
+    partner !== null &&
+    inCallWindow(daysAfter(days, date, RED, today), settings, today, date);
   const saveLabel =
     selected === null ? 'Pick a color to save' : willCall ? `Save, then call ${partnerName}` : 'Save check-in';
 
   const footer = (
     <>
-      {selected === RED ? <GraceNote /> : null}
+      {selected === RED ? <GraceNote date={date} /> : null}
       <Button
         title={saveLabel}
         size="lg"
@@ -198,11 +234,51 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
   );
 }
 
+/** The days as they would be after saving `color` for `date` without a confirmation. */
+function daysAfter(
+  days: Record<LocalDate, DayLog>,
+  date: LocalDate,
+  color: ColorLevel,
+  today: LocalDate,
+): DayLog[] {
+  const outcome = decideSetColor(days[date], date, color, {}, today);
+  return Object.values(outcome.kind === 'saved' ? { ...days, [date]: outcome.day } : days);
+}
+
+function daysText(n: number): string {
+  return `${n} ${n === 1 ? 'day' : 'days'}`;
+}
+
+/**
+ * Today: the counter restarts at 0. A past day: the counter and best streak it
+ * would really leave (a later Red keeps the counter; a split run can lower best).
+ */
+function redNoteText(
+  days: DayLog[],
+  counterStartDate: LocalDate | null,
+  date: LocalDate,
+  today: LocalDate,
+): string {
+  if (date === today) return 'Your counter restarts at 0. Your history and best streak stay.';
+  const after = streaksIfRed(days, counterStartDate, date, today);
+  const counter =
+    after.current === currentStreak(days, counterStartDate, today)
+      ? `Your counter stays at ${daysText(after.current)}.`
+      : `Your counter goes back to ${daysText(after.current)}.`;
+  return after.best === bestStreak(days, counterStartDate, today)
+    ? `${counter} Your history and best streak stay.`
+    : `${counter} Your best streak becomes ${daysText(after.best)}. Your history stays.`;
+}
+
 const GRACE_NOTE_MAX_SCALE = 2;
 
-function GraceNote() {
+function GraceNote({ date }: { date: LocalDate }) {
   const theme = useAppTheme();
   const red = theme.levels[RED];
+  const today = useAppStore((s) => s.today);
+  const days = useAppStore((s) => s.days);
+  const counterStartDate = useAppStore((s) => s.settings.counterStartDate);
+  const text = redNoteText(Object.values(days), counterStartDate, date, today);
   return (
     <View
       accessible
@@ -219,7 +295,7 @@ function GraceNote() {
         maxFontSizeMultiplier={GRACE_NOTE_MAX_SCALE}
         style={{ color: red.ink, fontSize: 14, lineHeight: 20, fontWeight: '600' }}
       >
-        Your counter restarts at 0. Your history and best streak stay.
+        {text}
       </Text>
       <Text maxFontSizeMultiplier={GRACE_NOTE_MAX_SCALE} style={{ color: red.ink, fontSize: 13, lineHeight: 18 }}>
         God&apos;s grace doesn&apos;t reset.

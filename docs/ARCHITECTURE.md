@@ -25,13 +25,16 @@ Never install packages; everything needed is already in `package.json`.
 - **Lowest wins:** a worse color replaces a better one. A better color than the
   stored one needs a "Did you pick X by mistake?" confirmation.
 - **Late color after the call:** if a day is checked in and gets a WORSE color
-  (previous color non-null), clear that day's check-in and prompt the user to
-  call again. Previous color null → keep the check-in.
+  (previous color non-null): for today, clear the check-in and prompt the user to
+  call again; for a past day, keep the check-in (that call happened) and offer a
+  call that shares that day. Previous color null → keep the check-in.
 - **Counter** = calendar days since the last Red (Red day shows 0, next day 1).
   Before any Red, count from `settings.counterStartDate`. Unlogged days never
   reset it. Reds dated after today are ignored.
 - **Best streak** = max over every completed run (`nextAnchor - anchor - 1`)
   and the current streak. Anchors = counterStartDate + every Red date ≤ today.
+  A run is completed only when it ends at a Red: the gap from an earlier Red up to
+  counterStartDate is untracked, so a Red logged before the start never raises best.
 - **Day boundary = midnight.** Missed days can be made up (backfill any past day
   from History; Today shows "Yesterday isn't logged"). Future days are locked.
   A check-in opened for today keeps that day if midnight passes while it is open.
@@ -159,6 +162,9 @@ formatMonthYear(year, month1to12): string        // 'October 2026'
 redDates(days: DayLog[], today): LocalDate[]     // Red dates ≤ today, ascending, unique
 currentStreak(days, counterStartDate: LocalDate|null, today): number | null  // null if no anchor at all
 bestStreak(days, counterStartDate, today): number | null
+  // only runs that end at a Red count (not the run up to counterStartDate)
+streaksIfRed(days, counterStartDate, date, today): { current: number; best: number }
+  // both as they would be with `date` logged Red (the check-in's Red note)
 // A counterStartDate after today is treated as today.
 ```
 
@@ -166,6 +172,7 @@ bestStreak(days, counterStartDate, today): number | null
 ```ts
 FIRST_CALL_MAX_DAYS = 14
 callWindow(days: DayLog[], settings: Pick<Settings, 'counterStartDate' | 'installDate'>, today): CallWindow
+inCallWindow(days, settings, today, date): boolean  // the next call covers `date`
 ```
 
 ### domain/checkin.ts
@@ -173,6 +180,8 @@ callWindow(days: DayLog[], settings: Pick<Settings, 'counterStartDate' | 'instal
 decideSetColor(existing: DayLog | undefined, date: LocalDate, requested: ColorLevel,
                opts: { confirmBetter?: boolean }, today: LocalDate): SetColorOutcome
   // becameRed only when the day was not Red before.
+  // worseAfterCall: checked-in day, non-null color, got worse. clearedCheckIn: that, on today
+  // (its check-in is cleared); a past day keeps its check-in.
 lowestOf(colors: (ColorLevel|null)[]): ColorLevel | null
 ```
 
@@ -184,7 +193,8 @@ monthSummary(days: DayLog[], year, month1to12, today, installDate: LocalDate|nul
   { counts: Record<ColorLevel, number>; checkIns: number; eligibleDays: number }
   // counts = every logged color in the month dated ≤ today (backfilled days before install too).
   // eligibleDays = days in month from max(monthStart, installDate) through yesterday,
-  // plus today if today is checked in. checkIns counted over the same days.
+  // plus today if today is checked in, plus checked-in days before installDate (an
+  // unmarked day there is not a missed call). checkIns counted over the same days.
 recentUnloggedDates(days, installDate: LocalDate|null, today, limit = 7): LocalDate[]
   // past days (yesterday back to max(installDate, today - limit)) with no color, oldest first
 weekStrip(days, today, installDate: LocalDate|null = null):
@@ -389,14 +399,20 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
 - `check-in.tsx` — modal, `?date=YYYY-MM-DD` (default: today as of opening, kept if midnight
   passes); invalid or future dates close right away. `&from=call` returns to the call screen
   instead of opening a second one. 4 color cards with the user's behaviors, Red shows grace
-  note ("Your counter restarts at 0. Your history and best streak stay. God's grace doesn't
-  reset."), save → outcome handling (confirm-better dialog, becameRed → `/call` if a partner
-  exists, clearedCheckIn → "You'd already talked with {name} today. Call again to share this?").
+  note (today: "Your counter restarts at 0. Your history and best streak stay."; a past day:
+  the counter and best streak it would really leave, from `streaksIfRed`; then "God's grace
+  doesn't reset."), save → outcome handling (confirm-better dialog). If the next call covers
+  the day: becameRed → `/call` if a partner exists ("Save, then call {name}"), clearedCheckIn →
+  "You'd already talked with {name} today. Call again to share this?". If it doesn't (a past
+  day already talked about, or older than the first-call window) and the day became Red or got
+  worse after its call: "Call {name} to share this?" → `/call?share=<date>`.
 - `call.tsx` — modal (asks to add a partner if there is none): since-last-call list (long gaps
   collapse to the last 7 days + "Show all") with "Log it" for unlogged days, lowest summary,
   script, "Call {name}" (dialer). The day on screen when Call is tapped is the call day; when the
   app returns from the background it asks "Did you talk with {name}?" and marks that day.
-  Manual "I talked with {name} — mark today" toggle, month check-in count.
+  Manual "I talked with {name} — mark today" toggle, month check-in count. `?share=YYYY-MM-DD`:
+  a logged past day outside the window shows in an "Also share" card and adds an "Also share:
+  “On {date}, my lowest was {color}.”" step (also shown when today is already checked in).
 - `day/[date].tsx` — modal: day color ("Log it" / "Change" → `/check-in?date=`), "Checked in
   with {partner}" toggle; invalid or future dates show a message.
 - `onboarding.tsx` — steps: welcome (privacy promise) → how colors work → counter start

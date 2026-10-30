@@ -119,6 +119,7 @@ describe('setColor', () => {
     expect(outcome).toEqual({
       kind: 'saved',
       day: day(TODAY, YELLOW),
+      worseAfterCall: false,
       clearedCheckIn: false,
       becameRed: false,
     });
@@ -132,6 +133,7 @@ describe('setColor', () => {
     expect(outcome).toEqual({
       kind: 'saved',
       day: day(TODAY, RED),
+      worseAfterCall: false,
       clearedCheckIn: false,
       becameRed: true,
     });
@@ -151,6 +153,7 @@ describe('setColor', () => {
     expect(confirmed).toEqual({
       kind: 'saved',
       day: day(TODAY, GREEN),
+      worseAfterCall: false,
       clearedCheckIn: false,
       becameRed: false,
     });
@@ -170,11 +173,25 @@ describe('setColor', () => {
     expect(outcome).toEqual({
       kind: 'saved',
       day: day(TODAY, YELLOW, false),
+      worseAfterCall: true,
       clearedCheckIn: true,
       becameRed: false,
     });
     expect(store().days[TODAY]).toEqual(day(TODAY, YELLOW, false));
     expect((await repo.loadAll()).days).toEqual([day(TODAY, YELLOW, false)]);
+  });
+
+  it('a worse color on a past checked-in day keeps that call', async () => {
+    const repo = await initWith({ days: [day(YESTERDAY, GREEN, true)] });
+    const outcome = await store().setColor(YESTERDAY, RED);
+    expect(outcome).toEqual({
+      kind: 'saved',
+      day: day(YESTERDAY, RED, true),
+      worseAfterCall: true,
+      clearedCheckIn: false,
+      becameRed: true,
+    });
+    expect((await repo.loadAll()).days).toEqual([day(YESTERDAY, RED, true)]);
   });
 
   it('keeps the check-in when the previous color was null', async () => {
@@ -183,6 +200,7 @@ describe('setColor', () => {
     expect(outcome).toEqual({
       kind: 'saved',
       day: day(TODAY, BLUE, true),
+      worseAfterCall: false,
       clearedCheckIn: false,
       becameRed: false,
     });

@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from '@jest/globals';
 
-import { callWindow, FIRST_CALL_MAX_DAYS } from '@/domain/call';
+import { callWindow, FIRST_CALL_MAX_DAYS, inCallWindow } from '@/domain/call';
 import { datesBetween } from '@/domain/dates';
 import type { ColorLevel, DayLog } from '@/domain/types';
 
@@ -180,5 +180,20 @@ describe('callWindow: colors, lowest and unlogged days', () => {
   it('ignores colors outside the window', () => {
     const w = callWindow([day('2026-10-01', 3), day('2026-10-27', 0, true), day('2026-10-28', 1)], noDates, TODAY);
     expect(w.lowest).toBe(1);
+  });
+});
+
+describe('inCallWindow', () => {
+  const started: Settings = { counterStartDate: '2026-10-01', installDate: '2026-10-01' };
+  test.each<[string, DayLog[], string, boolean]>([
+    ['a day after the last call', [day('2026-10-25', 0, true)], '2026-10-27', true],
+    ['today with no call yet today', [day('2026-10-25', 0, true)], TODAY, true],
+    ['the last call day itself', [day('2026-10-25', 0, true)], '2026-10-25', false],
+    ['a day before the last call', [day('2026-10-25', 0, true)], '2026-10-20', false],
+    ['any day once today is checked in', [day(TODAY, 0, true)], '2026-10-28', false],
+    ['no calls: inside the first 14 days', [], '2026-10-16', true],
+    ['no calls: older than the first 14 days', [], '2026-10-15', false],
+  ])('%s', (_name, days, date, expected) => {
+    expect(inCallWindow(days, started, TODAY, date)).toBe(expected);
   });
 });

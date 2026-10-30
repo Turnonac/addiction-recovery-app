@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from '@jest/globals';
 
-import { bestStreak, currentStreak, redDates } from '@/domain/streak';
+import { bestStreak, currentStreak, redDates, streaksIfRed } from '@/domain/streak';
 import type { ColorLevel, DayLog } from '@/domain/types';
 
 const TODAY = '2026-10-29';
@@ -86,18 +86,34 @@ describe('bestStreak', () => {
       7,
     ],
     [
-      // anchors: Aug1, Sep30 (Reds), Oct25 (start): runs 59, 24; current 4
+      // anchors: Aug1, Sep30 (Reds), Oct25 (start): run Aug1→Sep30 = 59; Sep30→Oct25
+      // ends at the start, not a Red, so it is no run; current 4
       'Reds before counterStartDate still form runs',
       [red('2026-08-01'), red('2026-09-30')],
       '2026-10-25',
       59,
     ],
     [
-      // anchors: Sep1 (Red), Sep21 (start): run 19; current 38
+      // anchors: Sep1 (Red), Sep21 (start): Sep1→Sep21 is no run; current 38
       'Red before counterStartDate, current run longest',
       [red('2026-09-01')],
       '2026-09-21',
       38,
+    ],
+    [
+      // 'Start counting today' on Oct 27, then a Red backfilled on Oct 1: the untracked
+      // gap up to the start is not a clean run, so best stays the current 2 (not 25)
+      'a Red before the start date does not raise best',
+      [red('2026-10-01')],
+      '2026-10-27',
+      2,
+    ],
+    [
+      // a Red on the start date itself ends the run before it: Sep1→Oct1 = 29; current 28
+      'a Red on counterStartDate ends a run',
+      [red('2026-09-01'), red('2026-10-01')],
+      '2026-10-01',
+      29,
     ],
     ['Reds only, no counterStartDate', [red('2026-10-01'), red('2026-10-20')], null, 18],
     ['future Red is ignored', [red('2026-10-01'), red('2026-11-15')], null, 28],
@@ -125,5 +141,24 @@ describe('bestStreak', () => {
       expect(best).not.toBeNull();
       expect(best!).toBeGreaterThanOrEqual(current!);
     }
+  });
+});
+
+describe('streaksIfRed', () => {
+  test.each<[string, DayLog[], string | null, string, { current: number; best: number }]>([
+    ['Red today restarts the counter', [], '2026-10-01', TODAY, { current: 0, best: 27 }],
+    ['Red yesterday leaves 1', [], '2026-10-01', '2026-10-28', { current: 1, best: 26 }],
+    ['past Red splits the run', [], '2026-10-01', '2026-10-20', { current: 9, best: 18 }],
+    ['a later Red keeps the counter', [red('2026-10-20')], '2026-10-01', '2026-10-05', { current: 9, best: 14 }],
+    ['before the start date nothing changes', [], '2026-10-27', '2026-10-01', { current: 2, best: 2 }],
+    ['replaces the color already logged that day', [day('2026-10-20', 0, true)], '2026-10-01', '2026-10-20', { current: 9, best: 18 }],
+  ])('%s', (_name, days, start, date, expected) => {
+    expect(streaksIfRed(days, start, date, TODAY)).toEqual(expected);
+  });
+
+  it('does not change the days it is given', () => {
+    const days = [day('2026-10-20', 0, true)];
+    streaksIfRed(days, '2026-10-01', '2026-10-20', TODAY);
+    expect(days).toEqual([day('2026-10-20', 0, true)]);
   });
 });

@@ -58,8 +58,8 @@ describe('monthSummary', () => {
       TODAY,
       '2026-10-10',
       { 0: 3, 1: 1, 2: 1, 3: 1 },
-      3, // 10-10, 10-12, 10-20 (10-05 is before install)
-      19, // 10-10 .. 10-28
+      4, // 10-05 (backfilled before install), 10-10, 10-12, 10-20
+      20, // 10-10 .. 10-28, plus 10-05
     ],
     [
       'today checked in is included',
@@ -69,8 +69,8 @@ describe('monthSummary', () => {
       TODAY,
       '2026-10-10',
       { 0: 2, 1: 2, 2: 1, 3: 1 },
-      4,
-      20,
+      5,
+      21,
     ],
     [
       'no installDate counts from the month start',
@@ -95,15 +95,37 @@ describe('monthSummary', () => {
       16, // 09-15 .. 09-30
     ],
     [
-      'month entirely before install: no eligible days, colors still counted',
+      'month entirely before install: only backfilled check-ins count, colors still counted',
       days,
       2026,
       9,
       TODAY,
       '2026-10-10',
       { 0: 0, 1: 0, 2: 0, 3: 1 },
+      1, // 09-30
+      1,
+    ],
+    [
+      'month entirely before install with no check-ins',
+      [day('2026-09-20', 0)],
+      2026,
+      9,
+      TODAY,
+      '2026-10-10',
+      { 0: 1, 1: 0, 2: 0, 3: 0 },
       0,
       0,
+    ],
+    [
+      'unchecked days before install are not missed calls',
+      [day('2026-10-03', 2), day('2026-10-04', null, true), day('2026-10-12', 0, true)],
+      2026,
+      10,
+      TODAY,
+      '2026-10-10',
+      { 0: 1, 1: 0, 2: 1, 3: 0 },
+      2, // 10-04, 10-12
+      20, // 10-10 .. 10-28, plus 10-04
     ],
     ['future month is empty', days, 2026, 11, TODAY, '2026-10-10', { 0: 0, 1: 0, 2: 0, 3: 0 }, 0, 0],
     [

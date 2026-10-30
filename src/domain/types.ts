@@ -126,7 +126,9 @@ export type SetColorOutcome =
   | {
       kind: 'saved';
       day: DayLog;
-      /** The day was checked in, then got a worse color: check cleared, ask to call again. */
+      /** The day was checked in with a color, then got a worse one: the partner hasn't heard it. */
+      worseAfterCall: boolean;
+      /** worseAfterCall on today: today's check-in was cleared so the next call covers it again. */
       clearedCheckIn: boolean;
       /** The day just became Red (it was not Red before). */
       becameRed: boolean;

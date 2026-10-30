@@ -54,3 +54,13 @@ export function callWindow(
     unloggedDates: windowDays.filter((d) => d.color === null).map((d) => d.date),
   };
 }
+
+/** True when the next call covers `date` (it is one of callWindow's days). */
+export function inCallWindow(
+  days: DayLog[],
+  settings: Pick<Settings, 'counterStartDate' | 'installDate'>,
+  today: LocalDate,
+  date: LocalDate,
+): boolean {
+  return callWindow(days, settings, today).days.some((d) => d.date === date);
+}
