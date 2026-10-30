@@ -113,20 +113,29 @@ function removePickedCopy(uri: string): void {
   }
 }
 
-/** Deletes the entries of `directory` that `match` accepts. Never throws. */
-function deleteEntries(directory: Directory, match: (entry: Directory | File) => boolean): void {
+/**
+ * Deletes the entries of `directory` that `match` accepts. Never throws.
+ * @returns false if one of them could not be deleted, or the folder exists but can't be listed.
+ */
+function deleteEntries(directory: Directory, match: (entry: Directory | File) => boolean): boolean {
+  let entries: (Directory | File)[];
   try {
-    for (const entry of directory.list()) {
-      if (!match(entry)) continue;
-      try {
-        entry.delete();
-      } catch {
-        // Keep going; the OS clears the cache and tmp eventually.
-      }
-    }
+    if (!directory.exists) return true;
+    entries = directory.list();
   } catch {
-    // Missing or unreadable folder: nothing to delete.
+    return false;
   }
+  let deleted = true;
+  for (const entry of entries) {
+    if (!match(entry)) continue;
+    try {
+      entry.delete();
+    } catch {
+      // Keep going with the others.
+      deleted = false;
+    }
+  }
+  return deleted;
 }
 
 /**
@@ -134,18 +143,25 @@ function deleteEntries(directory: Directory, match: (entry: Directory | File) =>
  * wrote to the cache, and the document picker's copies of imported files (normally deleted
  * right away, but a failed or cancelled read can leave one): Android cache/DocumentPicker/,
  * iOS tmp/<bundle-id>-Inbox/. Files the user saved elsewhere are not touched. Never throws.
+ * @returns false if a copy may be left (one couldn't be deleted, or a folder couldn't be listed).
  */
-export function deleteBackupCopies(): void {
-  deleteEntries(Paths.cache, (entry) =>
+export function deleteBackupCopies(): boolean {
+  let deleted = deleteEntries(Paths.cache, (entry) =>
     entry instanceof File
       ? EXPORT_COPY_NAME.test(entry.name)
       : entry.name === 'DocumentPicker',
   );
-  if (Platform.OS !== 'ios') return;
-  const tmp = iosTmpUri();
-  if (tmp !== null) {
-    deleteEntries(new Directory(tmp), (entry) => entry instanceof Directory && INBOX_NAME.test(entry.name));
+  if (Platform.OS === 'ios') {
+    const tmp = iosTmpUri();
+    if (tmp !== null) {
+      const inbox = deleteEntries(
+        new Directory(tmp),
+        (entry) => entry instanceof Directory && INBOX_NAME.test(entry.name),
+      );
+      deleted = inbox && deleted;
+    }
   }
+  return deleted;
 }
 
 /**

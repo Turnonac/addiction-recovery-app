@@ -248,7 +248,7 @@ describe('deleteBackupCopies', () => {
     ];
     add(...kept);
 
-    deleteBackupCopies();
+    expect(deleteBackupCopies()).toBe(true);
 
     expect([...mockDeleted].sort()).toEqual(
       [...exports.map((name) => `${CACHE}${name}`), `${CACHE}DocumentPicker/`].sort(),
@@ -262,7 +262,7 @@ describe('deleteBackupCopies', () => {
     const kept = [`${APP}tmp/other/file.json`, `${APP}tmp/Inbox-notes.json`, `${APP}Documents/daily-backup.json`];
     add(...kept);
 
-    deleteBackupCopies();
+    expect(deleteBackupCopies()).toBe(true);
 
     expect(mockDeleted).toEqual([`${APP}tmp/org.example.app-Inbox/`]);
     expect(Object.keys(mockFiles).sort()).toEqual([...kept].sort());
@@ -271,24 +271,29 @@ describe('deleteBackupCopies', () => {
   it('leaves tmp alone on Android', () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     add(`${APP}tmp/org.example.app-Inbox/daily-backup.json`);
-    deleteBackupCopies();
+    expect(deleteBackupCopies()).toBe(true);
     expect(mockDeleted).toEqual([]);
   });
 
-  it('keeps going past a copy it cannot delete, and never throws', () => {
+  it('keeps going past a copy it cannot delete, and says one is left', () => {
     jest.replaceProperty(Platform, 'OS', 'ios');
     mockFiles[`${CACHE}daily-backup-2026-10-28.json`] = { text: '{}', size: 2, locked: true };
     add(`${CACHE}daily-backup-2026-10-29.json`, `${APP}tmp/org.example.app-Inbox/daily-backup.json`);
-    expect(() => deleteBackupCopies()).not.toThrow();
+    expect(deleteBackupCopies()).toBe(false);
     expect(mockDeleted).toEqual([`${CACHE}daily-backup-2026-10-29.json`, `${APP}tmp/org.example.app-Inbox/`]);
-
-    mockList.error = new Error('unreadable');
-    expect(() => deleteBackupCopies()).not.toThrow();
   });
 
-  it('does nothing when there are no copies (no tmp, no cache)', () => {
+  it('says a copy may be left when a folder exists but cannot be listed, and never throws', () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    add(`${CACHE}daily-backup-2026-10-29.json`);
+    mockList.error = new Error('unreadable');
+    expect(deleteBackupCopies()).toBe(false);
+    expect(mockFiles[`${CACHE}daily-backup-2026-10-29.json`]).toBeDefined();
+  });
+
+  it('counts missing folders as nothing left (no tmp, empty cache)', () => {
     jest.replaceProperty(Platform, 'OS', 'ios');
-    expect(() => deleteBackupCopies()).not.toThrow();
+    expect(deleteBackupCopies()).toBe(true);
     expect(mockDeleted).toEqual([]);
   });
 });

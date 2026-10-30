@@ -355,10 +355,11 @@ BACKUP_PICKER_TYPES = ['application/json', 'text/plain', 'application/octet-stre
 shareBackupFile(file: BackupFileV2, fileName: string): Promise<boolean>
   // write to cache, open share sheet; true once the sheet closes (the OS doesn't say whether
   // the file was saved), false if sharing is unavailable or anything fails
-deleteBackupCopies(): void
+deleteBackupCopies(): boolean
   // deletes the backup copies the app left: daily-backup*.json export copies at the top of the
   // cache, the picker's cache/DocumentPicker/ folder, and on iOS tmp/<bundle-id>-Inbox/ folders.
-  // Files saved elsewhere are not touched. Never throws.
+  // Files saved elsewhere are not touched. Never throws; false if a copy may be left (a delete
+  // failed, or a folder exists but can't be listed). A missing folder counts as done.
 pickBackupFile(): Promise<unknown | null>
   // document picker, read text (BOM stripped), JSON.parse; null if cancelled.
   // Throws BackupReadError: 'unreadable' (can't read, or over MAX_BACKUP_BYTES) | 'invalid-json'.
@@ -438,8 +439,9 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   - Delete all: "Delete all data?" alert (what goes, the last backup file's date or "You
     haven't exported a backup file.", can't be undone) → "Delete all" → `deleteAllData` →
     `cancelDailyReminder` (best effort; onboarding's reminder step cancels or replaces it) →
-    `deleteBackupCopies`; a high-priority "All your data was deleted." announcement. The root
-    guard then opens onboarding. On failure: "Couldn't delete
+    `deleteBackupCopies`; then a high-priority "All your data was deleted." announcement, or, if a
+    copy may be left, a "Your data was deleted" alert saying so (the phone clears the folder over
+    time; uninstalling removes it). The root guard then opens onboarding. On failure: "Couldn't delete
     your data" / "Nothing was deleted."
 - `settings/colors.tsx` (My colors editor), `settings/partner.tsx` (edit / remove partner,
   pick from contacts).

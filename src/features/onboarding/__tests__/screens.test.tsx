@@ -57,7 +57,7 @@ jest.mock('@/services/contacts', () => ({
   pickPartnerContact: jest.fn(async () => ({ status: 'unavailable' })),
 }));
 jest.mock('@/services/backupFiles', () => ({
-  deleteBackupCopies: jest.fn(),
+  deleteBackupCopies: jest.fn(() => true),
   shareBackupFile: jest.fn(async () => true),
   pickBackupFile: jest.fn(async () => null),
   isBackupReadError: () => false,
@@ -622,6 +622,24 @@ describe('settings', () => {
     expect(useAppStore.getState().days).toEqual({});
     await waitFor(() => expect(backupFiles.deleteBackupCopies).toHaveBeenCalledTimes(1));
     expect(notifications.cancelDailyReminder).toHaveBeenCalledTimes(1);
+    expect(() => alerts.find('Your data was deleted')).toThrow();
+  });
+
+  it('says so when a backup copy could not be removed', async () => {
+    await setup({ partner: SAM });
+    jest.mocked(backupFiles.deleteBackupCopies).mockReturnValueOnce(false);
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/settings' });
+
+    await fireEvent.press(screen.getByRole('button', { name: /Delete all data/ }));
+    await alerts.press('Delete all data?', 'Delete all');
+
+    await waitFor(() =>
+      expect(alerts.find('Your data was deleted').message).toBe(
+        "A backup copy in Light2Life's temporary folder couldn't be removed. Your phone clears that folder over time, and uninstalling Light2Life removes it right away.",
+      ),
+    );
+    expect(useAppStore.getState().settings).toEqual(DEFAULT_SETTINGS);
   });
 
   it('still deletes the backup copies when cancelling the reminder fails', async () => {

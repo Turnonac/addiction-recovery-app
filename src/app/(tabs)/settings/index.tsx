@@ -49,6 +49,8 @@ const DATA_NOTE =
   "Your data lives on this phone. Light2Life never sends it anywhere. If iCloud or Google backup is on in your phone's settings, it's included there. You can also export a backup file.";
 
 const RESTORED_MESSAGE = 'The data from your backup file is now on this phone.';
+const COPY_LEFT_MESSAGE =
+  "A backup copy in Light2Life's temporary folder couldn't be removed. Your phone clears that folder over time, and uninstalling Light2Life removes it right away.";
 const DENIED_NOTE =
   "Reminders are turned off in your phone's settings. Turn on notifications for Light2Life there to get your daily reminder.";
 const UNDETERMINED_NOTE =
@@ -298,7 +300,10 @@ export default function SettingsScreen() {
       } catch {
         // Setup's reminder step cancels or replaces it.
       }
-      deleteBackupCopies();
+      if (!deleteBackupCopies()) {
+        Alert.alert('Your data was deleted', COPY_LEFT_MESSAGE);
+        return;
+      }
       // High priority: setup's first step announces its title as it opens.
       AccessibilityInfo.announceForAccessibilityWithOptions('All your data was deleted.', {
         priority: 'high',
