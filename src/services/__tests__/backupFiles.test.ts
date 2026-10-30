@@ -97,6 +97,18 @@ describe('pickBackupFile', () => {
     expect(mockReads).toEqual([]);
   });
 
+  it.each([
+    ['too small', 16],
+    ['0', 0],
+  ])('checks the file itself when the picker reports a size that is %s', async (_what, reported) => {
+    const uri = picked(`${CACHE}big.json`, 'x'.repeat(16), reported);
+    mockFiles[uri].size = MAX_BACKUP_BYTES + 1;
+    const error = await pickBackupFile().catch((e: unknown) => e);
+    expect(isBackupReadError(error) && error.code).toBe('unreadable');
+    expect(mockReads).toEqual([]);
+    expect(mockDeleted).toEqual([uri]);
+  });
+
   it('reports a file that is not JSON', async () => {
     picked(`${CACHE}notes.txt`, 'hello');
     const error = await pickBackupFile().catch((e: unknown) => e);

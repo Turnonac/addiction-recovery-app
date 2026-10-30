@@ -128,7 +128,8 @@ export async function pickBackupFile(): Promise<unknown | null> {
   let text: string;
   try {
     const file = new File(asset.uri);
-    const size = asset.size ?? file.size;
+    // Android reports the provider's size, which can be 0 or too small; trust the larger.
+    const size = Math.max(asset.size ?? 0, file.size);
     if (size > MAX_BACKUP_BYTES) {
       throw new RangeError(`File too large for a backup: ${size} bytes`);
     }

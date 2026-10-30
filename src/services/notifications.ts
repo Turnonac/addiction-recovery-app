@@ -48,9 +48,27 @@ function toPermission(settings: Notifications.NotificationPermissionsStatus): No
   return 'undetermined';
 }
 
+/**
+ * Android: true when the user turned off the "Daily reminder" channel in the phone's
+ * settings. The app-level permission still reads granted, but the reminder never shows,
+ * and the app cannot turn the channel back on. No channel, or a failed read, is not blocked.
+ */
+async function isDailyChannelBlocked(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    const channel = await Notifications.getNotificationChannelAsync(CHANNEL_ID);
+    return channel?.importance === AndroidImportance.NONE;
+  } catch {
+    return false;
+  }
+}
+
+/** A blocked Android reminder channel counts as denied (Settings then offers "Open phone settings"). */
 export async function getPermission(): Promise<NotificationPermission> {
   try {
-    return toPermission(await Notifications.getPermissionsAsync());
+    const permission = toPermission(await Notifications.getPermissionsAsync());
+    if (permission === 'granted' && (await isDailyChannelBlocked())) return 'denied';
+    return permission;
   } catch {
     return 'undetermined';
   }
@@ -65,17 +83,20 @@ async function ensureAndroidChannel(): Promise<void> {
   });
 }
 
-/** Creates the Android channel first, then asks for permission if not already granted. */
+/**
+ * Creates the Android channel first, then asks for permission if not already granted.
+ * False if the user has blocked the Android reminder channel, even with permission.
+ */
 export async function requestPermission(): Promise<boolean> {
   try {
     await ensureAndroidChannel();
     const current = await Notifications.getPermissionsAsync();
-    if (toPermission(current) === 'granted') return true;
+    if (toPermission(current) === 'granted') return !(await isDailyChannelBlocked());
     // iOS: the app-switcher blur stays on, so it shows behind the system alert (accepted).
     const result = await Notifications.requestPermissionsAsync({
       ios: { allowAlert: true, allowSound: true, allowBadge: false },
     });
-    return toPermission(result) === 'granted';
+    return toPermission(result) === 'granted' && !(await isDailyChannelBlocked());
   } catch {
     return false;
   }

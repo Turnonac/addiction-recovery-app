@@ -25,8 +25,24 @@ describe('sanitizePhone', () => {
   });
 
   it('drops letters and other symbols', () => {
-    expect(sanitizePhone('tel: 555-CALL ext. 12')).toBe('55512');
+    expect(sanitizePhone('tel: 555-CALL ext. 12')).toBe('555');
     expect(sanitizePhone('555 123‑456')).toBe('555123456');
+  });
+
+  it('drops an extension so its digits do not join the main number', () => {
+    expect(sanitizePhone('555-1234 ext. 12')).toBe('5551234');
+    expect(sanitizePhone('555-1234 Ext 12')).toBe('5551234');
+    expect(sanitizePhone('555-1234 extension: 12')).toBe('5551234');
+    expect(sanitizePhone('555-1234 x12')).toBe('5551234');
+    expect(sanitizePhone('555-1234X 12')).toBe('5551234');
+    expect(sanitizePhone('+1 555 123 4567 x 12')).toBe('+15551234567');
+  });
+
+  it('drops a pause or wait and what follows (how contacts store an extension)', () => {
+    expect(sanitizePhone('555-1234,12')).toBe('5551234');
+    expect(sanitizePhone('555-1234;12')).toBe('5551234');
+    expect(sanitizePhone('555-1234,,12#')).toBe('5551234');
+    expect(sanitizePhone('５５５-１２３４，１２')).toBe('5551234');
   });
 
   it('normalizes full-width characters', () => {
@@ -55,6 +71,12 @@ describe('callPhone', () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     await expect(callPhone('+1 (555) 123-4567')).resolves.toBe(true);
     expect(openURL).toHaveBeenCalledWith('tel:+15551234567');
+  });
+
+  it('dials only the main number when there is an extension', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    await callPhone('555-123-4567,12');
+    expect(openURL).toHaveBeenCalledWith('tel:5551234567');
   });
 
   it('percent-encodes # so it is not read as a URL fragment', async () => {

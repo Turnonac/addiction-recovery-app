@@ -1,10 +1,5 @@
 import { Linking } from 'react-native';
 
-/**
- * Keeps a leading '+', digits, '*' and '#'. Everything else (spaces, dashes,
- * brackets, dots, letters, extra '+') is dropped. Full-width characters are
- * normalized first. Returns '' when nothing dialable remains.
- */
 function normalizeWidth(text: string): string {
   try {
     return text.normalize('NFKC');
@@ -13,9 +8,19 @@ function normalizeWidth(text: string): string {
   }
 }
 
+/** Where an extension starts: a pause (','), a wait (';'), or 'ext' / 'x' before digits. */
+const EXTENSION = /[,;]|(?:ext(?:ension)?|x)[.:]?\s*\d/i;
+
+/**
+ * Keeps a leading '+', digits, '*' and '#'. Everything else (spaces, dashes,
+ * brackets, dots, letters, extra '+') is dropped. An extension and everything
+ * after it is dropped too, so its digits never join the main number. Full-width
+ * characters are normalized first. Returns '' when nothing dialable remains.
+ */
 export function sanitizePhone(phone: string): string {
   const normalized = normalizeWidth(phone).trim();
-  const digits = normalized.replace(/[^0-9*#]/g, '');
+  const main = normalized.split(EXTENSION)[0] ?? '';
+  const digits = main.replace(/[^0-9*#]/g, '');
   if (digits.length === 0) return '';
   return normalized.startsWith('+') ? `+${digits}` : digits;
 }

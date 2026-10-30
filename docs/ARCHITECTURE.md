@@ -280,8 +280,10 @@ rejected (no-op). The store never calls native services.
 REMINDER_ID = 'daily-checkin'; CHANNEL_ID = 'daily-reminder'
 type NotificationPermission = 'granted' | 'denied' | 'undetermined'
 configureForegroundHandler(): void      // no banner, list entry, sound or badge while the app is open
-getPermission(): Promise<NotificationPermission>   // iOS provisional / ephemeral count as granted
-requestPermission(): Promise<boolean>   // creates the Android channel first; prompts only if not granted.
+getPermission(): Promise<NotificationPermission>   // iOS provisional / ephemeral count as granted;
+                                                   // an Android reminder channel the user turned off counts as denied
+requestPermission(): Promise<boolean>   // creates the Android channel first; prompts only if not granted;
+                                        // false if the user turned the Android reminder channel off.
                                         // The privacy cover stays on during the system alert.
 scheduleDailyReminder(hour, minute): Promise<void>   // cancel + schedule DAILY trigger, idempotent;
                                                      // rejects if the OS refuses
@@ -312,7 +314,7 @@ enablePrivacyCover(): Promise<void>
   // with a fresh key per call (a recreated Activity has a new window). Never throws.
   // Nothing turns the cover off. Does nothing when EXPO_PUBLIC_SCREENSHOT_MODE === '1'.
 // dialer.ts
-sanitizePhone(phone: string): string    // NFKC, then keep a leading + and 0-9 * #
+sanitizePhone(phone: string): string    // NFKC, drop an extension (from , ; ext or x), then keep a leading + and 0-9 * #
 callPhone(phone: string): Promise<boolean>  // Linking.openURL('tel:…', '#' encoded); false on failure
                                             // (no number, no telephony, iOS Simulator)
 ```
