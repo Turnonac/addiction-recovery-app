@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { defaultSettings, isEmptyDay, sortBehaviors, type Repository } from '@/data/repository';
 import { decideSetColor } from '@/domain/checkin';
 import { isValidLocalDate, todayLocal } from '@/domain/dates';
+import { latestRed } from '@/domain/streak';
 import {
   RED,
   type AppSnapshot,
@@ -48,7 +49,7 @@ export interface AppState {
   setReminder(reminder: Reminder): Promise<void>;
   /**
    * Onboarding only. "My last Red day was…": `date` (before today) becomes a Red day,
-   * replacing the one saved here before (the latest Red before today). null ("Start
+   * replacing the one saved here before (the latest Red day in the log). null ("Start
    * counting today") just removes that one.
    */
   setLastRedDay(date: LocalDate | null): Promise<void>;
@@ -232,12 +233,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (date !== null && date >= today) throw new RangeError(`Last Red day must be before today: ${date}`);
         // Only this step writes days during onboarding, so the latest Red is the one it saved,
         // even if the date has since moved back (an earlier time zone) to that day or before.
-        const previous =
-          Object.values(get().days)
-            .filter((d) => d.color === RED)
-            .map((d) => d.date)
-            .sort()
-            .at(-1) ?? null;
+        const previous = latestRed(Object.values(get().days));
         if (previous === date) return;
         if (previous !== null) {
           const cleared: DayLog = { ...get().days[previous], color: null };

@@ -219,10 +219,10 @@ function daysText(n: number): string {
 }
 
 /**
- * Today: the counter restarts at 0. A past day: the counter and best streak it
- * would really leave. A later Red keeps the counter; a split run can lower best;
- * a Red before installDate, with none on or before it yet, moves the counter's
- * start back, so both can go up.
+ * The counter and best streak a Red on `date` would really leave. Today: the counter
+ * restarts at 0, and best loses today if the current run was the best one. A past day:
+ * a later Red keeps the counter; a split run can lower best; a Red before installDate,
+ * with none on or before it yet, moves the counter's start back, so both can go up.
  */
 function redNoteText(
   days: DayLog[],
@@ -230,15 +230,17 @@ function redNoteText(
   date: LocalDate,
   today: LocalDate,
 ): string {
-  if (date === today) return 'Your counter restarts at 0. Your history and best streak stay.';
   const after = streaksIfRed(days, installDate, date, today);
-  const now = currentStreak(days, installDate, today);
+  // No counter yet shows as Day 0.
+  const now = currentStreak(days, installDate, today) ?? 0;
   const counter =
-    after.current === now
-      ? `Your counter stays at ${daysText(after.current)}.`
-      : now !== null && after.current > now
-        ? `Your counter now counts from that day: ${daysText(after.current)}.`
-        : `Your counter goes back to ${daysText(after.current)}.`;
+    date === today
+      ? 'Your counter restarts at 0.'
+      : after.current === now
+        ? `Your counter stays at ${daysText(after.current)}.`
+        : after.current > now
+          ? `Your counter now counts from that day: ${daysText(after.current)}.`
+          : `Your counter goes back to ${daysText(after.current)}.`;
   return after.best === bestStreak(days, installDate, today)
     ? `${counter} Your history and best streak stay.`
     : `${counter} Your best streak becomes ${daysText(after.best)}. Your history stays.`;

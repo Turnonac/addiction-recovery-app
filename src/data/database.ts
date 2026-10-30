@@ -33,8 +33,8 @@ const MIGRATIONS: readonly string[] = [
   // was…" lived in the counterStartDate setting; a start before installDate becomes
   // that day's Red (unless the day already has a color). A start on installDate was
   // "Start counting today", which installDate already says. Mid-onboarding (no
-  // installDate yet), a start before today was the "My last Red day was…" pick.
-  // Then the setting goes.
+  // installDate yet) the setting is just dropped: a start before today could be either
+  // choice made on an earlier day, and onboarding asks again. Then the setting goes.
   `
   INSERT INTO day_log (date, color, checked_in)
   SELECT start_date, 3, 0
@@ -45,8 +45,7 @@ const MIGRATIONS: readonly string[] = [
       (SELECT CASE WHEN json_valid(value) THEN CASE WHEN json_type(value) = 'text'
         THEN json_extract(value, '$') END END FROM settings WHERE key = 'installDate') AS install_date
   )
-  WHERE start_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
-    AND start_date < COALESCE(install_date, date('now', 'localtime'))
+  WHERE start_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND start_date < install_date
   ON CONFLICT(date) DO UPDATE SET color = 3 WHERE day_log.color IS NULL;
 
   DELETE FROM settings WHERE key IN ('counterStartDate', 'pendingShares');

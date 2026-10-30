@@ -3,7 +3,7 @@ import { AccessibilityInfo, Alert, Platform, Pressable, Text, View } from 'react
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { addDays, diffDays } from '@/domain/dates';
-import { redDates } from '@/domain/streak';
+import { latestRed } from '@/domain/streak';
 import type { LocalDate } from '@/domain/types';
 import type { StepNavProps } from '@/features/onboarding/IntroSteps';
 import {
@@ -33,11 +33,12 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
 
   const yesterday = addDays(today, -1);
   // The last Red day saved by an earlier Continue (going back to this step).
-  const savedStart = redDates(Object.values(days), yesterday).at(-1) ?? null;
+  const savedStart = latestRed(Object.values(days));
   const [choice, setChoice] = useState<Choice>(savedStart !== null ? 'past' : 'today');
-  const [picked, setPastDate] = useState<LocalDate | null>(savedStart);
-  // A pick can end up today or later if the date moves back (an earlier time zone).
-  const pastDate = picked !== null && picked > yesterday ? yesterday : picked;
+  const [pick, setPastDate] = useState<LocalDate | null>(savedStart);
+  // If the date moves back (an earlier time zone) to the pick or before, it is no longer
+  // a past day: ask for the date again rather than guess one.
+  const pastDate = pick !== null && pick > yesterday ? null : pick;
   const [picker, setPicker] = useState<PickerRequest | null>(null);
   const [saving, setSaving] = useState(false);
 

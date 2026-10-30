@@ -20,6 +20,15 @@ export function redDates(days: DayLog[], today: LocalDate): LocalDate[] {
   return [...set].sort();
 }
 
+/** The latest Red day in the log at any date (during onboarding: the last Red day it saved). */
+export function latestRed(days: DayLog[]): LocalDate | null {
+  let latest: LocalDate | null = null;
+  for (const day of days) {
+    if (day.color === RED && (latest === null || day.date > latest)) latest = day.date;
+  }
+  return latest;
+}
+
 /**
  * Where the counter started at install: the latest Red on or before installDate,
  * else installDate itself; null when neither exists. An installDate after today

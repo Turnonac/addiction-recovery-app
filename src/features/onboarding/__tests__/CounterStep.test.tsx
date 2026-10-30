@@ -121,7 +121,7 @@ describe('CounterStep saving', () => {
     expect(useAppStore.getState().days).toEqual({ [yesterday]: { date: yesterday, color: 3, checkedIn: false } });
   });
 
-  it('keeps a pick before today when the date moves back a day', async () => {
+  it('asks for the date again when the date moves back to the pick', async () => {
     const onNext = jest.fn();
     await initStore(null);
     const today = todayLocal();
@@ -130,10 +130,14 @@ describe('CounterStep saving', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Done' })); // picks yesterday
     expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
 
-    // The phone moves to an earlier time zone: the store's today becomes yesterday.
+    // The phone moves to an earlier time zone: the store's today becomes yesterday, the pick.
     await act(async () => useAppStore.setState({ today: addDays(today, -1) }));
-    expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
-    expect(screen.getByRole('radio', { name: /^My last Red day was…/ })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'My last Red day was… Pick the date' })).toBeTruthy();
+    // The footer button (disabled) and the date button both read "Pick your last Red day".
+    expect(screen.getAllByRole('button', { name: 'Pick your last Red day' })).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    expect(screen.queryByLabelText(/Your counter will show/)).toBeNull();
+    expect(onNext).not.toHaveBeenCalled();
   });
 
   it('back on this step, "Start counting today" removes the saved Red day', async () => {

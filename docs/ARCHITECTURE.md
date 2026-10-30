@@ -44,7 +44,7 @@ Never install packages; everything needed is already in `package.json`.
   Red is on or before it.
 - **Day boundary = midnight.** Missed days can be made up (backfill any past day
   from History; Today shows "Yesterday isn't logged"). Future days are locked.
-  A check-in opened for today keeps that day if midnight passes while it is open.
+  The color screen opened for today keeps that day if midnight passes while it is open.
 - **Partner call (one-way, once a day):** window = every day after the last
   checked-in day, through today. If today is already checked in, the window is
   empty ("You already talked with James today"). Before the first ever call,
@@ -172,7 +172,8 @@ counterStart(days, installDate: LocalDate|null, today): LocalDate | null
 currentStreak(days, installDate: LocalDate|null, today): number | null  // null if no anchor at all
 bestStreak(days, installDate, today): number | null
 streaksIfRed(days, installDate, date, today): { current: number; best: number }
-  // both as they would be with `date` logged Red (the check-in's Red note)
+  // both as they would be with `date` logged Red (the color screen's Red note)
+latestRed(days): LocalDate | null                 // latest Red at any date (onboarding's saved last Red day)
 // An installDate after today is treated as today.
 ```
 
@@ -263,8 +264,11 @@ migrateDatabase(db): Promise<void>            // each step + its user_version bu
 openAppDatabase(): Promise<SQLiteDatabase>    // opens 'app.db', runs migrations
 ```
 Migrations are append-only: never edit a shipped entry. 1 → 2 turns the old
-`counterStartDate` setting into a Red day (when it is before `installDate`, or before
-today while onboarding has no installDate yet, and that day has no color) and deletes it.
+`counterStartDate` setting into a Red day (when it is before `installDate` and that day
+has no color) and deletes it. Mid-onboarding (no installDate) it is just deleted, since a
+past start could be either choice made on an earlier day; onboarding asks again.
+v1 data can't tell "Start counting today" finished on a later day from a named last Red
+day, so that day becomes Red (as v1 itself treated it).
 
 ### state/store.ts
 ```ts
@@ -410,9 +414,10 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
 - `check-in.tsx` — color log modal ("Save color"), `?date=YYYY-MM-DD` (default: today as of opening, kept if midnight
   passes); invalid or future dates close right away. `&from=call` returns to the call screen
   instead of opening a second one. 4 color cards with the user's behaviors, Red shows grace
-  note (today: "Your counter restarts at 0. Your history and best streak stay."; a past day:
-  the counter and best streak it would really leave, from `streaksIfRed`; then "God's grace
-  doesn't reset."), save → outcome handling (confirm-better dialog). becameRed on a day the next
+  note (the counter and best streak it would really leave, from `streaksIfRed`: today "Your
+  counter restarts at 0.", a past day "stays at" / "goes back to" / "now counts from that day";
+  then "Your best streak becomes N days." or "Your history and best streak stay."; then
+  "God's grace doesn't reset."), save → outcome handling (confirm-better dialog). becameRed on a day the next
   call covers → `/call` if a partner exists ("Save, then call {name}"); anything else closes.
 - `call.tsx` — modal (asks to add a partner if there is none): since-last-call list (long gaps
   collapse to the last 7 days + "Show all") with "Log it" for unlogged days, lowest summary,

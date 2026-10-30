@@ -162,7 +162,10 @@ describe('check-in', () => {
 
     await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
 
-    expect(screen.getByText('Your counter restarts at 0. Your history and best streak stay.')).toBeTruthy();
+    // Installed 3 days ago: today no longer counts as clean, so best drops from 3 to 2.
+    expect(
+      screen.getByText('Your counter restarts at 0. Your best streak becomes 2 days. Your history stays.'),
+    ).toBeTruthy();
     expect(screen.getByText("God's grace doesn't reset.")).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Save, then call Sam' })).toBeTruthy();
   });
@@ -233,6 +236,18 @@ describe('check-in', () => {
     await waitFor(() => expect(view.getPathname()).toBe('/'));
     expect(useAppStore.getState().days[today]).toEqual({ date: today, color: 3, checkedIn: true });
     expect(alerts.spy).not.toHaveBeenCalled();
+  });
+
+  it('says the counter counts from a past Red when there is no counter yet', async () => {
+    const today = await setup({ partner: SAM, installDate: null });
+    await renderRouter(routes, { initialUrl: `/check-in?date=${addDays(today, -5)}` });
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Red/ }));
+    expect(
+      screen.getByText(
+        'Your counter now counts from that day: 5 days. Your best streak becomes 5 days. Your history stays.',
+      ),
+    ).toBeTruthy();
   });
 
   it('says so when a Red before install moves the counter start back', async () => {
