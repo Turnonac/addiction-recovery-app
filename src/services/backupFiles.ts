@@ -50,6 +50,9 @@ function safeFileName(fileName: string): string {
   return base.toLowerCase().endsWith('.json') ? base : `${base}.json`;
 }
 
+/** Names `shareBackupFile` writes in the cache: `daily-backup-YYYY-MM-DD.json`, or the fallback. */
+const EXPORT_COPY_NAME = /^daily-backup.*\.json$/i;
+
 /**
  * Writes the backup to the cache directory and opens the share sheet.
  * Resolves true once the sheet closes (the OS does not say whether it was saved),
@@ -69,6 +72,26 @@ export async function shareBackupFile(file: BackupFileV2, fileName: string): Pro
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Deletes the export copies `shareBackupFile` left in the cache (the files the user saved
+ * elsewhere are not touched). Best effort; never throws.
+ */
+export function deleteExportCopies(): void {
+  try {
+    for (const entry of Paths.cache.list()) {
+      if (entry instanceof File && EXPORT_COPY_NAME.test(entry.name)) {
+        try {
+          entry.delete();
+        } catch {
+          // Keep going; the OS clears the cache eventually.
+        }
+      }
+    }
+  } catch {
+    // No cache directory, or it can't be listed: nothing to delete.
   }
 }
 

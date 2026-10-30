@@ -13,7 +13,7 @@ function copySettings(settings: Settings): Settings {
 /**
  * In-memory Repository with the same observable behavior as the SQLite one
  * (empty days are deleted, behaviors are appended per color, ids are never
- * reused, loadAll returns sorted copies). For tests; nothing is persisted.
+ * reused until deleteAll, loadAll returns sorted copies). For tests; nothing is persisted.
  */
 export function createMemoryRepository(initial?: AppSnapshot): Repository {
   let days = new Map<LocalDate, DayLog>();
@@ -90,6 +90,13 @@ export function createMemoryRepository(initial?: AppSnapshot): Repository {
 
     async replaceAll(snapshot) {
       load(snapshot);
+    },
+
+    async deleteAll() {
+      days = new Map();
+      behaviors = [];
+      settings = defaultSettings();
+      lastBehaviorId = 0;
     },
   };
 }

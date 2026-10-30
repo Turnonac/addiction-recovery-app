@@ -37,6 +37,12 @@ Never install packages; everything needed is already in `package.json`.
   this day", after a confirmation that says what goes and, for a Red day, the counter and
   best streak it leaves). It deletes the day's color and check-in; counter, best streak,
   call window and stats follow from the log as always.
+- **Delete all data:** Settings › Your data › "Delete all data", after a confirmation
+  ("Delete all data?": what goes, the last backup file's date or that there is none, and
+  that it can't be undone). Deletes every day, behavior and setting in one transaction,
+  then compacts the database file (best effort) so deleted rows don't linger. Also cancels
+  the daily reminder and deletes the export copies left in the cache. Backup files saved
+  elsewhere and phone backups are not touched. Onboarding then opens, as on a new install.
 - **Counter** = calendar days since the last Red (Red day shows 0, next day 1).
   Onboarding's "My last Red day was…" saves that day as a Red day. With no Red on or
   before `installDate` ("Start counting today"), the counter counts from installDate.
@@ -100,6 +106,7 @@ src/
     database.ts          open + migrate
     repository.ts        Repository interface + SQLite implementation + shared helpers
     memoryRepository.ts  in-memory Repository for tests
+    __tests__/           database (migrations), repository (SQLite deleteAll)
   state/
     store.ts             Zustand store (useAppStore), wired to a Repository
     __tests__/store.test.ts
@@ -253,6 +260,8 @@ interface Repository {
   deleteBehavior(id: number): Promise<void>;
   saveSettings(settings: Settings): Promise<void>;
   replaceAll(snapshot: AppSnapshot): Promise<void>;   // one transaction
+  deleteAll(): Promise<void>;   // every table (and behavior's AUTOINCREMENT counter) in one
+                                // transaction, then VACUUM + wal_checkpoint(TRUNCATE), best effort
 }
 createSqliteRepository(db: SQLiteDatabase): Repository
 // Shared helpers: isEmptyDay, sortBehaviors (color, sortOrder, id), defaultSettings,
@@ -307,6 +316,9 @@ interface AppState {
   completeOnboarding(): Promise<void>;              // onboardingDone, installDate = today
   markExported(iso: string): Promise<void>;         // rejects anything but an ISO-8601 instant
   replaceAll(snapshot: AppSnapshot): Promise<void>; // writes, then reloads from the repository
+  deleteAllData(): Promise<void>;                   // repository deleteAll, then default state: onboardingDone
+                                                    // false (the root guard opens onboarding); stays ready.
+                                                    // Screens cancel the reminder and the export copies.
 }
 ```
 Writes run one at a time (queued), go to the repository first, then update
@@ -342,6 +354,9 @@ BACKUP_PICKER_TYPES = ['application/json', 'text/plain', 'application/octet-stre
 shareBackupFile(file: BackupFileV2, fileName: string): Promise<boolean>
   // write to cache, open share sheet; true once the sheet closes (the OS doesn't say whether
   // the file was saved), false if sharing is unavailable or anything fails
+deleteExportCopies(): void
+  // deletes the daily-backup*.json files shareBackupFile left in the cache (top level only);
+  // never throws
 pickBackupFile(): Promise<unknown | null>
   // document picker, read text (BOM stripped), JSON.parse; null if cancelled.
   // Throws BackupReadError: 'unreadable' (can't read, or over MAX_BACKUP_BYTES) | 'invalid-json'.
@@ -376,7 +391,8 @@ callPhone(phone: string): Promise<boolean>  // Linking.openURL('tel:' + the numb
   under if checked in; today dashed; future muted and inert) with month arrows.
 - `ToggleRow` — label + accessible switch, whole row is the target, uses theme track/knob.
 - `SettingsGroup` / `SettingsRow` / `SettingsNote` — grouped rows with title,
-  optional subtitle / value / action, chevron.
+  optional subtitle / value / action, chevron; `tone` `accent` (action rows) or `danger`
+  (red title, "Delete all data").
 - `NotificationPreview` — lock-screen look-alike of the reminder.
 - `StepProgress` — onboarding progress bars + caption.
 - `TextField` — labelled text input. `Avatar` — decorative partner initial.
@@ -409,14 +425,19 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
 - `settings/index.tsx` — Recovery: partner row (or "Add your partner"), My colors row.
   Daily reminder: toggle (asks for permission when turned on), time picker, a note when
   notifications are denied ("Open phone settings") or never allowed ("Allow notifications"),
-  preview. Your data: phone-backup note, Export backup file, Import backup file, last backup
-  date. About row.
+  preview. Your data: phone-backup note, Export backup file, Import backup file, Delete all
+  data, last backup date. About row.
   - Export: build the file, open the share sheet, then ask "Did you save the backup file?".
     Only "Yes, I saved it" calls `markExported` (and quiets Today's backup card).
   - Import: pick a file → `parseBackup` → "Replace your data?" preview (day count, date
     range, partner) → `replaceAll`. If the restored reminder is on, asks for notification
     permission if needed; if it is still not allowed, saves the reminder as off and says so in
     the "Backup restored" alert.
+  - Delete all: "Delete all data?" alert (what goes, the last backup file's date or "You
+    haven't exported a backup file.", can't be undone) → "Delete all" → `deleteAllData` →
+    `cancelDailyReminder` (best effort; onboarding's reminder step cancels or replaces it) →
+    `deleteExportCopies`. The root guard then opens onboarding. On failure: "Couldn't delete
+    your data" / "Nothing was deleted."
 - `settings/colors.tsx` (My colors editor), `settings/partner.tsx` (edit / remove partner,
   pick from contacts).
 - `settings/about.tsx` — why Light2Life, privacy statement, "not a medical device"
