@@ -44,7 +44,7 @@ const validFile = () => viaJson(buildBackup(snapshot, EXPORTED_AT)) as Record<st
 describe('buildBackup', () => {
   it('wraps the snapshot with format, version and export time', () => {
     const file = buildBackup(snapshot, EXPORTED_AT);
-    expect(file.format).toBe('walkinlight-backup');
+    expect(file.format).toBe('light2life-backup');
     expect(file.schemaVersion).toBe(1);
     expect(file.exportedAt).toBe(EXPORTED_AT);
     expect(file.days).toEqual(sortedDays);
@@ -176,12 +176,47 @@ describe('parseBackup: round trip', () => {
   });
 });
 
+describe('parseBackup: legacy format id', () => {
+  /** A file exported before the rename: same v1 shape, old format id. */
+  const legacyFile = (): Record<string, any> => ({ ...validFile(), format: 'walkinlight-backup' });
+
+  it('imports a schemaVersion 1 file with the legacy id', () => {
+    expect(parseBackup(legacyFile())).toEqual({
+      ok: true,
+      snapshot: restored({ ...snapshot, days: sortedDays }),
+      summary: { dayCount: 4, firstDate: '2026-10-01', lastDate: '2026-10-28', partnerName: 'Sam' },
+    });
+  });
+
+  it('still validates a legacy file like any other', () => {
+    const file = legacyFile();
+    file.days[0].color = 4;
+    expect(parseBackup(file)).toEqual({ ok: false, error: 'invalid' });
+  });
+
+  it('rejects a legacy id with another schemaVersion (it was only ever written as v1)', () => {
+    expect(parseBackup({ ...legacyFile(), schemaVersion: 2 })).toEqual({ ok: false, error: 'invalid' });
+  });
+
+  it('re-exports with the new id', () => {
+    const result = parseBackup(legacyFile());
+    expect(result.ok && buildBackup(result.snapshot, EXPORTED_AT).format).toBe('light2life-backup');
+  });
+
+  it('passes the schema with either id', () => {
+    expect(BackupSchemaV1.safeParse(legacyFile()).success).toBe(true);
+    expect(BackupSchemaV1.safeParse(validFile()).success).toBe(true);
+    expect(BackupSchemaV1.safeParse({ ...validFile(), format: 'other-app' }).success).toBe(false);
+  });
+});
+
 describe('parseBackup: not a backup', () => {
   test.each<[string, unknown]>([
     ['null', null],
     ['undefined', undefined],
     ['number', 42],
-    ['string', 'walkinlight-backup'],
+    ['string', 'light2life-backup'],
+    ['legacy id as a string', 'walkinlight-backup'],
     ['array', [buildBackup(snapshot, EXPORTED_AT)]],
     ['empty object', {}],
     ['other format', { ...buildBackup(snapshot, EXPORTED_AT), format: 'other-app' }],
@@ -194,7 +229,7 @@ describe('parseBackup: not a backup', () => {
 describe('parseBackup: newer version', () => {
   test.each<[string, unknown]>([
     ['schemaVersion 2', { ...buildBackup(snapshot, EXPORTED_AT), schemaVersion: 2 }],
-    ['schemaVersion 3 with a different shape', { format: 'walkinlight-backup', schemaVersion: 3, entries: [] }],
+    ['schemaVersion 3 with a different shape', { format: 'light2life-backup', schemaVersion: 3, entries: [] }],
   ])('%s', (_name, input) => {
     expect(parseBackup(input)).toEqual({ ok: false, error: 'newer-version' });
   });
@@ -242,7 +277,7 @@ describe('BackupSchemaV1', () => {
   it('infers a type compatible with BackupFileV1', () => {
     const parsed = BackupSchemaV1.parse(validFile());
     const typed: BackupFileV1 = parsed;
-    expect(typed.format).toBe('walkinlight-backup');
+    expect(typed.format).toBe('light2life-backup');
   });
 });
 

@@ -1,4 +1,4 @@
-# WalkInLight
+# Light2Life
 
 Read `AGENTS.md` (Expo rules) and `docs/ARCHITECTURE.md` (product rules + module contracts) before changing code.
 

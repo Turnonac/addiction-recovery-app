@@ -11,7 +11,6 @@ import { AndroidImportance, IosAuthorizationStatus } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { Reminder } from '@/domain/types';
-import { withPrivacyCoverSuspended } from '@/services/privacy';
 
 export const REMINDER_ID = 'daily-checkin';
 export const CHANNEL_ID = 'daily-reminder';
@@ -72,12 +71,10 @@ export async function requestPermission(): Promise<boolean> {
     await ensureAndroidChannel();
     const current = await Notifications.getPermissionsAsync();
     if (toPermission(current) === 'granted') return true;
-    // iOS: lifts the app-switcher blur, which would otherwise cover the screen behind the alert.
-    const result = await withPrivacyCoverSuspended(() =>
-      Notifications.requestPermissionsAsync({
-        ios: { allowAlert: true, allowSound: true, allowBadge: false },
-      }),
-    );
+    // iOS: the app-switcher blur stays on, so it shows behind the system alert (accepted).
+    const result = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowSound: true, allowBadge: false },
+    });
     return toPermission(result) === 'granted';
   } catch {
     return false;

@@ -1,6 +1,6 @@
 /**
  * requestPermission with the real privacy cover over jest-expo's mocked
- * expo-screen-capture native module, so the order of native calls is visible.
+ * expo-screen-capture native module, so any native cover call is visible.
  */
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { PermissionStatus } from 'expo';
@@ -48,31 +48,31 @@ describe('requestPermission on iOS', () => {
     jest.clearAllMocks();
   });
 
-  it('lifts the app-switcher blur while the permission alert is up', async () => {
-    const order: string[] = [];
-    native.disableAppSwitcherProtection.mockImplementationOnce(async () => {
-      order.push('blur off');
-    });
-    native.enableAppSwitcherProtection.mockImplementationOnce(async () => {
-      order.push('blur on');
-    });
+  it('keeps the app-switcher blur on while the permission alert is up', async () => {
     getPermissions.mockResolvedValueOnce(permissions(PermissionStatus.UNDETERMINED));
     requestPermissions.mockImplementationOnce(async () => {
-      order.push('alert');
+      // The cover is not lifted for the system alert (the blur shows behind it; accepted).
+      expect(native.disableAppSwitcherProtection).not.toHaveBeenCalled();
       return permissions(PermissionStatus.GRANTED);
     });
 
     await expect(requestPermission()).resolves.toBe(true);
-    expect(order).toEqual(['blur off', 'alert', 'blur on']);
+    expect(requestPermissions).toHaveBeenCalledTimes(1);
+    expect(requestPermissions).toHaveBeenCalledWith({
+      ios: { allowAlert: true, allowSound: true, allowBadge: false },
+    });
+    expect(native.disableAppSwitcherProtection).not.toHaveBeenCalled();
+    // Still on afterwards: no re-enable (which would register the blur observers twice).
+    expect(native.enableAppSwitcherProtection).not.toHaveBeenCalled();
   });
 
-  it('puts the blur back when the request fails', async () => {
+  it('keeps the blur on when the request fails', async () => {
     getPermissions.mockResolvedValueOnce(permissions(PermissionStatus.UNDETERMINED));
     requestPermissions.mockRejectedValueOnce(new Error('Unavailable'));
 
     await expect(requestPermission()).resolves.toBe(false);
-    expect(native.disableAppSwitcherProtection).toHaveBeenCalledTimes(1);
-    expect(native.enableAppSwitcherProtection).toHaveBeenCalledTimes(1);
+    expect(native.disableAppSwitcherProtection).not.toHaveBeenCalled();
+    expect(native.enableAppSwitcherProtection).not.toHaveBeenCalled();
   });
 
   it('leaves the blur alone when permission is already granted', async () => {

@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { isValidLocalDate } from './dates';
 import type { AppSnapshot, BackupFileV1, Behavior, DayLog, LocalDate, Settings } from './types';
 
-export const BACKUP_FORMAT = 'walkinlight-backup';
+/** Format id written by every new export. */
+export const BACKUP_FORMAT = 'light2life-backup';
+/** Format id of files exported under the old working name (schemaVersion 1 only); still imported. */
+export const LEGACY_BACKUP_FORMAT = 'walkinlight-backup';
 export const BACKUP_SCHEMA_VERSION = 1;
 
 const LocalDateSchema = z.string().refine(isValidLocalDate, { message: 'Invalid date' });
@@ -43,7 +46,7 @@ const SettingsSchema = z.object({
  */
 export const BackupSchemaV1 = z
   .object({
-    format: z.literal(BACKUP_FORMAT),
+    format: z.literal([BACKUP_FORMAT, LEGACY_BACKUP_FORMAT]),
     schemaVersion: z.literal(BACKUP_SCHEMA_VERSION),
     exportedAt: IsoInstantSchema,
     days: z.array(DayLogSchema),
@@ -126,20 +129,21 @@ function laterInstant(a: string, b: string | null): string {
 
 /**
  * Validate an imported (already JSON-parsed) value.
- * - not an object, or `format` is not ours → 'not-a-backup'
+ * - not an object, or `format` is neither ours nor the legacy id → 'not-a-backup'
  * - our format with a schemaVersion above 1 → 'newer-version'
- * - anything else that fails the schema → 'invalid'
+ * - anything else that fails the schema → 'invalid' (including a legacy-id file
+ *   that is not schemaVersion 1: the legacy id was never written with another version)
  * Day rows with no color and no check-in are dropped (they are never stored).
  * The file is itself a backup made at `exportedAt` (its settings were saved just
  * before that export was recorded), so the restored `lastExportAt` is the later
  * of the two.
  */
 export function parseBackup(input: unknown): ParseBackupResult {
-  if (!isRecord(input) || input.format !== BACKUP_FORMAT) {
+  if (!isRecord(input) || (input.format !== BACKUP_FORMAT && input.format !== LEGACY_BACKUP_FORMAT)) {
     return { ok: false, error: 'not-a-backup' };
   }
   const version = input.schemaVersion;
-  if (typeof version === 'number' && version > BACKUP_SCHEMA_VERSION) {
+  if (input.format === BACKUP_FORMAT && typeof version === 'number' && version > BACKUP_SCHEMA_VERSION) {
     return { ok: false, error: 'newer-version' };
   }
 

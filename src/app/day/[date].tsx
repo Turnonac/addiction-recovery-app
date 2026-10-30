@@ -94,7 +94,7 @@ export default function DayScreen() {
     try {
       await setCheckedIn(date, value);
     } catch (error) {
-      console.warn('WalkInLight: could not save the check-in', error);
+      console.warn('Light2Life: could not save the check-in', error);
       Alert.alert('Couldn’t save', 'Please try again.');
     } finally {
       setSaving(false);

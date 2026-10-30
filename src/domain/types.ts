@@ -1,5 +1,5 @@
 /**
- * Shared types for WalkInLight. Every module (domain, data, state, services, UI)
+ * Shared types for Light2Life. Every module (domain, data, state, services, UI)
  * builds against these. Change them only with a matching update to
  * docs/ARCHITECTURE.md.
  */
@@ -139,9 +139,15 @@ export type SetColorOutcome =
     }
   | { kind: 'rejectedFuture' };
 
+/**
+ * Backup format id. New files use 'light2life-backup'. Files exported under the
+ * old working name carry 'walkinlight-backup' (same version 1 shape) and still import.
+ */
+export type BackupFormat = 'light2life-backup' | 'walkinlight-backup';
+
 /** Backup file format, version 1. Validated with zod in domain/backup.ts. */
 export interface BackupFileV1 {
-  format: 'walkinlight-backup';
+  format: BackupFormat;
   schemaVersion: 1;
   exportedAt: string;
   days: DayLog[];

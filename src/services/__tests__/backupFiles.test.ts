@@ -110,8 +110,8 @@ describe('pickBackupFile on Android', () => {
   });
 
   it('reads and parses a picked JSON file, then removes the cache copy', async () => {
-    const uri = picked(`${CACHE}daily-backup.json`, '﻿{"format":"walkinlight-backup"}');
-    await expect(pickBackupFile()).resolves.toEqual({ format: 'walkinlight-backup' });
+    const uri = picked(`${CACHE}daily-backup.json`, '﻿{"format":"light2life-backup"}');
+    await expect(pickBackupFile()).resolves.toEqual({ format: 'light2life-backup' });
     expect(getDocumentAsync.mock.calls[0][0]?.copyToCacheDirectory).toBe(true);
     expect(mockDeleted).toEqual([uri]);
   });
@@ -130,8 +130,8 @@ describe('pickBackupFile on iOS', () => {
   });
 
   it('reads the system copy in tmp/<bundle-id>-Inbox (no second cache copy), then removes it', async () => {
-    const uri = picked(`${INBOX}daily%20backup.json`, '{"format":"walkinlight-backup"}');
-    await expect(pickBackupFile()).resolves.toEqual({ format: 'walkinlight-backup' });
+    const uri = picked(`${INBOX}daily%20backup.json`, '{"format":"light2life-backup"}');
+    await expect(pickBackupFile()).resolves.toEqual({ format: 'light2life-backup' });
     expect(getDocumentAsync.mock.calls[0][0]?.copyToCacheDirectory).toBe(false);
     expect(mockReads).toEqual([uri]);
     expect(mockDeleted).toEqual([uri]);

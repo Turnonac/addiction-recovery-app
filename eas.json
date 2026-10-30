@@ -22,6 +22,12 @@
         "buildType": "apk"
       }
     },
+    "screenshots": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_SCREENSHOT_MODE": "1"
+      }
+    },
     "production": {
       "autoIncrement": true
     }
@@ -30,6 +36,9 @@
     "production": {
       "ios": {
         "ascAppId": "6828705155"
+      },
+      "android": {
+        "track": "internal"
       }
     }
   }

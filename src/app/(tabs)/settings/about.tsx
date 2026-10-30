@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import { Alert, Linking, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Text, View } from 'react-native';
 
 import { BackButton, Card, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/ui/components';
 import { Check } from '@/ui/icons';
@@ -20,11 +20,32 @@ const PRIVACY_POINTS = [
 const DISCLAIMER =
   'Light2Life is not a medical device and does not diagnose, treat, cure, or prevent any medical condition.';
 
-/** Settings › About: mission, privacy statement, disclaimer, version. */
+/**
+ * Build number of the installed binary, or null when unknown.
+ * iOS: the native CFBundleVersion (null in Expo Go). Android: expo-constants has no
+ * native value, so this uses `android.versionCode` from the embedded config. EAS keeps
+ * build numbers remotely (`appVersionSource: "remote"`), so the config usually has
+ * none and the row then shows the version alone.
+ */
+function buildNumber(): string | null {
+  if (Platform.OS === 'ios') {
+    const native = Constants.platform?.ios?.buildNumber;
+    return typeof native === 'string' && native !== '' ? native : null;
+  }
+  if (Platform.OS === 'android') {
+    const code = Constants.expoConfig?.android?.versionCode;
+    return typeof code === 'number' ? String(code) : null;
+  }
+  return null;
+}
+
+/** Settings › About: mission, privacy statement, disclaimer, version (and build number when known). */
 export default function AboutScreen() {
   const router = useRouter();
   const theme = useAppTheme();
-  const version = Constants.expoConfig?.version ?? '1.0.0';
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+  const build = buildNumber();
+  const version = build === null ? appVersion : `${appVersion} (${build})`;
 
   const goBack = () => {
     if (router.canGoBack()) router.back();

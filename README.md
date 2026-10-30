@@ -6,11 +6,10 @@ account, server or analytics; everything stays on the phone.
 
 Built with Expo SDK 58, React Native 0.88, TypeScript, Expo Router, expo-sqlite and Zustand.
 App ID `com.turnonac.light2life`, URL scheme `light2life://`, Expo project `@turnonac/light2life`.
-Some internal code and docs still use the working name WalkInLight.
 
 ## Getting started
 
-Needs Node 22.13+ (or 24.3+).
+Needs Node 22 (22.13 or later), 24 (24.3 or later), or 26 and up.
 
 ```sh
 npm ci
@@ -19,8 +18,8 @@ npm run check      # typecheck, lint and tests (what CI runs)
 ```
 
 The app has custom native code (`modules/contact-picker`), so it needs a development build
-rather than Expo Go. See [docs/BUILDING.md](docs/BUILDING.md) for EAS builds, TestFlight and
-credentials.
+rather than Expo Go. See [docs/BUILDING.md](docs/BUILDING.md) for EAS builds, store releases
+and credentials.
 
 ## Docs
 

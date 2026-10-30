@@ -121,7 +121,7 @@ export default function RootLayout() {
   useEffect(() => {
     let active = true;
     startApp().catch((error: unknown) => {
-      console.warn('WalkInLight: could not open app data', error);
+      console.warn('Light2Life: could not open app data', error);
       if (active) setFailed(true);
     });
     return () => {
@@ -154,7 +154,7 @@ export default function RootLayout() {
         useAppStore.getState().refreshToday();
         router.navigate({ pathname: '/check-in', params: { date: useAppStore.getState().today } });
       } catch (error) {
-        console.warn('WalkInLight: could not open the check-in', error);
+        console.warn('Light2Life: could not open the check-in', error);
       }
     });
   }, [ready, onboardingDone, router]);
