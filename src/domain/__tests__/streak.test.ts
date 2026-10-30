@@ -128,6 +128,16 @@ describe('bestStreak', () => {
     expect(bestStreak(days, start, TODAY)).toBe(expected);
   });
 
+  test.each<[string, DayLog[], string, string | null, number]>([
+    // "My last Red day was Oct 1" (before install): Sep1→Oct1 = 29 is a run; current 28
+    ['a named last Red day before install ends a run', [red('2026-09-01')], '2026-10-01', '2026-10-20', 29],
+    // "Start counting today" (start = install): no run up to the start; current 28
+    ['a start-today start does not end a run', [red('2026-09-01')], '2026-10-01', '2026-10-01', 28],
+    ['no installDate: the start is not a Red', [red('2026-09-01')], '2026-10-01', null, 28],
+  ])('with installDate: %s', (_name, days, start, installDate, expected) => {
+    expect(bestStreak(days, start, TODAY, installDate)).toBe(expected);
+  });
+
   it('is never below the current streak', () => {
     const cases: [DayLog[], string | null][] = [
       [[red('2026-10-01'), red('2026-10-02')], null],
@@ -154,6 +164,12 @@ describe('streaksIfRed', () => {
     ['replaces the color already logged that day', [day('2026-10-20', 0, true)], '2026-10-01', '2026-10-20', { current: 9, best: 18 }],
   ])('%s', (_name, days, start, date, expected) => {
     expect(streaksIfRed(days, start, date, TODAY)).toEqual(expected);
+  });
+
+  it('counts the run up to a named last Red day', () => {
+    // "My last Red day was Oct 20" on Oct 27; a Red backfilled on Oct 2 leaves Oct 3..19 = 17.
+    expect(streaksIfRed([], '2026-10-20', '2026-10-02', TODAY, '2026-10-27')).toEqual({ current: 9, best: 17 });
+    expect(streaksIfRed([], '2026-10-20', '2026-10-02', TODAY)).toEqual({ current: 9, best: 9 });
   });
 
   it('does not change the days it is given', () => {

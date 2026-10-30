@@ -39,9 +39,11 @@ Never install packages; everything needed is already in `package.json`.
   reset it. Reds dated after today are ignored.
 - **Best streak** = max over every completed run (`nextAnchor - anchor - 1`)
   and the current streak. Anchors = counterStartDate + every Red date ≤ today.
-  A run is completed only when it ends at a Red: the gap from an earlier Red up to
-  counterStartDate is untracked and never counts. (Two Reds logged before the start
-  still form a run between them.)
+  A run is completed only when it ends at a Red. counterStartDate counts as one when it
+  is before installDate (the user picked "My last Red day was…") or is itself a logged
+  Red. A "Start counting today" start (= installDate) is not, so the gap from an earlier
+  Red up to it is untracked and does not count. (Two Reds logged before the start still
+  form a run between them.)
 - **Day boundary = midnight.** Missed days can be made up (backfill any past day
   from History; Today shows "Yesterday isn't logged"). Future days are locked.
   A check-in opened for today keeps that day if midnight passes while it is open.
@@ -168,9 +170,9 @@ formatMonthYear(year, month1to12): string        // 'October 2026'
 ```ts
 redDates(days: DayLog[], today): LocalDate[]     // Red dates ≤ today, ascending, unique
 currentStreak(days, counterStartDate: LocalDate|null, today): number | null  // null if no anchor at all
-bestStreak(days, counterStartDate, today): number | null
-  // only runs that end at a Red count (not the run up to counterStartDate)
-streaksIfRed(days, counterStartDate, date, today): { current: number; best: number }
+bestStreak(days, counterStartDate, today, installDate: LocalDate|null = null): number | null
+  // only runs that end at a Red count; counterStartDate before installDate counts as a Red
+streaksIfRed(days, counterStartDate, date, today, installDate = null): { current: number; best: number }
   // both as they would be with `date` logged Red (the check-in's Red note)
 // A counterStartDate after today is treated as today.
 ```

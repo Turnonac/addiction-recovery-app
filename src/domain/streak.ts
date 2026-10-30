@@ -8,8 +8,9 @@ import { RED, type DayLog, type LocalDate } from './types';
  *   the latest anchor, so before any Red it counts from counterStartDate.
  * - Unlogged days never reset anything; Reds dated after today are ignored.
  * - Best = max over every completed run (nextAnchor - anchor - 1) and the current streak.
- *   A run is completed only when a Red ends it: counterStartDate is not a Red, so the
- *   untracked gap from an earlier Red up to it is not a clean run.
+ *   A run is completed only when a Red ends it. counterStartDate counts as a Red only
+ *   when it is before installDate ("My last Red day was…"); a "Start counting today"
+ *   start is not a Red, so the untracked gap up to it is not a clean run.
  */
 
 /** Red dates on or before today, ascending, unique. */
@@ -42,20 +43,27 @@ export function currentStreak(
   return last === undefined ? null : diffDays(last, today);
 }
 
-/** Longest clean run, including the current one; null when there is no anchor at all. */
+/**
+ * Longest clean run, including the current one; null when there is no anchor at all.
+ * `installDate` tells a named last Red day (counterStartDate before it) from "Start counting today".
+ */
 export function bestStreak(
   days: DayLog[],
   counterStartDate: LocalDate | null,
   today: LocalDate,
+  installDate: LocalDate | null = null,
 ): number | null {
   const reds = redDates(days, today);
-  const isRed = new Set(reds);
+  const endsRun = new Set(reds);
+  if (counterStartDate !== null && installDate !== null && counterStartDate < installDate) {
+    endsRun.add(counterStartDate);
+  }
   const all = anchors(reds, counterStartDate, today);
   const last = all.at(-1);
   if (last === undefined) return null;
   let best = diffDays(last, today);
   for (let i = 0; i + 1 < all.length; i++) {
-    if (isRed.has(all[i + 1])) best = Math.max(best, diffDays(all[i], all[i + 1]) - 1);
+    if (endsRun.has(all[i + 1])) best = Math.max(best, diffDays(all[i], all[i + 1]) - 1);
   }
   return best;
 }
@@ -66,10 +74,11 @@ export function streaksIfRed(
   counterStartDate: LocalDate | null,
   date: LocalDate,
   today: LocalDate,
+  installDate: LocalDate | null = null,
 ): { current: number; best: number } {
   const withRed = [...days.filter((d) => d.date !== date), { date, color: RED, checkedIn: false }];
   return {
     current: currentStreak(withRed, counterStartDate, today) ?? 0,
-    best: bestStreak(withRed, counterStartDate, today) ?? 0,
+    best: bestStreak(withRed, counterStartDate, today, installDate) ?? 0,
   };
 }

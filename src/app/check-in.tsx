@@ -242,16 +242,17 @@ function daysText(n: number): string {
 function redNoteText(
   days: DayLog[],
   counterStartDate: LocalDate | null,
+  installDate: LocalDate | null,
   date: LocalDate,
   today: LocalDate,
 ): string {
   if (date === today) return 'Your counter restarts at 0. Your history and best streak stay.';
-  const after = streaksIfRed(days, counterStartDate, date, today);
+  const after = streaksIfRed(days, counterStartDate, date, today, installDate);
   const counter =
     after.current === currentStreak(days, counterStartDate, today)
       ? `Your counter stays at ${daysText(after.current)}.`
       : `Your counter goes back to ${daysText(after.current)}.`;
-  return after.best === bestStreak(days, counterStartDate, today)
+  return after.best === bestStreak(days, counterStartDate, today, installDate)
     ? `${counter} Your history and best streak stay.`
     : `${counter} Your best streak becomes ${daysText(after.best)}. Your history stays.`;
 }
@@ -264,7 +265,8 @@ function GraceNote({ date }: { date: LocalDate }) {
   const today = useAppStore((s) => s.today);
   const days = useAppStore((s) => s.days);
   const counterStartDate = useAppStore((s) => s.settings.counterStartDate);
-  const text = redNoteText(Object.values(days), counterStartDate, date, today);
+  const installDate = useAppStore((s) => s.settings.installDate);
+  const text = redNoteText(Object.values(days), counterStartDate, installDate, date, today);
   return (
     <View
       accessible

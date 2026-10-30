@@ -59,7 +59,7 @@ export default function HistoryScreen() {
   const { year, month } = monthFromIndex(viewIndex);
 
   const streak = currentStreak(dayList, settings.counterStartDate, today) ?? 0;
-  const best = bestStreak(dayList, settings.counterStartDate, today) ?? 0;
+  const best = bestStreak(dayList, settings.counterStartDate, today, settings.installDate) ?? 0;
   const summary = monthSummary(dayList, year, month, today, settings.installDate);
   const monthLogged = COLOR_LEVELS.some((level) => summary.counts[level] > 0);
   const anyLogged = dayList.some((d) => d.color !== null);
