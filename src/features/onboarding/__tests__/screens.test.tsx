@@ -638,7 +638,11 @@ describe('day', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: `Clear ${formatLong(yesterday)}` }));
     const { message } = alerts.find('Clear this day?');
-    expect(message).toMatch(/^This removes its color \(Red\) and your check-in with Sam\. /);
+    // Installed 3 days ago: without yesterday's Red, the counter runs from install.
+    expect(message).toBe(
+      'This removes its color (Red) and your check-in with Sam. The day goes back to not logged. ' +
+        'Your counter becomes 3 days. Your best streak becomes 3 days.',
+    );
     expect(useAppStore.getState().days[yesterday]).toBeDefined();
 
     await alerts.press('Clear this day?', 'Clear day');

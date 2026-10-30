@@ -75,7 +75,9 @@ export function clearDayText(
   const afterBest = bestStreak(others, installDate, today) ?? 0;
   const counter =
     after === now ? `Your counter stays at ${daysText(after)}.` : `Your counter becomes ${daysText(after)}.`;
-  return afterBest === best
-    ? `${removed} ${counter}`
-    : `${removed} ${counter} Your best streak becomes ${daysText(afterBest)}.`;
+  const bestLine =
+    afterBest === best
+      ? `Your best streak stays at ${daysText(best)}.`
+      : `Your best streak becomes ${daysText(afterBest)}.`;
+  return `${removed} ${counter} ${bestLine}`;
 }

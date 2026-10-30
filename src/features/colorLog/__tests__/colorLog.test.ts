@@ -124,7 +124,7 @@ describe('clearDayText', () => {
       [day('2026-10-26', 3), day('2026-10-27', 3)],
       '2026-09-01',
       '2026-10-27',
-      `${REMOVED_RED} Your counter becomes 3 days.`,
+      `${REMOVED_RED} Your counter becomes 3 days. Your best streak stays at 54 days.`,
     ],
     [
       'a Red with a check-in, one day singular',
