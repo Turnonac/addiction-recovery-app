@@ -5,8 +5,8 @@ lowest color, keep a clean-day counter, and make one short call with your partne
 account, server or analytics; everything stays on the phone.
 
 Built with Expo SDK 58, React Native 0.88, TypeScript, Expo Router, expo-sqlite and Zustand.
-Internal IDs (bundle ID `com.turnonac.walkinlight`, Expo slug, URL scheme) keep the original
-WalkInLight name.
+App ID `com.turnonac.light2life`, URL scheme `light2life://`. The Expo project slug
+(`@turnonac/walkinlight`) keeps the original WalkInLight name.
 
 ## Getting started
 

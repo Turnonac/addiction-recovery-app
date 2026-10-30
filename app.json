@@ -5,18 +5,18 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "walkinlight",
+    "scheme": "light2life",
     "userInterfaceStyle": "automatic",
     "platforms": ["ios", "android"],
     "ios": {
-      "bundleIdentifier": "com.turnonac.walkinlight",
+      "bundleIdentifier": "com.turnonac.light2life",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.turnonac.walkinlight",
+      "package": "com.turnonac.light2life",
       "allowBackup": true,
       "adaptiveIcon": {
         "backgroundColor": "#2F5D50",
