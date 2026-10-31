@@ -28,14 +28,6 @@ function monthFromIndex(index: number): { year: number; month: number } {
   return { year: Math.floor(index / 12), month: (index % 12) + 1 };
 }
 
-function earliest(dates: readonly (LocalDate | null)[]): LocalDate | null {
-  let min: LocalDate | null = null;
-  for (const d of dates) {
-    if (d !== null && (min === null || d < min)) min = d;
-  }
-  return min;
-}
-
 export default function HistoryScreen() {
   const theme = useAppTheme();
   const router = useRouter();
@@ -49,13 +41,12 @@ export default function HistoryScreen() {
   const partner = settings.partner;
   const partnerName = partner?.name.trim() || 'your partner';
 
-  // History reaches back to install, or the oldest logged day if older (e.g. a last Red day or an import).
-  const loggedDates = Object.keys(days).filter((d) => d <= today);
-  const firstDate = earliest([settings.installDate, ...loggedDates]) ?? today;
+  // The arrows step to any month, past or future; future days stay locked.
   const currentIndex = monthIndexOf(today);
-  const minIndex = Math.min(monthIndexOf(firstDate), currentIndex);
-  const viewIndex = Math.min(Math.max(pickedMonth ?? currentIndex, minIndex), currentIndex);
+  const viewIndex = pickedMonth ?? currentIndex;
   const { year, month } = monthFromIndex(viewIndex);
+  // Landing on the current month goes back to following it.
+  const goToMonth = (index: number) => setPickedMonth(index === currentIndex ? null : index);
 
   const streak = currentStreak(dayList, settings.installDate, today) ?? 0;
   const best = bestStreak(dayList, settings.installDate, today) ?? 0;
@@ -117,10 +108,8 @@ export default function HistoryScreen() {
         onPressDay={(date) => router.push({ pathname: '/day/[date]', params: { date } })}
         showCallMarks={partner !== null}
         partnerName={partner !== null ? partnerName : undefined}
-        onPrevMonth={() => setPickedMonth(viewIndex - 1)}
-        onNextMonth={() => setPickedMonth(viewIndex + 1 >= currentIndex ? null : viewIndex + 1)}
-        canGoPrev={viewIndex > minIndex}
-        canGoNext={viewIndex < currentIndex}
+        onPrevMonth={() => goToMonth(viewIndex - 1)}
+        onNextMonth={() => goToMonth(viewIndex + 1)}
       />
 
       <View style={{ gap: 12 }}>
