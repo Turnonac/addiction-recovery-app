@@ -4,6 +4,7 @@ import { AccessibilityInfo, Alert, AppState, Linking, Text, View } from 'react-n
 
 import { buildBackup, backupFileName, parseBackup, type BackupSummary } from '@/domain/backup';
 import { todayLocal, toLocalDate } from '@/domain/dates';
+import type { LocalDate } from '@/domain/types';
 import {
   formatDateWithYear,
   formatTime,
@@ -12,7 +13,12 @@ import {
   timeToDate,
   type PickerRequest,
 } from '@/features/onboarding/pickers';
-import { isBackupReadError, pickBackupFile, shareBackupFile } from '@/services/backupFiles';
+import {
+  deleteBackupCopies,
+  isBackupReadError,
+  pickBackupFile,
+  shareBackupFile,
+} from '@/services/backupFiles';
 import {
   cancelDailyReminder,
   getPermission,
@@ -37,12 +43,14 @@ import {
 import { Users } from '@/ui/icons';
 import { useAppTheme } from '@/ui/theme';
 
-type Busy = 'reminder' | 'export' | 'import' | null;
+type Busy = 'reminder' | 'export' | 'import' | 'delete' | null;
 
 const DATA_NOTE =
   "Your data lives on this phone. Light2Life never sends it anywhere. If iCloud or Google backup is on in your phone's settings, it's included there. You can also export a backup file.";
 
 const RESTORED_MESSAGE = 'The data from your backup file is now on this phone.';
+const COPY_LEFT_MESSAGE =
+  "A backup copy in Light2Life's temporary folder couldn't be removed. Your phone clears that folder over time, and uninstalling Light2Life removes it right away.";
 const DENIED_NOTE =
   "Reminders are turned off in your phone's settings. Turn on notifications for Light2Life there to get your daily reminder.";
 const UNDETERMINED_NOTE =
@@ -58,6 +66,7 @@ export default function SettingsScreen() {
   const setReminder = useAppStore((s) => s.setReminder);
   const markExported = useAppStore((s) => s.markExported);
   const replaceAll = useAppStore((s) => s.replaceAll);
+  const deleteAllData = useAppStore((s) => s.deleteAllData);
 
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
   const [triedToEnable, setTriedToEnable] = useState(false);
@@ -266,14 +275,53 @@ export default function SettingsScreen() {
     }
   }
 
+  function confirmDeleteAll() {
+    if (busy !== null) return;
+    Alert.alert('Delete all data?', deleteAllMessage(lastBackupDay(lastExportAt)), [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete all', style: 'destructive', onPress: () => void deleteAll() },
+    ]);
+  }
+
+  /** Deletes everything; the root layout then opens setup, as on first launch. */
+  async function deleteAll() {
+    if (busy !== null) return;
+    setBusy('delete');
+    try {
+      try {
+        await deleteAllData();
+      } catch {
+        Alert.alert("Couldn't delete your data", 'Nothing was deleted. Please try again.');
+        return;
+      }
+      // Nothing reconciles the reminder until setup is done again.
+      try {
+        await cancelDailyReminder();
+      } catch {
+        // Setup's reminder step cancels or replaces it.
+      }
+      if (!deleteBackupCopies()) {
+        Alert.alert('Your data was deleted', COPY_LEFT_MESSAGE);
+        return;
+      }
+      // High priority: setup's first step announces its title as it opens.
+      AccessibilityInfo.announceForAccessibilityWithOptions('All your data was deleted.', {
+        priority: 'high',
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const colorsSubtitle =
     behaviorCount === 0
       ? 'Write what each color looks like for you'
       : `${behaviorCount + 1} behaviors across 4 colors`;
 
+  const backupDay = lastBackupDay(lastExportAt);
   const lastBackup =
-    lastExportAt !== null && !Number.isNaN(new Date(lastExportAt).getTime())
-      ? `Last backup: ${formatDateWithYear(toLocalDate(new Date(lastExportAt)))}`
+    backupDay !== null
+      ? `Last backup: ${formatDateWithYear(backupDay)}`
       : 'No backup file exported yet.';
 
   return (
@@ -379,6 +427,13 @@ export default function SettingsScreen() {
           disabled={busy !== null}
           accessibilityHint="Replaces the data on this phone with a backup file"
         />
+        <SettingsRow
+          title="Delete all data"
+          tone="danger"
+          onPress={confirmDeleteAll}
+          disabled={busy !== null}
+          accessibilityHint="Deletes all Light2Life data on this phone and starts setup again"
+        />
       </SettingsGroup>
 
       <SettingsGroup>
@@ -391,6 +446,24 @@ export default function SettingsScreen() {
 
       <PickerSheet request={picker} onClose={() => setPicker(null)} />
     </Screen>
+  );
+}
+
+/** Local day of the last export, or null if there is none (or it can't be read). */
+function lastBackupDay(lastExportAt: string | null): LocalDate | null {
+  if (lastExportAt === null) return null;
+  const at = new Date(lastExportAt);
+  return Number.isNaN(at.getTime()) ? null : toLocalDate(at);
+}
+
+function deleteAllMessage(backupDay: LocalDate | null): string {
+  const backup =
+    backupDay !== null
+      ? `Your last backup file is from ${formatDateWithYear(backupDay)}.`
+      : "You haven't exported a backup file.";
+  return (
+    "This deletes everything Light2Life keeps on this phone: every day's color and check-in, your color lists, your partner and your reminder. Your counter and best streak start over, and setup opens again.\n\n" +
+    `${backup} This can't be undone.`
   );
 }
 

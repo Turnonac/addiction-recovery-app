@@ -564,6 +564,71 @@ describe('replaceAll', () => {
   });
 });
 
+describe('deleteAllData', () => {
+  it('deletes every table and leaves the app as on first launch', async () => {
+    const repo = await initWith({
+      days: [day(YESTERDAY, RED, true), day(TODAY, GREEN)],
+      behaviors: [behavior(1, GREEN, 'Walk', 0), behavior(2, YELLOW, 'Late scrolling', 0)],
+      settings: {
+        ...DEFAULT_SETTINGS,
+        partner: { name: 'Sam', phone: '+1 555 0100' },
+        reminder: { enabled: true, hour: 20, minute: 30 },
+        installDate: '2026-09-01',
+        onboardingDone: true,
+        lastExportAt: '2026-10-01T12:00:00.000Z',
+      },
+    });
+
+    await store().deleteAllData();
+
+    const s = store();
+    expect(s.ready).toBe(true);
+    expect(s.days).toEqual({});
+    expect(s.behaviors).toEqual([]);
+    expect(s.settings).toEqual(DEFAULT_SETTINGS);
+    expect(await repo.loadAll()).toEqual(snapshot());
+  });
+
+  it('lets setup run again, with behavior ids starting over', async () => {
+    await initWith({
+      days: [day('2026-10-01', RED)],
+      behaviors: [behavior(7, GREEN, 'Walk', 0)],
+      settings: { ...DEFAULT_SETTINGS, installDate: '2026-09-01', onboardingDone: true },
+    });
+    await store().deleteAllData();
+
+    await store().setLastRedDay('2026-10-20');
+    await store().addBehavior(GREEN, 'Run');
+    await store().completeOnboarding();
+
+    expect(store().days).toEqual({ '2026-10-20': day('2026-10-20', RED) });
+    expect(store().behaviors).toEqual([behavior(1, GREEN, 'Run', 0)]);
+    expect(store().settings).toMatchObject({ installDate: TODAY, onboardingDone: true });
+  });
+
+  it('runs after writes already queued', async () => {
+    const repo = await initWith({ settings: { ...DEFAULT_SETTINGS, onboardingDone: true } });
+    const color = store().setColor(TODAY, YELLOW);
+    const deleted = store().deleteAllData();
+    await Promise.all([color, deleted]);
+    expect(store().days).toEqual({});
+    expect(await repo.loadAll()).toEqual(snapshot());
+  });
+
+  it('leaves state unchanged when the repository write fails', async () => {
+    const settings: Settings = { ...DEFAULT_SETTINGS, installDate: '2026-09-01', onboardingDone: true };
+    const repo = createMemoryRepository(snapshot({ days: [day(TODAY, RED, true)], settings }));
+    const failing: Repository = {
+      ...repo,
+      deleteAll: () => Promise.reject(new Error('disk full')),
+    };
+    await store().init(failing);
+    await expect(store().deleteAllData()).rejects.toThrow('disk full');
+    expect(store().days[TODAY]).toEqual(day(TODAY, RED, true));
+    expect(store().settings).toEqual(settings);
+  });
+});
+
 describe('settingsFromRows', () => {
   it('merges valid stored values over the defaults', () => {
     const settings = settingsFromRows([

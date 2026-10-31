@@ -28,6 +28,8 @@ export interface Repository {
   saveSettings(settings: Settings): Promise<void>;
   /** Replace every table with `snapshot`, in one transaction. */
   replaceAll(snapshot: AppSnapshot): Promise<void>;
+  /** Delete every row of every table in one transaction, leaving the store as on first launch. */
+  deleteAll(): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +265,22 @@ export function createSqliteRepository(db: SQLiteDatabase): Repository {
 
         await writeSettings(txn, snapshot.settings);
       });
+    },
+
+    async deleteAll() {
+      await inExclusiveTransaction(db, async (txn) => {
+        // sqlite_sequence too, so behavior ids start over as on a fresh install.
+        await txn.execAsync(
+          "DELETE FROM day_log; DELETE FROM behavior; DELETE FROM settings; DELETE FROM sqlite_sequence WHERE name = 'behavior';",
+        );
+      });
+      // Deleted rows stay readable in free pages and the WAL until overwritten. Rebuild
+      // the file without them and empty the WAL. Best effort: the rows are already gone.
+      try {
+        await db.execAsync('VACUUM; PRAGMA wal_checkpoint(TRUNCATE);');
+      } catch {
+        // Not fatal: later writes reuse the free pages.
+      }
     },
   };
 }

@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
@@ -50,6 +50,9 @@ function safeFileName(fileName: string): string {
   return base.toLowerCase().endsWith('.json') ? base : `${base}.json`;
 }
 
+/** Names `shareBackupFile` writes in the cache: `daily-backup-YYYY-MM-DD.json`, or the fallback. */
+const EXPORT_COPY_NAME = /^daily-backup.*\.json$/i;
+
 /**
  * Writes the backup to the cache directory and opens the share sheet.
  * Resolves true once the sheet closes (the OS does not say whether it was saved),
@@ -77,6 +80,16 @@ function withoutPrivatePrefix(uri: string): string {
   return uri.replace(/^file:\/\/\/private\/var\//, 'file:///var/');
 }
 
+/** iOS: the app container's tmp/ (it sits next to Documents/), or null if that can't be worked out. */
+function iosTmpUri(): string | null {
+  const documents = withoutPrivatePrefix(Paths.document.uri);
+  if (!documents.endsWith('/Documents/')) return null;
+  return `${documents.slice(0, -'Documents/'.length)}tmp/`;
+}
+
+/** Folder name of the copies the iOS picker hands over: tmp/<bundle-id>-Inbox. */
+const INBOX_NAME = /^[^/]+-Inbox$/;
+
 /**
  * True only for a copy inside our own sandbox: our cache directory (Android's picker
  * copy), or on iOS tmp/<bundle-id>-Inbox, where the system puts the picked copy.
@@ -85,11 +98,8 @@ function isOwnCopy(uri: string): boolean {
   const target = withoutPrivatePrefix(uri);
   if (target.startsWith(withoutPrivatePrefix(Paths.cache.uri))) return true;
   if (Platform.OS !== 'ios') return false;
-  // tmp/ sits next to Documents/ in the app container.
-  const documents = withoutPrivatePrefix(Paths.document.uri);
-  if (!documents.endsWith('/Documents/')) return false;
-  const tmp = `${documents.slice(0, -'Documents/'.length)}tmp/`;
-  return target.startsWith(tmp) && /^[^/]+-Inbox\/./.test(target.slice(tmp.length));
+  const tmp = iosTmpUri();
+  return tmp !== null && target.startsWith(tmp) && /^[^/]+-Inbox\/./.test(target.slice(tmp.length));
 }
 
 /** Deletes the copy the picker handed us. Never touches the user's original file. */
@@ -101,6 +111,57 @@ function removePickedCopy(uri: string): void {
   } catch {
     // Best effort; the OS clears the cache and tmp eventually.
   }
+}
+
+/**
+ * Deletes the entries of `directory` that `match` accepts. Never throws.
+ * @returns false if one of them could not be deleted, or the folder exists but can't be listed.
+ */
+function deleteEntries(directory: Directory, match: (entry: Directory | File) => boolean): boolean {
+  let entries: (Directory | File)[];
+  try {
+    if (!directory.exists) return true;
+    entries = directory.list();
+  } catch {
+    return false;
+  }
+  let deleted = true;
+  for (const entry of entries) {
+    if (!match(entry)) continue;
+    try {
+      entry.delete();
+    } catch {
+      // Keep going with the others.
+      deleted = false;
+    }
+  }
+  return deleted;
+}
+
+/**
+ * Deletes every backup copy the app left on the phone: the export copies `shareBackupFile`
+ * wrote to the cache, and the document picker's copies of imported files (normally deleted
+ * right away, but a failed or cancelled read can leave one): Android cache/DocumentPicker/,
+ * iOS tmp/<bundle-id>-Inbox/. Files the user saved elsewhere are not touched. Never throws.
+ * @returns false if a copy may be left (one couldn't be deleted, or a folder couldn't be listed).
+ */
+export function deleteBackupCopies(): boolean {
+  let deleted = deleteEntries(Paths.cache, (entry) =>
+    entry instanceof File
+      ? EXPORT_COPY_NAME.test(entry.name)
+      : entry.name === 'DocumentPicker',
+  );
+  if (Platform.OS === 'ios') {
+    const tmp = iosTmpUri();
+    if (tmp !== null) {
+      const inbox = deleteEntries(
+        new Directory(tmp),
+        (entry) => entry instanceof Directory && INBOX_NAME.test(entry.name),
+      );
+      deleted = inbox && deleted;
+    }
+  }
+  return deleted;
 }
 
 /**

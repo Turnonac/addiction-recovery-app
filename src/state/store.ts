@@ -60,6 +60,11 @@ export interface AppState {
   /** `iso` must be an ISO-8601 instant (e.g. new Date().toISOString()). */
   markExported(iso: string): Promise<void>;
   replaceAll(snapshot: AppSnapshot): Promise<void>;
+  /**
+   * Deletes everything (days, behaviors, settings), leaving the app as on first launch:
+   * onboardingDone is false again, so setup opens. Screens cancel the reminder.
+   */
+  deleteAllData(): Promise<void>;
 }
 
 // Set by init(). Kept out of the state so it is not part of the public contract;
@@ -279,6 +284,12 @@ export const useAppStore = create<AppState>()((set, get) => {
         await repo.replaceAll(snapshot);
         const loaded = await repo.loadAll();
         set({ ...stateFromSnapshot(loaded), today: todayLocal() });
+      }),
+
+    deleteAllData: () =>
+      serial(async () => {
+        await requireRepo().deleteAll();
+        set({ days: {}, behaviors: [], settings: defaultSettings(), today: todayLocal() });
       }),
   };
 });

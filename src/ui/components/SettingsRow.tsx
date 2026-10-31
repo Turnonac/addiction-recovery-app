@@ -18,8 +18,11 @@ export interface SettingsRowProps {
   actionLabel?: string;
   /** Default: shown for pressable rows without an actionLabel and with tone 'default'. */
   showChevron?: boolean;
-  /** 'accent' = accent-colored title, for action rows like "Export backup file". */
-  tone?: 'default' | 'accent';
+  /**
+   * 'accent' = accent-colored title, for action rows like "Export backup file".
+   * 'danger' = red title, for destructive action rows like "Delete all data".
+   */
+  tone?: 'default' | 'accent' | 'danger';
   disabled?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
@@ -43,8 +46,14 @@ export function SettingsRow({
 }: SettingsRowProps) {
   const theme = useAppTheme();
   const chevron = showChevron ?? (onPress !== undefined && actionLabel === undefined && tone === 'default');
-  const titleColor = disabled ? theme.muted : tone === 'accent' ? theme.accentText : theme.text;
-  const strong = subtitle !== undefined || left !== undefined || tone === 'accent';
+  const titleColor = disabled
+    ? theme.muted
+    : tone === 'accent'
+      ? theme.accentText
+      : tone === 'danger'
+        ? theme.levels[3].ink
+        : theme.text;
+  const strong = subtitle !== undefined || left !== undefined || tone !== 'default';
 
   const rowStyle: ViewStyle = {
     flexDirection: 'row',

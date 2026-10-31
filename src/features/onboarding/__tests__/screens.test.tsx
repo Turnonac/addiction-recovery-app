@@ -21,9 +21,9 @@ import OnboardingScreen from '@/app/onboarding';
 import { createMemoryRepository } from '@/data/memoryRepository';
 import { buildBackup } from '@/domain/backup';
 import type * as Dates from '@/domain/dates';
-import { addDays, formatLong, todayLocal } from '@/domain/dates';
+import { addDays, formatLong, todayLocal, toLocalDate } from '@/domain/dates';
 import { DEFAULT_SETTINGS, type DayLog, type Settings } from '@/domain/types';
-import { formatTime } from '@/features/onboarding/pickers';
+import { formatDateWithYear, formatTime } from '@/features/onboarding/pickers';
 import * as backupFiles from '@/services/backupFiles';
 import * as dialer from '@/services/dialer';
 import * as notifications from '@/services/notifications';
@@ -57,6 +57,7 @@ jest.mock('@/services/contacts', () => ({
   pickPartnerContact: jest.fn(async () => ({ status: 'unavailable' })),
 }));
 jest.mock('@/services/backupFiles', () => ({
+  deleteBackupCopies: jest.fn(() => true),
   shareBackupFile: jest.fn(async () => true),
   pickBackupFile: jest.fn(async () => null),
   isBackupReadError: () => false,
@@ -591,6 +592,126 @@ describe('settings', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Allow notifications' }));
     await waitFor(() => expect(notifications.scheduleDailyReminder).toHaveBeenCalledWith(21, 0));
     expect(notifications.requestPermission).toHaveBeenCalled();
+  });
+
+  const DELETE_ALL_INTRO =
+    "This deletes everything Light2Life keeps on this phone: every day's color and check-in, your color lists, your partner and your reminder. Your counter and best streak start over, and setup opens again.";
+
+  it('deletes all data after a confirmation, then cancels the reminder and backup copies', async () => {
+    const exportedAt = '2026-10-01T12:00:00.000Z';
+    await setup(
+      { partner: SAM, reminder: { enabled: true, hour: 20, minute: 30 }, lastExportAt: exportedAt },
+      [{ date: addDays(todayLocal(), -1), color: 3, checkedIn: true }],
+    );
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/settings' });
+
+    await fireEvent.press(screen.getByRole('button', { name: /Delete all data/ }));
+    const { message, buttons } = alerts.find('Delete all data?');
+    expect(message).toBe(
+      `${DELETE_ALL_INTRO}\n\nYour last backup file is from ${formatDateWithYear(toLocalDate(new Date(exportedAt)))}. This can't be undone.`,
+    );
+    expect(buttons.map((b) => [b.text, b.style])).toEqual([
+      ['Cancel', 'cancel'],
+      ['Delete all', 'destructive'],
+    ]);
+    expect(useAppStore.getState().settings.partner).toEqual(SAM);
+
+    await alerts.press('Delete all data?', 'Delete all');
+    await waitFor(() => expect(useAppStore.getState().settings).toEqual(DEFAULT_SETTINGS));
+    expect(useAppStore.getState().days).toEqual({});
+    await waitFor(() => expect(backupFiles.deleteBackupCopies).toHaveBeenCalledTimes(1));
+    expect(notifications.cancelDailyReminder).toHaveBeenCalledTimes(1);
+    expect(() => alerts.find('Your data was deleted')).toThrow();
+  });
+
+  it('says so when a backup copy could not be removed', async () => {
+    await setup({ partner: SAM });
+    jest.mocked(backupFiles.deleteBackupCopies).mockReturnValueOnce(false);
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/settings' });
+
+    await fireEvent.press(screen.getByRole('button', { name: /Delete all data/ }));
+    await alerts.press('Delete all data?', 'Delete all');
+
+    await waitFor(() =>
+      expect(alerts.find('Your data was deleted').message).toBe(
+        "A backup copy in Light2Life's temporary folder couldn't be removed. Your phone clears that folder over time, and uninstalling Light2Life removes it right away.",
+      ),
+    );
+    expect(useAppStore.getState().settings).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('still deletes the backup copies when cancelling the reminder fails', async () => {
+    await setup({ partner: SAM, reminder: { enabled: true, hour: 20, minute: 30 } });
+    jest.mocked(notifications.cancelDailyReminder).mockRejectedValueOnce(new Error('not allowed'));
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/settings' });
+
+    await fireEvent.press(screen.getByRole('button', { name: /Delete all data/ }));
+    await alerts.press('Delete all data?', 'Delete all');
+
+    await waitFor(() => expect(backupFiles.deleteBackupCopies).toHaveBeenCalledTimes(1));
+    expect(useAppStore.getState().settings).toEqual(DEFAULT_SETTINGS);
+    expect(() => alerts.find("Couldn't delete your data")).toThrow();
+  });
+
+  it('keeps everything when deleting fails', async () => {
+    useAppStore.setState(pristine, true);
+    const repo = createMemoryRepository({
+      days: [],
+      behaviors: [],
+      settings: { ...DEFAULT_SETTINGS, partner: SAM, installDate: addDays(todayLocal(), -3), onboardingDone: true },
+    });
+    await useAppStore.getState().init({ ...repo, deleteAll: () => Promise.reject(new Error('disk full')) });
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/settings' });
+
+    await fireEvent.press(screen.getByRole('button', { name: /Delete all data/ }));
+    expect(alerts.find('Delete all data?').message).toBe(
+      `${DELETE_ALL_INTRO}\n\nYou haven't exported a backup file. This can't be undone.`,
+    );
+    await alerts.press('Delete all data?', 'Delete all');
+    await waitFor(() =>
+      expect(alerts.find("Couldn't delete your data").message).toBe('Nothing was deleted. Please try again.'),
+    );
+    expect(useAppStore.getState().settings.partner).toEqual(SAM);
+    expect(notifications.cancelDailyReminder).not.toHaveBeenCalled();
+    expect(backupFiles.deleteBackupCopies).not.toHaveBeenCalled();
+  });
+
+  it('opens setup again after deleting all data', async () => {
+    await setup({ partner: SAM });
+    const alerts = spyOnAlerts();
+    // The root layout's guard, without its database startup.
+    function GuardedLayout() {
+      const onboardingDone = useAppStore((s) => s.settings.onboardingDone);
+      return (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Protected guard={onboardingDone} redirectTo="/onboarding">
+            <Stack.Screen name="(tabs)" />
+          </Stack.Protected>
+          <Stack.Protected guard={!onboardingDone} redirectTo="/">
+            <Stack.Screen name="onboarding" />
+          </Stack.Protected>
+        </Stack>
+      );
+    }
+    const view = await renderRouter(
+      {
+        ...routes,
+        _layout: GuardedLayout,
+        '(tabs)/_layout': TabsLayout,
+        '(tabs)/history': () => <Text>History tab</Text>,
+      },
+      { initialUrl: '/settings' },
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: /Delete all data/ }));
+    await alerts.press('Delete all data?', 'Delete all');
+
+    expect(await screen.findByText('Welcome to Light2Life')).toBeTruthy();
+    expect(view.getPathname()).toBe('/onboarding');
   });
 
   it('shows the disclaimer on About', async () => {
