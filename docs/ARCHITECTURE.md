@@ -421,8 +421,8 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   strip, "Today’s color" card ("Log today’s color" / "Update"), partner call card OR "Add your partner" card,
   "Yesterday isn't logged" card, 30-day backup reminder card (→ Settings).
 - `(tabs)/history.tsx` — stats (current, best, month check-ins), month calendar with month
-  navigation (back to the earlier of installDate and the oldest logged day;
-  no future months), `ColorTotals`, "Missed a day? Tap it…" hint. Tapping a past/today day
+  navigation (the arrows always step to the previous / next month, past or future;
+  future days stay locked), `ColorTotals`, "Missed a day? Tap it…" hint. Tapping a past/today day
   opens `/day/[date]`.
 - `(tabs)/settings/_layout.tsx` — Stack (no native header, anchor `index`).
 - `settings/index.tsx` — Recovery: partner row (or "Add your partner"), My colors row.
