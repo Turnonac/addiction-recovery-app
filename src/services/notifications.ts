@@ -1,8 +1,9 @@
 /**
- * Daily reminder to log the day's color: one local notification, no push, no exact alarms.
+ * Daily reminder to make the partner call: one local notification, no push, no exact alarms.
+ * A tap opens the call screen (app/_layout.tsx).
  *
- * Text is deliberately generic ("Daily reminder") so nothing about the topic
- * shows on the lock screen. Verified against expo-notifications 58.1.x
+ * Text is deliberately generic ("Daily reminder", "Time for your daily call.") so nothing
+ * about the topic shows on the lock screen. Verified against expo-notifications 58.1.x
  * (`SchedulableTriggerInputTypes.DAILY`, `shouldShowBanner` / `shouldShowList`,
  * `getLastNotificationResponse`).
  */
@@ -16,9 +17,12 @@ export const REMINDER_ID = 'daily-checkin';
 export const CHANNEL_ID = 'daily-reminder';
 
 const CHANNEL_NAME = 'Daily reminder';
-const REMINDER_TITLE = 'Daily reminder';
-const REMINDER_BODY = 'Time to log today’s color.';
-const REMINDER_URL = '/check-in';
+export const REMINDER_TITLE = 'Daily reminder';
+/** Shown on the lock screen; ui/components/NotificationPreview must match it. */
+export const REMINDER_BODY = 'Time for your daily call.';
+const REMINDER_URL = '/call';
+/** Reminders scheduled before the reminder was about the call carry this URL. */
+const OLD_REMINDER_URL = '/check-in';
 
 export type NotificationPermission = 'granted' | 'denied' | 'undetermined';
 
@@ -194,7 +198,8 @@ export async function reconcileReminder(reminder: Reminder): Promise<void> {
 function isReminderResponse(response: Notifications.NotificationResponse): boolean {
   if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return false;
   const request = response.notification.request;
-  return request.identifier === REMINDER_ID || request.content.data?.url === REMINDER_URL;
+  const url = request.content.data?.url;
+  return request.identifier === REMINDER_ID || url === REMINDER_URL || url === OLD_REMINDER_URL;
 }
 
 /**
@@ -212,7 +217,7 @@ export function addReminderTapListener(onTap: () => void): () => void {
     if (handled.has(key)) return;
     handled.add(key);
     try {
-      // So a later remount does not route to the color log again for the same tap.
+      // So a later remount does not route to the call again for the same tap.
       Notifications.clearLastNotificationResponse();
     } catch {
       // Not available on this platform; the dedupe set still protects this listener.

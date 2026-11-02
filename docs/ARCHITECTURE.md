@@ -29,10 +29,10 @@ Never install packages; everything needed is already in `package.json`.
   `settings.installDate`, never stored.
 - **Lowest wins:** a worse color replaces a better one. A better color than the
   stored one needs a "Did you pick X by mistake?" confirmation.
-- **Late color after the call:** one call per day, and a color never clears a check-in
-  (that call happened). A color logged later just updates the day; the next call's
-  window still starts after the last check-in, so a day already called about is not
-  listed again.
+- **A call covers the day so far:** one call per day, and a color never clears a check-in
+  (that call happened). The day's finished color is logged later, so the next call's
+  window starts ON the last call day and shares that color then. Days before the last
+  call day are not listed again.
 - **Clear a day:** History's day screen can set a logged day back to unlogged ("Clear
   this day", after a confirmation that says what goes and, for a Red day, the counter and
   best streak it leaves). It deletes the day's color and check-in; counter, best streak,
@@ -44,35 +44,42 @@ Never install packages; everything needed is already in `package.json`.
   the daily reminder and deletes the backup copies the app left on the phone (export copies,
   and any picker copy of an imported file). Backup files saved elsewhere and phone backups
   are not touched. Onboarding then opens, as on a new install.
-- **Counter** = calendar days since the last Red (Red day shows 0, next day 1).
-  Onboarding's "My last Red day was…" saves that day as a Red day. With no Red on or
-  before `installDate` ("Start counting today"), the counter counts from installDate.
+- **Counter** = calendar days since the last Red, through today (Red day shows 0, next
+  day 1). The daily log records yesterday, so a Red logged there shows 1.
+  Onboarding's "The last day I went red was…" saves that day as a Red day. With no Red on
+  or before `installDate` ("Count streaks from today"), the counter counts from installDate.
   Unlogged days never reset it. Reds dated after today are ignored. A Red backfilled
   before installDate counts like any other, so the counter counts from it if it is
   the latest Red.
 - **Best streak** = max over every completed run (`nextAnchor - anchor - 1`)
   and the current streak. Anchors = every Red date ≤ today, plus installDate when no
   Red is on or before it.
-- **Day boundary = midnight.** Missed days can be made up (backfill any past day
-  from History; Today shows "Yesterday isn't logged"). Future days are locked.
-  The color screen opened for today keeps that day if midnight passes while it is open.
-- **Partner call (one-way, once a day):** window = every day after the last
-  checked-in day, through today. If today is already checked in, the window is
-  empty ("You already talked with James today"). Before the first ever call,
+- **Day boundary = midnight.** The daily log records yesterday, a finished day:
+  Today's main action logs yesterday's color. Today can still be logged (History's
+  day screen, links). Missed days can be made up (backfill any past day from History;
+  Today shows a "{day} isn’t logged" card for the latest unlogged day before
+  yesterday). Future days are locked. The color screen keeps the day it opened for
+  (yesterday by default) if midnight passes while it is open.
+- **Partner call (one-way, once a day):** window = the last checked-in day
+  (inclusive, since that call only covered the day so far) through yesterday.
+  Unlogged days stay in it with "Log it". If today is already checked in, the window
+  is empty ("You already talked with James today"). Before the first ever call,
   the window starts where the counter started at install (the latest Red on or
-  before installDate, else installDate, else today), capped to the last 14 days. Script: "Since our last call, my lowest was {color}." Then
-  the partner prays. A call counts for the day it was dialed, even if it ends
-  after midnight.
+  before installDate, else installDate, else today), capped to the 14 days ending
+  yesterday. With "Count streaks from today" it is empty on install day. Script:
+  "Since our last call, my lowest was {color}." Then the user tells the partner how
+  today has gone so far, out loud (nothing about today is saved), and the partner
+  prays. A call marks today checked in. A call counts for the day it was dialed, even
+  if it ends after midnight.
 - Partner step is skippable in onboarding but labeled the most important step;
   Today shows an "Add your partner" card until a partner exists.
-- Wording: the app says "explicit", never "pornography" or "porn". No Bible
-  verses anywhere. Christian framing via partner prayer and grace wording
-  ("God's grace doesn't reset.").
+- Wording: the app says "explicit", never "pornography" or "porn". Christian
+  framing via partner prayer and grace wording ("God's grace doesn't reset.").
 - Lists start EMPTY (no suggested behaviors). Red always shows the locked first
   line `LOCKED_RED_LINE`, which is not stored.
-- Daily reminder: one local notification at a user-picked time, opt-out.
-  Title "Daily reminder", body "Time to log today’s color." Never mention
-  the topic. Android channel name "Daily reminder".
+- Daily reminder: one local notification at a user-picked time, opt-out, for the
+  daily call. Title "Daily reminder", body "Time for your daily call." Never mention
+  the topic. A tap opens the call screen. Android channel name "Daily reminder".
 - **App switcher cover:** iOS blur, Android FLAG_SECURE (blank preview, also
   blocks screenshots). It is turned on at launch, re-applied on every return to
   the foreground, and never turned off, including while the system notification
@@ -195,9 +202,11 @@ latestRed(days): LocalDate | null                 // latest Red at any date (onb
 
 ### domain/call.ts
 ```ts
-FIRST_CALL_MAX_DAYS = 14
+FIRST_CALL_MAX_DAYS = 14                            // first-call window: at most 14 days, ending yesterday
 callWindow(days: DayLog[], settings: Pick<Settings, 'installDate'>, today): CallWindow
-inCallWindow(days, settings, today, date): boolean  // the next call covers `date`
+  // last call day (inclusive), else the capped counter start, through yesterday; unlogged days
+  // included (color null). Empty if today is checked in or the start is after yesterday.
+inCallWindow(days, settings, today, date): boolean  // the next call covers `date`; never today
 ```
 
 ### domain/checkin.ts
@@ -330,6 +339,7 @@ rejected (no-op). The store never calls native services.
 ```ts
 // notifications.ts
 REMINDER_ID = 'daily-checkin'; CHANNEL_ID = 'daily-reminder'
+REMINDER_TITLE = 'Daily reminder'; REMINDER_BODY = 'Time for your daily call.'  // ui/components/NotificationPreview must match
 type NotificationPermission = 'granted' | 'denied' | 'undetermined'
 configureForegroundHandler(): void      // no banner, list entry, sound or badge while the app is open
 getPermission(): Promise<NotificationPermission>   // iOS provisional / ephemeral count as granted;
@@ -340,9 +350,14 @@ requestPermission(): Promise<boolean>   // creates the Android channel first; pr
 scheduleDailyReminder(hour, minute): Promise<void>   // cancel + schedule DAILY trigger, idempotent;
                                                      // rejects if the OS refuses
 cancelDailyReminder(): Promise<void>
-reconcileReminder(reminder: Reminder): Promise<void> // make the OS schedule match settings; never prompts, never throws
+reconcileReminder(reminder: Reminder): Promise<void> // make the OS schedule match settings; never prompts, never throws.
+                                                     // Reschedules if the time, title or body differ (so a new
+                                                     // body reaches existing installs)
 triggerMatchesTime(trigger: unknown, hour, minute): boolean  // Android 'daily' / iOS 'calendar' trigger shapes
-addReminderTapListener(onTap: () => void): () => void  // also handles cold-start last response
+addReminderTapListener(onTap: () => void): () => void  // also handles cold-start last response.
+                                                       // Scheduled reminders carry data.url = '/call'; a tap is
+                                                       // matched by REMINDER_ID or that URL, and also by '/check-in'
+                                                       // (reminders scheduled by older installs)
 // contacts.ts
 pickPartnerContact(): Promise<{ status: 'picked'; partner: Partner } | { status: 'cancelled' } | { status: 'unavailable' }>
   // iOS: expo-contacts/legacy presentContactPickerAsync (no permission); a contact with several
@@ -412,21 +427,26 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   guards: until `onboardingDone` only `/onboarding` is reachable, afterwards it redirects to `/`.
   Modals (`check-in`, `call`, `day/[date]`) use `presentation: 'modal'` and anchor `(tabs)`, so a
   deep link to a modal closes onto Today. Enables the privacy cover and the foreground
-  notification handler once; reminder tap → `/check-in?date=<today>`. AppState `active` →
+  notification handler once; reminder tap → `refreshToday()`, closes any open modal
+  (`dismissAll`), then `/call`. AppState `active` →
   `refreshToday()`, `enablePrivacyCover()` again, and `reconcileReminder()` after 1.5 s
   (only once onboarding is done). A timer at the next local midnight → `refreshToday()`.
 - `(tabs)/_layout.tsx` — JS Tabs (`expo-router/js-tabs`): `index` (Today), `history`,
   `settings` (nested Stack). Settings has `popToTopOnBlur`: leaving the tab resets its stack.
 - `(tabs)/index.tsx` — Today: date, greeting, counter card (days since last Red, best), week
-  strip, "Today’s color" card ("Log today’s color" / "Update"), partner call card OR "Add your partner" card,
-  "Yesterday isn't logged" card, 30-day backup reminder card (→ Settings).
+  strip, "Yesterday’s color" card ("Log yesterday’s color" / "Update", both →
+  `/check-in?date=<yesterday>&from=today`; a Red yesterday adds "Your counter restarted. God’s
+  grace doesn’t reset."; on install day (yesterday before installDate) no button and "Tomorrow,
+  log today’s color here."), partner call card OR "Add your partner" card, "{day} isn’t logged"
+  card for the latest unlogged day before yesterday from `recentUnloggedDates` ("Log it" →
+  `/check-in?date=`; hidden when there is none), 30-day backup reminder card (→ Settings).
 - `(tabs)/history.tsx` — stats (current, best, month check-ins), month calendar with month
   navigation (back to the earlier of installDate and the oldest logged day;
   no future months), `ColorTotals`, "Missed a day? Tap it…" hint. Tapping a past/today day
   opens `/day/[date]`.
 - `(tabs)/settings/_layout.tsx` — Stack (no native header, anchor `index`).
 - `settings/index.tsx` — Recovery: partner row (or "Add your partner"), My colors row.
-  Daily reminder: toggle (asks for permission when turned on), time picker, a note when
+  Daily reminder: "Remind me to call" toggle (asks for permission when turned on), time picker, a note when
   notifications are denied ("Open phone settings") or never allowed ("Allow notifications"),
   preview. Your data: phone-backup note, Export backup file, Import backup file, Delete all
   data, last backup date. About row.
@@ -450,8 +470,10 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   Android: only if the embedded config has a versionCode, which remote versioning usually
   leaves out), and Help and support / Privacy policy rows that open `docs/support.html` and
   `docs/privacy.html` on GitHub Pages.
-- `check-in.tsx` — color log modal ("Save color"), `?date=YYYY-MM-DD` (default: today as of opening, kept if midnight
-  passes); invalid or future dates close right away. `&from=call` returns to the call screen
+- `check-in.tsx` — color log modal ("Save color"), `?date=YYYY-MM-DD` (default: yesterday as of opening, kept if midnight
+  passes); invalid or future dates close right away. Title "What was your lowest color
+  today / yesterday / that day?". `&from=today` (or no `from` with today's date) shows "‹ Today"
+  ("Back to Today"); otherwise "‹ Back". `&from=call` returns to the call screen
   instead of opening a second one. 4 color cards with the user's behaviors, Red shows grace
   note (the counter and best streak it would really leave, from `streaksIfRed`: today "Your
   counter restarts at 0.", a past day "stays at" / "goes back to" / "now counts from that day";
@@ -459,22 +481,29 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   stay." (a past day: "Your other days…", since that day's color changes); text from
   `features/colorLog/colorLog.ts` `redNoteText`; then
   "God's grace doesn't reset."), save → outcome handling (confirm-better dialog). becameRed on a day the next
-  call covers → `/call` if a partner exists ("Save, then call {name}"); anything else closes.
-- `call.tsx` — modal (asks to add a partner if there is none): since-last-call list (long gaps
-  collapse to the last 7 days + "Show all") with "Log it" for unlogged days, lowest summary,
-  script, "Call {name}" (dialer). The day on screen when Call is tapped is the call day; when the
-  app returns from the background it asks "Did you talk with {name}?" and marks that day.
-  Manual "I talked with {name} — mark today" toggle, month check-in count.
+  call covers (yesterday or an earlier window day, before today's call) → `/call` if a partner
+  exists ("Save, then call {name}"); anything else closes.
+- `call.tsx` — modal (asks to add a partner if there is none): subtitle "Share your lowest color
+  since your last call and how today is going. Then {name} prays for you."; list from the last
+  call day through yesterday (long gaps collapse to the last 7 days + "Show all") with "Log it"
+  for unlogged days, lowest summary; an empty window shows "Nothing logged to share yet. Tell
+  {name} how today has gone." instead. Script: the share line, "Tell {name} how today has gone so
+  far.", "{name} prays for you." "Call {name}" (dialer). The day on screen when Call is tapped is
+  the call day; when the app returns from the background it asks "Did you talk with {name}?" and
+  marks that day. Checked in today: "You already talked with {name} today." and "Tomorrow, log
+  today’s color and share it on your next call." Manual "I talked with {name} — mark today"
+  toggle, month check-in count.
 - `day/[date].tsx` — modal: day color ("Log it" / "Change" → `/check-in?date=`), "Checked in
   with {partner}" toggle, and for a logged day "Clear this day" → "Clear this day?" alert
   (`clearDayText`) → `clearDay`; the screen stays open, now unlogged. Invalid or future dates
   show a message.
 - `onboarding.tsx` — steps: welcome (privacy promise) → how colors work → counter start
-  ("Start counting today" / "My last Red day was…" date picker; a last Red day is saved as a
-  Red day in the log, via `setLastRedDay`) → partner (most important
-  step; contacts or typed; skippable) → color lists (Green, Blue, Yellow, Red; Red locked
-  line; "Write these later" skips to the reminder) → reminder (time or no reminders; this page
-  is the permission pre-prompt) → done ("Start" → `completeOnboarding()`). Steps 1–6 show
+  ("Count streaks from today" / "The last day I went red was…" date picker; a last Red day is
+  saved as a Red day in the log, via `setLastRedDay`) → partner (most important
+  step; contacts or typed; "Add a friend later" skips) → color lists (Green, Blue, Yellow, Red;
+  Red locked line; "Write examples later" skips to the reminder) → reminder (time or no
+  reminders; this page is the permission pre-prompt; refused → "Did not turn on reminders"
+  alert, reminder off, OK goes on) → done ("Start" → `completeOnboarding()`). Steps 1–6 show
   "Step n of 6"; Android back goes to the previous step; no swipe-back.
 
 Modal screens pass `MODAL_EDGES` to `Screen`.

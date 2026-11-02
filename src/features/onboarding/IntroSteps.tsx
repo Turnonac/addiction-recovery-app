@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-import { COLOR_LEVELS, COLOR_MEANINGS, COLOR_NAMES, RED } from '@/domain/types';
+import { COLOR_LEVELS, COLOR_MEANINGS, COLOR_NAMES } from '@/domain/types';
 import { CheckList, StepScreen } from '@/features/onboarding/StepLayout';
 import { Button, ColorGlyph } from '@/ui/components';
 import { useAppTheme } from '@/ui/theme';
@@ -34,13 +34,12 @@ export function WelcomeStep({ onNext }: StepNavProps) {
 /** Step 2: how the four colors work. */
 export function ColorsIntroStep({ onNext, onBack }: StepNavProps) {
   const theme = useAppTheme();
-  const red = theme.levels[RED];
   return (
     <StepScreen
       step={2}
       onBack={onBack}
       title="How colors work"
-      subtitle="Each day, pick your lowest color since the last time you logged. Here are the colors and what they mean:"
+      subtitle="Each day, log your lowest color from the day before. Here are the colors and what they mean:"
       footer={<Button title="Continue" size="lg" onPress={onNext} />}
     >
       <View

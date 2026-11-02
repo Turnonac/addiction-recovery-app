@@ -25,6 +25,28 @@ describe('redNoteText', () => {
     ],
     ['today with no counter yet', [], null, TODAY, 'Your counter restarts at 0. Your history and best streak stay.'],
     [
+      // the daily log: yesterday, a finished day
+      'yesterday, current run is the best',
+      [],
+      '2026-10-01',
+      '2026-10-28',
+      'Your counter goes back to 1 day. Your best streak becomes 26 days. Your other days stay.',
+    ],
+    [
+      'yesterday, an older run is longer',
+      [day('2026-10-20', 3)],
+      '2026-09-01',
+      '2026-10-28',
+      'Your counter goes back to 1 day. Your other days and best streak stay.',
+    ],
+    [
+      'yesterday with no counter yet',
+      [],
+      null,
+      '2026-10-28',
+      'Your counter now counts from that day: 1 day. Your best streak becomes 1 day. Your other days stay.',
+    ],
+    [
       'a past day after the counter start',
       [],
       '2026-10-01',

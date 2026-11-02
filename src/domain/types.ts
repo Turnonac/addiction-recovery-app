@@ -81,7 +81,7 @@ export interface Settings {
   reminder: Reminder;
   /**
    * Day onboarding finished; History treats earlier days as before-install. Before any
-   * Red on or before it, the counter counts from this day ("Start counting today").
+   * Red on or before it, the counter counts from this day ("Count streaks from today").
    */
   installDate: LocalDate | null;
   onboardingDone: boolean;
@@ -104,13 +104,21 @@ export interface AppSnapshot {
   settings: Settings;
 }
 
-/** Result of computing the partner-call window (see domain/call.ts). */
+/**
+ * Result of computing the partner-call window (see domain/call.ts). The window runs from the
+ * last call day (inclusive) through YESTERDAY; before the first call it starts at the counter
+ * start, capped to the 14 days ending yesterday. Today is never in it: the user tells their
+ * partner about today so far out loud.
+ */
 export interface CallWindow {
   /** Most recent day with checkedIn = true, on or before today; null if never. */
   lastCallDate: LocalDate | null;
   /** True when today is already checked in (window is then empty). */
   checkedInToday: boolean;
-  /** Days in the window, oldest first, each with its color (null = unlogged). */
+  /**
+   * Days in the window, oldest first, each with its color (null = unlogged). Empty when today
+   * is checked in, or when the window would start after yesterday (first call on install day).
+   */
   days: { date: LocalDate; color: ColorLevel | null }[];
   /** Lowest (max severity) color among logged days in the window; null if none logged. */
   lowest: ColorLevel | null;

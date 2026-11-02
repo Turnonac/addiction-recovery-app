@@ -50,9 +50,9 @@ export interface AppState {
   /** Persists only; screens call services/notifications. */
   setReminder(reminder: Reminder): Promise<void>;
   /**
-   * Onboarding only. "My last Red day was…": `date` (before today) becomes a Red day,
-   * replacing the one saved here before (the latest Red day in the log). null ("Start
-   * counting today") just removes that one.
+   * Onboarding only. "The last day I went red was…": `date` (before today) becomes a Red
+   * day, replacing the one saved here before (the latest Red day in the log). null ("Count
+   * streaks from today") just removes that one.
    */
   setLastRedDay(date: LocalDate | null): Promise<void>;
   /** Sets onboardingDone and installDate = today. */

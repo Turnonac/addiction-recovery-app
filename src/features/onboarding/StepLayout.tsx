@@ -87,7 +87,7 @@ export interface TextLinkProps {
   accessibilityHint?: string;
 }
 
-/** Quiet muted text button under the main action ("Skip for now · …"). */
+/** Quiet muted text button under the main action ("Add a friend later"). */
 export function TextLink({ title, onPress, disabled = false, accessibilityHint }: TextLinkProps) {
   const theme = useAppTheme();
   return (

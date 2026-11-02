@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
 import { inCallWindow } from '@/domain/call';
-import { formatLong, isValidLocalDate } from '@/domain/dates';
+import { addDays, formatLong, isValidLocalDate } from '@/domain/dates';
 import {
   COLOR_LEVELS,
   COLOR_NAMES,
@@ -26,19 +26,25 @@ import {
 } from '@/ui/components';
 import { useAppTheme } from '@/ui/theme';
 
-/** Color log modal: `/check-in?date=YYYY-MM-DD` (default today). Future dates are locked. */
+/**
+ * Color log modal: `/check-in?date=YYYY-MM-DD&from=today|call`. The default date is yesterday
+ * (the daily log records a finished day); today can still be logged. Future dates are locked.
+ */
 export default function CheckInScreen() {
   const router = useRouter();
   const theme = useAppTheme();
   const params = useLocalSearchParams<{ date?: string | string[]; from?: string | string[] }>();
   const today = useAppStore((s) => s.today);
-  // "Today" as of opening: an open color log keeps its day when midnight passes.
+  // "Today" as of opening: an open color log keeps its day (yesterday) when midnight passes.
   const [openedOn] = useState(() => useAppStore.getState().today);
   const raw = Array.isArray(params.date) ? params.date[0] : params.date;
-  const date = raw && raw.length > 0 ? raw : openedOn;
+  const date = raw && raw.length > 0 ? raw : addDays(openedOn, -1);
   const valid = isValidLocalDate(date) && date <= today;
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
   // Opened from the call screen ("Log it"): return there instead of opening a second one.
-  const fromCall = (Array.isArray(params.from) ? params.from[0] : params.from) === 'call';
+  const fromCall = from === 'call';
+  // The back button says "Today" when it returns to the Today tab.
+  const backToToday = from === 'today' || (from === undefined && date === today);
 
   // Invalid or future dates cannot be logged: leave right away (once).
   const left = useRef(false);
@@ -51,16 +57,25 @@ export default function CheckInScreen() {
 
   if (!valid) return <View style={{ flex: 1, backgroundColor: theme.bg }} />;
 
-  // Keyed by date: if this screen is reused for another day (e.g. a reminder tap
-  // while it is open), the selection starts over instead of carrying across days.
-  return <CheckInForm key={date} date={date} fromCall={fromCall} />;
+  // Keyed by date: if this screen is reused for another day (a navigation to it with new
+  // params while it is open), the selection starts over instead of carrying across days.
+  return <CheckInForm key={date} date={date} fromCall={fromCall} backToToday={backToToday} />;
 }
 
-function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean }) {
+function CheckInForm({
+  date,
+  fromCall,
+  backToToday,
+}: {
+  date: LocalDate;
+  fromCall: boolean;
+  backToToday: boolean;
+}) {
   const router = useRouter();
   const theme = useAppTheme();
   const today = useAppStore((s) => s.today);
   const isToday = date === today;
+  const isYesterday = date === addDays(today, -1);
 
   const days = useAppStore((s) => s.days);
   const stored = days[date]?.color ?? null;
@@ -84,7 +99,7 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
     else router.replace('/call');
   };
 
-  const dayWord = isToday ? 'today' : 'that day';
+  const dayWord = isToday ? 'today' : isYesterday ? 'yesterday' : 'that day';
 
   function handleOutcome(outcome: SetColorOutcome) {
     switch (outcome.kind) {
@@ -94,7 +109,7 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
       case 'needsConfirmBetter': {
         const current = COLOR_NAMES[outcome.current];
         const requested = COLOR_NAMES[outcome.requested];
-        const subject = isToday ? 'Today' : 'That day';
+        const subject = isToday ? 'Today' : isYesterday ? 'Yesterday' : 'That day';
         setSaving(false);
         Alert.alert(
           `${subject} is already ${current}`,
@@ -110,7 +125,8 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
         return;
       }
       case 'saved': {
-        // A new Red goes straight to the call when that call covers the day (one call a day).
+        // A new Red goes straight to the call when that call covers the day (one call a day):
+        // yesterday, or an earlier day in the window, before today's call.
         const state = useAppStore.getState();
         if (
           outcome.becameRed &&
@@ -163,9 +179,9 @@ function CheckInForm({ date, fromCall }: { date: LocalDate; fromCall: boolean })
   return (
     <Screen edges={MODAL_EDGES} footer={footer}>
       <BackButton
-        label={isToday ? 'Today' : 'Back'}
+        label={backToToday ? 'Today' : 'Back'}
         onPress={close}
-        accessibilityLabel={isToday ? 'Back to Today' : 'Go back'}
+        accessibilityLabel={backToToday ? 'Back to Today' : 'Go back'}
       />
       <ScreenHeader
         size="md"

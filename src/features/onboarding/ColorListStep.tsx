@@ -7,7 +7,7 @@ export interface ColorListStepProps {
   level: ColorLevel;
   onNext: () => void;
   onBack: () => void;
-  /** Skip the remaining color pages ("Write these later"). */
+  /** Skip the remaining color pages ("Write examples later"). */
   onSkip: () => void;
 }
 
@@ -16,7 +16,7 @@ export function ColorListStep({ level, onNext, onBack, onSkip }: ColorListStepPr
   const name = COLOR_NAMES[level];
   const position = COLOR_LEVELS.indexOf(level) + 1;
 
-  let subtitle = `${COLOR_MEANINGS[level]}. Write a few short examples. You can change them any time in the settings.`;
+  const subtitle = `${COLOR_MEANINGS[level]}. Write a few short examples. You can change them any time in the settings.`;
 
   return (
     <StepScreen
@@ -28,7 +28,7 @@ export function ColorListStep({ level, onNext, onBack, onSkip }: ColorListStepPr
       footer={
         <>
           <Button title="Continue" size="lg" onPress={onNext} />
-          <TextLink title="Write examples later" onPress={onSkip} accessibilityHint="Write examples later" />
+          <TextLink title="Write examples later" onPress={onSkip} accessibilityHint="Skips to the reminder step" />
         </>
       }
     >

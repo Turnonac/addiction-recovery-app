@@ -17,7 +17,7 @@ export interface NotificationPreviewProps {
 export function NotificationPreview({
   time,
   title = 'Daily reminder',
-  body = 'Time to log today’s color.',
+  body = 'Time for your daily call.',
   caption = 'This is all the reminder ever says on your lock screen.',
 }: NotificationPreviewProps) {
   const theme = useAppTheme();

@@ -30,8 +30,8 @@ describe('redDates', () => {
 describe('counterStart', () => {
   test.each<[string, DayLog[], string | null, string | null]>([
     ['no installDate -> null', [red('2026-10-01')], null, null],
-    ['no Red on or before install -> installDate ("Start counting today")', [], '2026-10-10', '2026-10-10'],
-    ['the latest Red on or before install ("My last Red day was…")', [red('2026-09-01'), red('2026-10-05')], '2026-10-10', '2026-10-05'],
+    ['no Red on or before install -> installDate ("Count streaks from today")', [], '2026-10-10', '2026-10-10'],
+    ['the latest Red on or before install ("The last day I went red was…")', [red('2026-09-01'), red('2026-10-05')], '2026-10-10', '2026-10-05'],
     ['a Red on the install day', [red('2026-10-10')], '2026-10-10', '2026-10-10'],
     ['Reds after install do not move it', [red('2026-10-20')], '2026-10-10', '2026-10-10'],
     ['a future installDate is treated as today', [], '2026-11-02', TODAY],
@@ -107,7 +107,7 @@ describe('bestStreak', () => {
       59,
     ],
     [
-      // "Start counting today" on Oct 27, then a Red backfilled on Oct 1: the day log
+      // "Count streaks from today" on Oct 27, then a Red backfilled on Oct 1: the day log
       // is the one source, so the counter counts from that Red (28), and so does best
       'a Red backfilled before install counts from that Red',
       [red('2026-10-01')],
