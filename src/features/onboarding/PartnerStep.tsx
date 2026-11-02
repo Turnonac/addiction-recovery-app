@@ -9,7 +9,7 @@ import {
   PartnerEditor,
   samePartner,
 } from '@/features/onboarding/PartnerEditor';
-import { CheckList, StepScreen, TextLink } from '@/features/onboarding/StepLayout';
+import { StepScreen, TextLink } from '@/features/onboarding/StepLayout';
 import { useAppStore } from '@/state/store';
 import { Button } from '@/ui/components';
 
@@ -42,7 +42,7 @@ export function PartnerStep({ onNext, onBack }: StepNavProps) {
       onBack={onBack}
       avoidKeyboard
       title="Who can you call each day?"
-      subtitle=`If you haven't already, ask a friend whom you can call every day. Consistency is more important than length of the call. Aim for a one minute call every day. Simply share your lowest color since the last call, and ask your friend to pray for you. Talking in person is another great option, as long as it helps with daily consistency. Remember James 5:16, "Therefore, confess your sins to one another and pray for one another, that you may be healed. The prayer of a righteous person has great power as it is working."`
+      subtitle={`If you haven't already, ask a friend whom you can call every day. Consistency is more important than length of the call. Aim for a one minute call every day. Simply share your lowest color since the last call, and ask your friend to pray for you. Talking in person is another great option, as long as it helps with daily consistency. Remember James 5:16, "Therefore, confess your sins to one another and pray for one another, that you may be healed. The prayer of a righteous person has great power as it is working."`}
       footer={
         <>
           <Button

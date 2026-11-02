@@ -16,7 +16,7 @@ export function ColorListStep({ level, onNext, onBack, onSkip }: ColorListStepPr
   const name = COLOR_NAMES[level];
   const position = COLOR_LEVELS.indexOf(level) + 1;
 
-  let subtitle = `${COLOR_MEANINGS[level]}. Write a few short examples. You can change them any time in the settings.`;
+  const subtitle = `${COLOR_MEANINGS[level]}. Write a few short examples. You can change them any time in the settings.`;
 
   return (
     <StepScreen

@@ -856,19 +856,19 @@ describe('onboarding', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
 
-    expect(await screen.findByText('When should your counter start?')).toBeTruthy();
+    expect(await screen.findByText('Do you remember the last time you went red?')).toBeTruthy();
     expect(screen.getByLabelText('Your counter will show: 0 days')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByText('Step 4 of 6 · The most important step')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    await fireEvent.press(screen.getByRole('button', { name: 'Skip for now · Today will remind you' }));
-    expect(useAppStore.getState().days).toEqual({}); // "Start counting today" logs no Red day
+    await fireEvent.press(screen.getByRole('button', { name: 'Add a friend later' }));
+    expect(useAppStore.getState().days).toEqual({}); // "Count streaks from today" logs no Red day
 
     expect(await screen.findByText('What does Green look like for you?')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('What does Blue look like for you?')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Write these later' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Write examples later' }));
 
     expect(await screen.findByText('A daily reminder')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'No reminders for now' }));
@@ -889,8 +889,8 @@ describe('onboarding', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
-    await fireEvent.press(await screen.findByRole('button', { name: 'Skip for now · Today will remind you' }));
-    await fireEvent.press(await screen.findByRole('button', { name: 'Write these later' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add a friend later' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Write examples later' }));
 
     const nine = formatTime(21, 0); // locale-dependent, e.g. '9:00 PM'
     await fireEvent.press(await screen.findByRole('button', { name: `Remind me at ${nine}` }));

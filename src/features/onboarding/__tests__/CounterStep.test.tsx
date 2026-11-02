@@ -24,7 +24,7 @@ jest.mock('@react-native-community/datetimepicker', () => ({
   DateTimePickerAndroid: { open: () => undefined },
 }));
 
-const TITLE = 'When should your counter start?';
+const TITLE = 'Do you remember the last time you went red?';
 const pristine = useAppStore.getState();
 
 let announce: jest.SpiedFunction<typeof AccessibilityInfo.announceForAccessibility>;
@@ -51,7 +51,7 @@ beforeEach(async () => {
   announceWithOptions = jest
     .spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions')
     .mockImplementation(() => {});
-  // Last Red day three days ago, so the step opens on "My last Red day was…".
+  // Last Red day three days ago, so the step opens on "The last day I went red was…".
   await initStore(addDays(todayLocal(), -3));
 });
 
@@ -63,9 +63,9 @@ afterEach(() => {
 async function switchChoices() {
   await render(<CounterStep onNext={() => undefined} />);
   expect(screen.getByLabelText('Your counter will show: 3 days')).toBeTruthy();
-  await fireEvent.press(screen.getByRole('radio', { name: /^Start counting today/ }));
+  await fireEvent.press(screen.getByRole('radio', { name: /^Count streaks from today/ }));
   expect(screen.getByLabelText('Your counter will show: 0 days')).toBeTruthy();
-  await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
+  await fireEvent.press(screen.getByRole('radio', { name: /^The last day I went red was…/ }));
   expect(screen.getByLabelText('Your counter will show: 3 days')).toBeTruthy();
 }
 
@@ -87,7 +87,7 @@ describe('CounterStep preview on iOS', () => {
     await initStore(null);
     await render(<CounterStep onNext={() => undefined} />);
     // No past date yet, so choosing it opens the sheet; Done picks yesterday.
-    await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
+    await fireEvent.press(screen.getByRole('radio', { name: /^The last day I went red was…/ }));
     await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
     expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
     expect(announceWithOptions.mock.calls).toEqual([
@@ -113,7 +113,7 @@ describe('CounterStep saving', () => {
     const onNext = jest.fn();
     await initStore(null);
     await render(<CounterStep onNext={onNext} />);
-    await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
+    await fireEvent.press(screen.getByRole('radio', { name: /^The last day I went red was…/ }));
     await fireEvent.press(screen.getByRole('button', { name: 'Done' })); // picks yesterday
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(onNext).toHaveBeenCalledTimes(1);
@@ -126,25 +126,25 @@ describe('CounterStep saving', () => {
     await initStore(null);
     const today = todayLocal();
     await render(<CounterStep onNext={onNext} />);
-    await fireEvent.press(screen.getByRole('radio', { name: /^My last Red day was…/ }));
+    await fireEvent.press(screen.getByRole('radio', { name: /^The last day I went red was…/ }));
     await fireEvent.press(screen.getByRole('button', { name: 'Done' })); // picks yesterday
     expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
 
     // The phone moves to an earlier time zone: the store's today becomes yesterday, the pick.
     await act(async () => useAppStore.setState({ today: addDays(today, -1) }));
-    expect(screen.getByRole('radio', { name: 'My last Red day was… Pick the date' })).toBeTruthy();
-    // The footer button (disabled) and the date button both read "Pick your last Red day".
-    expect(screen.getAllByRole('button', { name: 'Pick your last Red day' })).toHaveLength(2);
+    expect(screen.getByRole('radio', { name: 'The last day I went red was… Pick the date' })).toBeTruthy();
+    // The footer button (disabled) and the date button both read "Enter the last day you went red".
+    expect(screen.getAllByRole('button', { name: 'Enter the last day you went red' })).toHaveLength(2);
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
     expect(screen.queryByLabelText(/Your counter will show/)).toBeNull();
     expect(onNext).not.toHaveBeenCalled();
   });
 
-  it('back on this step, "Start counting today" removes the saved Red day', async () => {
+  it('back on this step, "Count streaks from today" removes the saved Red day', async () => {
     // beforeEach saved a last Red day three days ago.
     const onNext = jest.fn();
     await render(<CounterStep onNext={onNext} />);
-    await fireEvent.press(screen.getByRole('radio', { name: /^Start counting today/ }));
+    await fireEvent.press(screen.getByRole('radio', { name: /^Count streaks from today/ }));
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(onNext).toHaveBeenCalledTimes(1);
     expect(useAppStore.getState().days).toEqual({});
