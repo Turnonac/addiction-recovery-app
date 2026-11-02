@@ -857,10 +857,15 @@ describe('onboarding', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByText('Do you remember the last time you went red?')).toBeTruthy();
+    expect(
+      screen.getByRole('radio', { name: 'Count streaks from today Your clean day streaks will start counting today.' }),
+    ).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'The last day I went red was… Pick the date' })).not.toBeChecked();
     expect(screen.getByLabelText('Your counter will show: 0 days')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(await screen.findByText('Step 4 of 6 · The most important step')).toBeTruthy();
+    expect(await screen.findByText('Who can you call each day?')).toBeTruthy();
+    expect(screen.getByText('Step 4 of 6 · The most important step')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await fireEvent.press(screen.getByRole('button', { name: 'Add a friend later' }));
     expect(useAppStore.getState().days).toEqual({}); // "Count streaks from today" logs no Red day
@@ -881,16 +886,21 @@ describe('onboarding', () => {
     await waitFor(() => expect(view.getPathname()).toBe('/'));
   });
 
-  it('cancels the scheduled reminder when the user goes back and opts out', async () => {
-    jest.clearAllMocks();
-    await setup({ onboardingDone: false, installDate: null });
-    await renderRouter(routes, { initialUrl: '/onboarding' });
-
+  /** Taps through steps 1-5 with the defaults and skips, landing on the reminder step. */
+  async function goToReminderStep() {
     await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Add a friend later' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Write examples later' }));
+    expect(await screen.findByText('A daily reminder')).toBeTruthy();
+  }
+
+  it('cancels the scheduled reminder when the user goes back and opts out', async () => {
+    jest.clearAllMocks();
+    await setup({ onboardingDone: false, installDate: null });
+    await renderRouter(routes, { initialUrl: '/onboarding' });
+    await goToReminderStep();
 
     const nine = formatTime(21, 0); // locale-dependent, e.g. '9:00 PM'
     await fireEvent.press(await screen.findByRole('button', { name: `Remind me at ${nine}` }));
@@ -903,5 +913,26 @@ describe('onboarding', () => {
     expect(await screen.findByText('No daily reminder. You can turn it on in Settings.')).toBeTruthy();
     expect(notifications.cancelDailyReminder).toHaveBeenCalled();
     expect(useAppStore.getState().settings.reminder.enabled).toBe(false);
+  });
+
+  it('says so when notifications are not allowed, and OK moves on with the reminder off', async () => {
+    jest.clearAllMocks();
+    jest.mocked(notifications.requestPermission).mockImplementation(async () => false);
+    await setup({ onboardingDone: false, installDate: null });
+    const alerts = spyOnAlerts();
+    await renderRouter(routes, { initialUrl: '/onboarding' });
+    await goToReminderStep();
+
+    await fireEvent.press(screen.getByRole('button', { name: `Remind me at ${formatTime(21, 0)}` }));
+    await waitFor(() => alerts.find('Did not turn on reminders'));
+    expect(alerts.find('Did not turn on reminders').buttons.map((b) => b.text)).toEqual(['OK']);
+    expect(notifications.scheduleDailyReminder).not.toHaveBeenCalled();
+    expect(notifications.cancelDailyReminder).toHaveBeenCalled();
+    expect(useAppStore.getState().settings.reminder.enabled).toBe(false);
+    expect(screen.getByText('A daily reminder')).toBeTruthy(); // stays until OK
+
+    await alerts.press('Did not turn on reminders', 'OK');
+    expect(await screen.findByText("You're all set")).toBeTruthy();
+    expect(screen.getByText('No daily reminder. You can turn it on in Settings.')).toBeTruthy();
   });
 });

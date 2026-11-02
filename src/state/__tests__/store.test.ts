@@ -452,7 +452,7 @@ describe('setLastRedDay', () => {
     expect(store().settings).toEqual(DEFAULT_SETTINGS);
   });
 
-  it('replaces the one saved before, or just removes it for "Start counting today"', async () => {
+  it('replaces the one saved before, or just removes it for "Count streaks from today"', async () => {
     const repo = await initWith();
     await store().setLastRedDay('2026-09-01');
     await store().setLastRedDay('2026-09-15');
