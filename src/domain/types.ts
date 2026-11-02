@@ -81,7 +81,7 @@ export interface Settings {
   reminder: Reminder;
   /**
    * Day onboarding finished; History treats earlier days as before-install. Before any
-   * Red on or before it, the counter counts from this day ("Start counting today").
+   * Red on or before it, the counter counts from this day ("Count streaks from today").
    */
   installDate: LocalDate | null;
   onboardingDone: boolean;

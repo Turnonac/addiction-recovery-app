@@ -5,7 +5,7 @@ import { RED, type DayLog, type LocalDate } from './types';
  * Clean-day counter rules (docs/ARCHITECTURE.md, "Counter" and "Best streak").
  * Everything comes from the day log plus installDate:
  * - Anchors = every Red date ≤ today, plus installDate when no Red is on or before it.
- *   Onboarding's "My last Red day was…" is a Red day like any other.
+ *   Onboarding's "The last day I went red was…" is a Red day like any other.
  * - Counter = calendar days since the latest anchor (a Red day shows 0, the next day 1).
  * - Unlogged days never reset anything; Reds dated after today are ignored.
  * - Best = max over every completed run (nextAnchor - anchor - 1) and the current streak.

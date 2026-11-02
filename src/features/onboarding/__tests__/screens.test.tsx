@@ -876,6 +876,9 @@ describe('onboarding', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Write examples later' }));
 
     expect(await screen.findByText('A daily reminder')).toBeTruthy();
+    expect(
+      screen.getByText('One reminder each day to log your color. You can change the time or turn it off any time in Settings.'),
+    ).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'No reminders for now' }));
 
     expect(await screen.findByText("You're all set")).toBeTruthy();
@@ -925,7 +928,9 @@ describe('onboarding', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: `Remind me at ${formatTime(21, 0)}` }));
     await waitFor(() => alerts.find('Did not turn on reminders'));
-    expect(alerts.find('Did not turn on reminders').buttons.map((b) => b.text)).toEqual(['OK']);
+    const refused = alerts.find('Did not turn on reminders');
+    expect(refused.message).toBe('The option to turn on reminders is available in Settings.');
+    expect(refused.buttons.map((b) => b.text)).toEqual(['OK']);
     expect(notifications.scheduleDailyReminder).not.toHaveBeenCalled();
     expect(notifications.cancelDailyReminder).toHaveBeenCalled();
     expect(useAppStore.getState().settings.reminder.enabled).toBe(false);

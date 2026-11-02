@@ -21,7 +21,7 @@ import { useAppTheme } from '@/ui/theme';
 
 type Choice = 'today' | 'past';
 
-/** How far back "My last Red day was…" can go. */
+/** How far back "The last day I went red was…" can go. */
 const MAX_YEARS_BACK = 20;
 
 /** Step 3: where the clean-day counter starts. On Continue a last Red day is saved as a Red day. */

@@ -66,7 +66,10 @@ describe('ColorListStep', () => {
     const onSkip = jest.fn();
     const onNext = jest.fn();
     await render(<ColorListStep level={GREEN} onNext={onNext} onBack={noop} onSkip={onSkip} />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Write examples later' }));
+    const skip = screen.getByRole('button', { name: 'Write examples later' });
+    // Says where it goes, rather than repeating the label to screen readers.
+    expect(skip.props.accessibilityHint).toBe('Skips to the reminder step');
+    await fireEvent.press(skip);
     expect(onSkip).toHaveBeenCalledTimes(1);
     expect(onNext).not.toHaveBeenCalled();
   });
