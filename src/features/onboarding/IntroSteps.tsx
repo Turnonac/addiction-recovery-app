@@ -9,7 +9,6 @@ const PRIVACY_PROMISES = [
   'No account. Nothing to sign up for.',
   'Everything you enter stays on this phone.',
   'No ads, no analytics, no tracking.',
-  'Reminders never say what the app is for.',
 ] as const;
 
 export interface StepNavProps {
@@ -19,12 +18,13 @@ export interface StepNavProps {
 
 /** Step 1: welcome + privacy promise. */
 export function WelcomeStep({ onNext }: StepNavProps) {
+  const subtitle = `Do you find it hard to quit your addiction to explicit media? At Light2Life, we believe that on our own individual power, we don't have the strength to fight against addiction. However, we can fight it when we are fully known and loved by God and by others. James 5:16 ESV says, "Therefore, confess your sins to one another and pray for one another, that you may be healed. The prayer of a righteous person has great power as it is working." Light2Life presents to you a simple system for your recovery: make one call a day with a friend, and log one color a day. Let's get started.`;
   return (
     <StepScreen
       step={1}
       title="Welcome to Light2Life"
-      subtitle="A simple, private daily practice for your recovery: one honest color a day, and one call with someone who prays for you."
       footer={<Button title="Get started" size="lg" onPress={onNext} />}
+      subtitle={subtitle}
     >
       <CheckList items={PRIVACY_PROMISES} />
     </StepScreen>
@@ -40,7 +40,7 @@ export function ColorsIntroStep({ onNext, onBack }: StepNavProps) {
       step={2}
       onBack={onBack}
       title="How colors work"
-      subtitle="Each day, pick your lowest color: the lowest moment of the day, even if the rest went well."
+      subtitle="Each day, pick your lowest color since the last time you logged. Here are the colors and what they mean:"
       footer={<Button title="Continue" size="lg" onPress={onNext} />}
     >
       <View
@@ -71,31 +71,11 @@ export function ColorsIntroStep({ onNext, onBack }: StepNavProps) {
                 </Text>
               </View>
             </View>
-            {level === RED ? (
-              <View
-                accessible
-                style={{
-                  gap: 4,
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderRadius: theme.cardRadius,
-                  backgroundColor: red.soft,
-                }}
-              >
-                <Text style={{ color: red.ink, fontSize: 14, lineHeight: 20, fontWeight: '600' }}>
-                  Red restarts your counter at 0. Your history and best streak stay.
-                </Text>
-                <Text style={{ color: red.ink, fontSize: 13, lineHeight: 18 }}>
-                  God&apos;s grace doesn&apos;t reset.
-                </Text>
-              </View>
-            ) : null}
           </View>
         ))}
       </View>
       <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-        A worse moment replaces a better one. Missed a day? You can fill it in later, and unlogged
-        days never reset your counter.
+        Missed a day? You can fill it in later.
       </Text>
     </StepScreen>
   );

@@ -99,11 +99,11 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
     <StepScreen
       step={3}
       onBack={onBack}
-      title="When should your counter start?"
-      subtitle="Your counter shows the days since your last Red."
+      title="Do you remember the last time you went red?"
+      subtitle="We'll use it to count your clean day streaks. If you couldn't remember, we can count starting today."
       footer={
         <Button
-          title={start === null ? 'Pick your last Red day' : 'Continue'}
+          title={start === null ? 'Enter the last day you went red' : 'Continue'}
           size="lg"
           onPress={() => void next()}
           disabled={start === null || saving}
@@ -112,13 +112,13 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
     >
       <View accessibilityRole="radiogroup" accessibilityLabel="Counter start" style={{ gap: 10 }}>
         <RadioCard
-          title="Start counting today"
-          subtitle="Your counter starts at 0 today."
+          title="Count streaks from today"
+          subtitle="Your clean day streaks will start counting today."
           selected={choice === 'today'}
           onPress={() => setChoice('today')}
         />
         <RadioCard
-          title="My last Red day was…"
+          title="The last day I went red was…"
           subtitle={pastDate !== null ? formatDateWithYear(pastDate) : 'Pick the date'}
           selected={choice === 'past'}
           onPress={choosePast}
@@ -131,7 +131,7 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
           variant="outline"
           onPress={openPicker}
           accessibilityLabel={
-            pastDate === null ? 'Pick your last Red day' : `Change date, currently ${formatDateWithYear(pastDate)}`
+            pastDate === null ? 'Enter the last day you went red' : `Change date, currently ${formatDateWithYear(pastDate)}`
           }
         />
       ) : null}

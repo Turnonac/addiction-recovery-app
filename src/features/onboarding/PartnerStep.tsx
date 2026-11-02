@@ -13,12 +13,6 @@ import { CheckList, StepScreen, TextLink } from '@/features/onboarding/StepLayou
 import { useAppStore } from '@/state/store';
 import { Button } from '@/ui/components';
 
-const PARTNER_POINTS = [
-  'One person you trust, who will pray with you',
-  'Their number stays on this phone',
-  'The app never contacts them; you call',
-] as const;
-
 /** Step 4 (the most important step, but skippable): who the user calls each day. */
 export function PartnerStep({ onNext, onBack }: StepNavProps) {
   const saved = useAppStore((s) => s.settings.partner);
@@ -47,8 +41,8 @@ export function PartnerStep({ onNext, onBack }: StepNavProps) {
       caption="Step 4 of 6 · The most important step"
       onBack={onBack}
       avoidKeyboard
-      title="Who will you call each day?"
-      subtitle="Recovery happens in the light. Each day you call this person, share your lowest color, and they pray for you."
+      title="Who can you call each day?"
+      subtitle=`If you haven't already, ask a friend whom you can call every day. Consistency is more important than length of the call. Aim for a one minute call every day. Simply share your lowest color since the last call, and ask your friend to pray for you. Talking in person is another great option, as long as it helps with daily consistency. Remember James 5:16, "Therefore, confess your sins to one another and pray for one another, that you may be healed. The prayer of a righteous person has great power as it is working."`
       footer={
         <>
           <Button
@@ -58,11 +52,10 @@ export function PartnerStep({ onNext, onBack }: StepNavProps) {
             disabled={!valid || saving}
             accessibilityHint={valid ? undefined : 'Choose a contact, or type a name and phone number'}
           />
-          <TextLink title="Skip for now · Today will remind you" onPress={onNext} disabled={saving} />
+          <TextLink title="Add a friend later" onPress={onNext} disabled={saving} />
         </>
       }
     >
-      <CheckList items={PARTNER_POINTS} />
       <PartnerEditor
         value={draft}
         onChange={setDraft}

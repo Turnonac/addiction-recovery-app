@@ -66,8 +66,8 @@ export function ReminderStep({ onNext, onBack }: StepNavProps) {
         await cancelQuietly();
         setBusy(false);
         Alert.alert(
-          'Reminders are off',
-          'Notifications are turned off for Light2Life. You can turn the reminder on later in Settings.',
+          'Did not turn on reminders',
+          'The option to turn the reminders is available in the settings.',
           [{ text: 'OK', onPress: onNext }],
         );
         return;
@@ -111,7 +111,7 @@ export function ReminderStep({ onNext, onBack }: StepNavProps) {
       step={6}
       onBack={onBack}
       title="A daily reminder"
-      subtitle="One quiet reminder each day to log your color. You can change it or turn it off any time in Settings."
+      subtitle="One reminder each day to check in. You can change the time or turn it off any time in Settings."
       footer={
         <>
           <Button title={`Remind me at ${time}`} size="lg" onPress={() => void enable()} disabled={busy} />
