@@ -71,12 +71,18 @@ export default function TodayScreen() {
   const streak = currentStreak(dayList, settings.installDate, today);
   const best = bestStreak(dayList, settings.installDate, today);
   const week = weekStrip(dayList, today, settings.installDate);
-  const todayColor = days[today]?.color ?? null;
   const call = callWindow(dayList, settings, today);
+  // The daily log records yesterday, a finished day. On install day there is no yesterday to log.
   const yesterday = addDays(today, -1);
-  const yesterdayUnlogged = recentUnloggedDates(dayList, settings.installDate, today).includes(
-    yesterday,
-  );
+  const installDay = settings.installDate === null || yesterday < settings.installDate;
+  const yesterdayColor = days[yesterday]?.color ?? null;
+  const logYesterday = () =>
+    router.push({ pathname: '/check-in', params: { date: yesterday, from: 'today' } });
+  // The most recent missed day before yesterday (yesterday is the main action above).
+  const earlierUnlogged =
+    recentUnloggedDates(dayList, settings.installDate, today)
+      .filter((date) => date < yesterday)
+      .at(-1) ?? null;
   const backupDue = backupNudgeDue(settings.lastExportAt, settings.installDate, today);
 
   const cardTitle = { color: theme.text, fontSize: 17, fontWeight: '700' } as const;
@@ -157,27 +163,29 @@ export default function TodayScreen() {
         ) : null}
       </Card>
 
-      {/* Today's color */}
+      {/* Yesterday's color: the daily log */}
       <Card>
         <View style={{ gap: 2 }}>
           <Text accessibilityRole="header" style={cardTitle}>
-            Today’s color
+            Yesterday’s color
           </Text>
           <Text style={cardBody}>
-            {todayColor === null
-              ? 'Not logged yet · pick your lowest color'
-              : 'Your lowest color so far today'}
+            {installDay
+              ? 'Tomorrow, log today’s color here.'
+              : yesterdayColor === null
+                ? 'Not logged yet · pick your lowest color'
+                : 'Your lowest color yesterday'}
           </Text>
         </View>
-        {todayColor === null ? (
-          <Button title="Log today’s color" onPress={() => router.push('/check-in')} />
+        {installDay ? null : yesterdayColor === null ? (
+          <Button title="Log yesterday’s color" onPress={logYesterday} />
         ) : (
           <View
             style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}
           >
             <View
               accessible
-              accessibilityLabel={`Today: ${COLOR_NAMES[todayColor]}`}
+              accessibilityLabel={`Yesterday: ${COLOR_NAMES[yesterdayColor]}`}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -187,27 +195,27 @@ export default function TodayScreen() {
                 paddingLeft: 8,
                 paddingRight: 14,
                 borderRadius: 999,
-                backgroundColor: theme.levels[todayColor].soft,
+                backgroundColor: theme.levels[yesterdayColor].soft,
               }}
             >
-              <ColorGlyph level={todayColor} size={28} />
+              <ColorGlyph level={yesterdayColor} size={28} />
               <Text
-                style={{ color: theme.levels[todayColor].ink, fontSize: 16, fontWeight: '700' }}
+                style={{ color: theme.levels[yesterdayColor].ink, fontSize: 16, fontWeight: '700' }}
               >
-                {COLOR_NAMES[todayColor]}
+                {COLOR_NAMES[yesterdayColor]}
               </Text>
             </View>
             <View style={{ flexGrow: 1 }} />
             <Button
               title="Update"
               variant="outline"
-              accessibilityLabel="Update today’s color"
-              onPress={() => router.push('/check-in')}
+              accessibilityLabel="Update yesterday’s color"
+              onPress={logYesterday}
             />
           </View>
         )}
-        {todayColor === RED ? (
-          <Text style={cardBody}>Your counter restarts at 0. God’s grace doesn’t reset.</Text>
+        {!installDay && yesterdayColor === RED ? (
+          <Text style={cardBody}>Your counter restarted. God’s grace doesn’t reset.</Text>
         ) : null}
       </Card>
 
@@ -249,21 +257,23 @@ export default function TodayScreen() {
         </Card>
       )}
 
-      {/* Missed yesterday */}
-      {yesterdayUnlogged ? (
+      {/* An earlier missed day (within the last week) */}
+      {earlierUnlogged !== null ? (
         <Card>
           <View style={{ gap: 2 }}>
             <Text accessibilityRole="header" style={cardTitle}>
-              Yesterday isn’t logged
+              {relativeDay(earlierUnlogged, today)} isn’t logged
             </Text>
             <Text style={cardBody}>
-              {formatLong(yesterday)} has no color yet. You can still make it up.
+              {formatLong(earlierUnlogged)} has no color yet. You can still make it up.
             </Text>
           </View>
           <Button
-            title="Log yesterday"
+            title="Log it"
             variant="secondary"
-            onPress={() => router.push({ pathname: '/check-in', params: { date: yesterday } })}
+            onPress={() =>
+              router.push({ pathname: '/check-in', params: { date: earlierUnlogged } })
+            }
           />
         </Card>
       ) : null}

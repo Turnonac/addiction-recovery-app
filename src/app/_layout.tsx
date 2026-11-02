@@ -1,8 +1,8 @@
-import { Stack, ThemeProvider, useRouter, type Theme } from 'expo-router';
+import { Stack, ThemeProvider, useRouter, useSegments, type Theme } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, Text, View } from 'react-native';
 
 import { openAppDatabase } from '@/data/database';
@@ -116,6 +116,12 @@ export default function RootLayout() {
   const onboardingDone = useAppStore((s) => s.settings.onboardingDone);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // Read by the reminder tap: anything but the tabs on top is a modal (/check-in, /call, /day/…).
+  const topSegment = useSegments()[0];
+  const modalOpen = useRef(false);
+  useEffect(() => {
+    modalOpen.current = topSegment !== undefined && topSegment !== '(tabs)';
+  }, [topSegment]);
 
   // Open the database and load the store.
   useEffect(() => {
@@ -144,17 +150,20 @@ export default function RootLayout() {
     void enablePrivacyCover();
   }, []);
 
-  // Reminder tap (also the tap that cold-started the app) opens today's color log.
-  // The explicit date matters when a color log for another day is already open:
-  // that screen is reused, and its params are replaced by these.
+  // Reminder tap (also the tap that cold-started the app) opens the call screen: the
+  // reminder is about the daily call. Today is refreshed first, so the call covers the
+  // right days when the tap comes after midnight. Open modals (a call, a color log, a
+  // day) are closed first, so closing the call lands on the tabs, not on a second call
+  // or a stale color log.
   useEffect(() => {
     if (!ready || !onboardingDone) return undefined;
     return addReminderTapListener(() => {
       try {
         useAppStore.getState().refreshToday();
-        router.navigate({ pathname: '/check-in', params: { date: useAppStore.getState().today } });
+        if (modalOpen.current) router.dismissAll();
+        router.navigate('/call');
       } catch (error) {
-        console.warn('Light2Life: could not open the color log', error);
+        console.warn('Light2Life: could not open the call screen', error);
       }
     });
   }, [ready, onboardingDone, router]);

@@ -39,7 +39,7 @@ export function ColorsIntroStep({ onNext, onBack }: StepNavProps) {
       step={2}
       onBack={onBack}
       title="How colors work"
-      subtitle="Each day, pick your lowest color since the last time you logged. Here are the colors and what they mean:"
+      subtitle="Each day, log your lowest color from the day before. Here are the colors and what they mean:"
       footer={<Button title="Continue" size="lg" onPress={onNext} />}
     >
       <View

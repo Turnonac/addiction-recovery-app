@@ -24,7 +24,10 @@ import { MIN_TOUCH, useAppTheme } from '@/ui/theme';
 const COLLAPSED_ROWS = 7;
 const COLLAPSE_OVER = 10;
 
-/** Partner call modal: what to share, the script, dial, and mark today as checked in. */
+/**
+ * Partner call modal: what to share (the days since the last call through yesterday; today
+ * so far is told out loud), the script, dial, and mark today as checked in.
+ */
 export default function CallScreen() {
   const router = useRouter();
   const partner = useAppStore((s) => s.settings.partner);
@@ -89,7 +92,7 @@ function CallWithPartner({
   const awaitingReturn = useRef(false);
   const leftApp = useRef(false);
   // The day the call started. A call that runs past midnight counts for that day,
-  // so the new day keeps its own window (and its color is shared on its own call).
+  // so the new day still gets its own call (which lists the call day's finished color).
   const callDay = useRef<LocalDate | null>(null);
 
   const dayList = Object.values(days);
@@ -219,7 +222,7 @@ function CallWithPartner({
       <ScreenHeader
         size="md"
         title={`Call with ${name}`}
-        subtitle={`Share your lowest color since your last call. Then ${name} prays for you.`}
+        subtitle={`Share your lowest color since your last call and how today is going. Then ${name} prays for you.`}
       />
 
       {info.checkedInToday ? (
@@ -231,7 +234,14 @@ function CallWithPartner({
             </Text>
           </View>
           <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-            Tomorrow you&apos;ll share your lowest color since today&apos;s call.
+            Tomorrow, log today’s color and share it on your next call.
+          </Text>
+        </Card>
+      ) : rows.length === 0 ? (
+        // First call on install day: no finished day to share yet.
+        <Card>
+          <Text style={{ color: theme.text, fontSize: 15, lineHeight: 22 }}>
+            Nothing logged to share yet. Tell {name} how today has gone.
           </Text>
         </Card>
       ) : (
@@ -279,7 +289,7 @@ function CallWithPartner({
               key={row.date}
               date={row.date}
               color={row.color}
-              today={today}
+              yesterday={addDays(today, -1)}
               onLog={() =>
                 router.push({ pathname: '/check-in', params: { date: row.date, from: 'call' } })
               }
@@ -296,7 +306,8 @@ function CallWithPartner({
             On the call
           </Text>
           <Step number={1} text={shareLine(firstCall, lowest)} />
-          <Step number={2} text={`${name} prays for you.`} />
+          <Step number={2} text={`Tell ${name} how today has gone so far.`} />
+          <Step number={3} text={`${name} prays for you.`} />
         </View>
       ) : null}
     </Screen>
@@ -311,7 +322,7 @@ function lowestLabel(firstCall: boolean, hasUnlogged: boolean): string {
 function shareLine(firstCall: boolean, lowest: ColorLevel | null): string {
   if (lowest === null) {
     return firstCall
-      ? 'Share how you’ve been doing, then log today’s color.'
+      ? 'Share how you’ve been doing.'
       : 'Share how you’ve been doing since your last call.';
   }
   const color = COLOR_NAMES[lowest];
@@ -320,25 +331,24 @@ function shareLine(firstCall: boolean, lowest: ColorLevel | null): string {
     : `Share: “Since our last call, my lowest was ${color}.”`;
 }
 
-function dayLabel(date: LocalDate, today: LocalDate): string {
-  if (date === today) return 'Today';
-  if (date === addDays(today, -1)) return 'Yesterday';
-  return formatShort(date);
+/** Window rows end yesterday (today is never in the window). */
+function dayLabel(date: LocalDate, yesterday: LocalDate): string {
+  return date === yesterday ? 'Yesterday' : formatShort(date);
 }
 
 function WindowRow({
   date,
   color,
-  today,
+  yesterday,
   onLog,
 }: {
   date: LocalDate;
   color: ColorLevel | null;
-  today: LocalDate;
+  yesterday: LocalDate;
   onLog: () => void;
 }) {
   const theme = useAppTheme();
-  const label = dayLabel(date, today);
+  const label = dayLabel(date, yesterday);
   if (color !== null) {
     return (
       <View
@@ -361,7 +371,7 @@ function WindowRow({
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={date === today ? 'Log today’s color' : `Log the color for ${formatShort(date)}`}
+        accessibilityLabel={`Log the color for ${formatShort(date)}`}
         onPress={onLog}
         hitSlop={4}
         style={({ pressed }) => ({

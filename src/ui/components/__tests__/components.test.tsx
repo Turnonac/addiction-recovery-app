@@ -10,6 +10,7 @@ import {
   ColorOptionCard,
   ColorTotals,
   MonthCalendar,
+  NotificationPreview,
   Screen,
   SettingsGroup,
   SettingsRow,
@@ -28,8 +29,8 @@ jest.mock(
 describe('Button', () => {
   it('calls onPress and exposes a button role', async () => {
     const onPress = jest.fn();
-    await render(<Button title="Log today’s color" onPress={onPress} />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Log today’s color' }));
+    await render(<Button title="Log yesterday’s color" onPress={onPress} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Log yesterday’s color' }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
@@ -84,12 +85,24 @@ describe('ToggleRow', () => {
   it('is a switch that reports the next value', async () => {
     const onValueChange = jest.fn();
     await render(
-      <ToggleRow label="Remind me to log my color" value={false} onValueChange={onValueChange} />,
+      <ToggleRow label="Remind me to call" value={false} onValueChange={onValueChange} />,
     );
-    const toggle = screen.getByRole('switch', { name: 'Remind me to log my color' });
+    const toggle = screen.getByRole('switch', { name: 'Remind me to call' });
     expect(toggle).not.toBeChecked();
     await fireEvent.press(toggle);
     expect(onValueChange).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('NotificationPreview', () => {
+  it('shows exactly what the reminder says (services/notifications)', async () => {
+    await render(<NotificationPreview time="9:00 PM" />);
+    expect(
+      screen.getByLabelText('Reminder preview at 9:00 PM: Daily reminder. Time for your daily call.'),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Daily reminder')).toBeOnTheScreen();
+    expect(screen.getByText('Time for your daily call.')).toBeOnTheScreen();
+    expect(screen.getByText('This is all the reminder ever says on your lock screen.')).toBeOnTheScreen();
   });
 });
 
