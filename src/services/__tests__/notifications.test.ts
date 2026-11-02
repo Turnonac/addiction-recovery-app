@@ -298,6 +298,15 @@ describe('addReminderTapListener', () => {
     expect(onTap).toHaveBeenCalledTimes(1);
   });
 
+  it('reports the tap that cold-started the app, then clears it', () => {
+    jest.mocked(Notifications.getLastNotificationResponse).mockReturnValueOnce(response(REMINDER_ID, '/call'));
+    const { onTap, handler } = listen();
+    expect(onTap).toHaveBeenCalledTimes(1);
+    expect(Notifications.clearLastNotificationResponse).toHaveBeenCalled();
+    handler(response(REMINDER_ID, '/call')); // the same tap delivered live as well
+    expect(onTap).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores other notifications', () => {
     const { onTap, handler } = listen();
     handler(response('something-else', undefined));

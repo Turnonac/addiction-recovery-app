@@ -429,6 +429,8 @@ describe('call', () => {
     await renderRouter(routes, { initialUrl: '/call' });
 
     expect(screen.getByText('Nothing logged to share yet. Tell Sam how today has gone.')).toBeTruthy();
+    expect(screen.getByText('Tell Sam how today is going. Then Sam prays for you.')).toBeTruthy();
+    expect(screen.queryByText(/^Share your lowest color since your last call/)).toBeNull();
     expect(screen.queryByText('Since you started')).toBeNull();
     expect(screen.queryByText('No colors logged yet. Tap “Log it” to add one before you call.')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Log the color for / })).toBeNull();
@@ -1000,6 +1002,17 @@ describe('today', () => {
     expect(screen.queryByRole('button', { name: 'Update yesterday’s color' })).toBeNull();
     expect(screen.queryByText(/isn’t logged$/)).toBeNull();
     expect(screen.getByText('No calls yet')).toBeTruthy();
+  });
+
+  it('keeps a Red yesterday from setup off the card on install day', async () => {
+    await setup({ partner: SAM, installDate: todayLocal() }, [
+      { date: addDays(todayLocal(), -1), color: 3, checkedIn: false },
+    ]);
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    expect(screen.getByText('Tomorrow, log today’s color here.')).toBeTruthy();
+    expect(screen.queryByLabelText('Yesterday: Red')).toBeNull();
+    expect(screen.queryByText('Your counter restarted. God’s grace doesn’t reset.')).toBeNull();
   });
 
   it('asks for yesterday’s color the day after install', async () => {

@@ -215,6 +215,8 @@ function CallWithPartner({
   const firstCall = info.lastCallDate === null;
   const lowest = info.lowest;
   const hasUnlogged = info.unloggedDates.length > 0;
+  // First call on install day: no finished day to share yet, only today so far.
+  const nothingToShare = !info.checkedInToday && rows.length === 0;
 
   return (
     <Screen edges={MODAL_EDGES} footer={footer} gap={16}>
@@ -222,7 +224,11 @@ function CallWithPartner({
       <ScreenHeader
         size="md"
         title={`Call with ${name}`}
-        subtitle={`Share your lowest color since your last call and how today is going. Then ${name} prays for you.`}
+        subtitle={
+          nothingToShare
+            ? `Tell ${name} how today is going. Then ${name} prays for you.`
+            : `Share your lowest color since your last call and how today is going. Then ${name} prays for you.`
+        }
       />
 
       {info.checkedInToday ? (
@@ -237,8 +243,7 @@ function CallWithPartner({
             Tomorrow, log today’s color and share it on your next call.
           </Text>
         </Card>
-      ) : rows.length === 0 ? (
-        // First call on install day: no finished day to share yet.
+      ) : nothingToShare ? (
         <Card>
           <Text style={{ color: theme.text, fontSize: 15, lineHeight: 22 }}>
             Nothing logged to share yet. Tell {name} how today has gone.
