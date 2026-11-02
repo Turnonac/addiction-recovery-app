@@ -45,8 +45,8 @@ Never install packages; everything needed is already in `package.json`.
   and any picker copy of an imported file). Backup files saved elsewhere and phone backups
   are not touched. Onboarding then opens, as on a new install.
 - **Counter** = calendar days since the last Red (Red day shows 0, next day 1).
-  Onboarding's "My last Red day was…" saves that day as a Red day. With no Red on or
-  before `installDate` ("Start counting today"), the counter counts from installDate.
+  Onboarding's "The last day I went red was…" saves that day as a Red day. With no Red on
+  or before `installDate` ("Count streaks from today"), the counter counts from installDate.
   Unlogged days never reset it. Reds dated after today are ignored. A Red backfilled
   before installDate counts like any other, so the counter counts from it if it is
   the latest Red.
@@ -65,9 +65,8 @@ Never install packages; everything needed is already in `package.json`.
   after midnight.
 - Partner step is skippable in onboarding but labeled the most important step;
   Today shows an "Add your partner" card until a partner exists.
-- Wording: the app says "explicit", never "pornography" or "porn". No Bible
-  verses anywhere. Christian framing via partner prayer and grace wording
-  ("God's grace doesn't reset.").
+- Wording: the app says "explicit", never "pornography" or "porn". Christian
+  framing via partner prayer and grace wording ("God's grace doesn't reset.").
 - Lists start EMPTY (no suggested behaviors). Red always shows the locked first
   line `LOCKED_RED_LINE`, which is not stored.
 - Daily reminder: one local notification at a user-picked time, opt-out.
@@ -470,11 +469,12 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   (`clearDayText`) → `clearDay`; the screen stays open, now unlogged. Invalid or future dates
   show a message.
 - `onboarding.tsx` — steps: welcome (privacy promise) → how colors work → counter start
-  ("Start counting today" / "My last Red day was…" date picker; a last Red day is saved as a
-  Red day in the log, via `setLastRedDay`) → partner (most important
-  step; contacts or typed; skippable) → color lists (Green, Blue, Yellow, Red; Red locked
-  line; "Write these later" skips to the reminder) → reminder (time or no reminders; this page
-  is the permission pre-prompt) → done ("Start" → `completeOnboarding()`). Steps 1–6 show
+  ("Count streaks from today" / "The last day I went red was…" date picker; a last Red day is
+  saved as a Red day in the log, via `setLastRedDay`) → partner (most important
+  step; contacts or typed; "Add a friend later" skips) → color lists (Green, Blue, Yellow, Red;
+  Red locked line; "Write examples later" skips to the reminder) → reminder (time or no
+  reminders; this page is the permission pre-prompt; refused → "Did not turn on reminders"
+  alert, reminder off, OK goes on) → done ("Start" → `completeOnboarding()`). Steps 1–6 show
   "Step n of 6"; Android back goes to the previous step; no swipe-back.
 
 Modal screens pass `MODAL_EDGES` to `Screen`.
