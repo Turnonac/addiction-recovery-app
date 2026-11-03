@@ -30,14 +30,16 @@ export function DoneStep({ onBack, onFinish }: DoneStepProps) {
   const counter = currentStreak(Object.values(days), today, today) ?? 0;
 
   const lines = [
-    `Your counter: ${counter} ${counter === 1 ? 'day' : 'days'}`,
     partner !== null
       ? `You'll call ${partner.name} each day`
       : 'No partner yet. Today will remind you to add one.',
+    `${counter === 1 ? 'Day' : 'Days'} since last Red: ${counter}`,
     reminder.enabled
       ? `Daily reminder at ${formatTime(reminder.hour, reminder.minute)}`
       : 'No daily reminder. You can turn it on in Settings.',
   ];
+
+  const closing = `Call ${partner !== null ? partner.name : 'your partner'} each day: share your color and ask for prayer. Small honest steps, one day at a time.`;
 
   async function finish() {
     if (busy) return;
@@ -79,7 +81,7 @@ export function DoneStep({ onBack, onFinish }: DoneStepProps) {
         ))}
       </View>
       <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 20 }}>
-        Log yesterday’s color each day, then call. Small honest steps, one day at a time.
+        {closing}
       </Text>
     </StepScreen>
   );

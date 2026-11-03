@@ -1,8 +1,9 @@
 # Light2Life architecture (v1)
 
 Light2Life (working name during development: WalkInLight) is a free, private
-iOS + Android app for one person recovering from porn. Daily lowest color,
-clean-day counter, one daily phone call with one partner who prays. "Check-in"
+iOS + Android app for one person recovering from porn. Calls come first: one
+daily phone call with one partner who prays (the call total is the app's #1
+number), then the daily lowest color and the clean-day counter (#2). "Check-in"
 always means that call; logging the day's color is never called a check-in in the
 app (the color screen's route keeps its old path, `/check-in`).
 No account, no server, no analytics. Everything lives on the phone.
@@ -55,7 +56,7 @@ Never install packages; everything needed is already in `package.json`.
   and the current streak. Anchors = every Red date ≤ today, plus installDate when no
   Red is on or before it.
 - **Day boundary = midnight.** The daily log records yesterday, a finished day:
-  Today's main action logs yesterday's color. Today can still be logged (History's
+  Today's "Yesterday’s color" card logs yesterday's color. Today can still be logged (History's
   day screen, links). Missed days can be made up (backfill any past day from History;
   Today shows a "{day} isn’t logged" card for the latest unlogged day before
   yesterday). Future days are locked. The color screen keeps the day it opened for
@@ -105,7 +106,7 @@ src/
     types.ts             shared types (change only together with this doc)
     dates.ts             local-date helpers
     streak.ts            current + best streak
-    call.ts              partner-call window
+    call.ts              partner-call window, total calls
     checkin.ts           set-color decision rules
     history.ts           month grid + summary, week strip, unlogged days, backup nudge
     backup.ts            zod schema, build + parse backup
@@ -128,8 +129,8 @@ src/
   features/
     onboarding/          onboarding steps, plus editors shared with Settings
       IntroSteps.tsx     WelcomeStep (1), ColorsIntroStep (2), StepNavProps
-      CounterStep.tsx    step 3: where the counter starts
-      PartnerStep.tsx    step 4: partner
+      PartnerStep.tsx    step 3: partner (the most important step)
+      CounterStep.tsx    step 4: where the counter starts
       ColorListStep.tsx  step 5: one page per color
       ReminderStep.tsx   step 6: daily reminder (permission pre-prompt)
       DoneStep.tsx       summary, then completeOnboarding()
@@ -138,7 +139,7 @@ src/
       PartnerEditor.tsx  contact pick or typed name + number (also Settings › Partner); a picked
                          number shows on a card to confirm or Change; saved exactly as entered
       pickers.tsx        date / time picker (Android dialog, iOS sheet), time and date formatting
-      __tests__/         BehaviorEditor, CounterStep, PartnerEditor, screens
+      __tests__/         BehaviorEditor, CounterStep, PartnerEditor, history (History stat tiles), screens
     colorLog/
       colorLog.ts        color screen helpers: daysAfterColor, redNoteText (the Red note);
                          clearDayText (the day screen's "Clear this day?" message)
@@ -207,6 +208,9 @@ callWindow(days: DayLog[], settings: Pick<Settings, 'installDate'>, today): Call
   // last call day (inclusive), else the capped counter start, through yesterday; unlogged days
   // included (color null). Empty if today is checked in or the start is after yesterday.
 inCallWindow(days, settings, today, date): boolean  // the next call covers `date`; never today
+totalCalls(days: DayLog[], today): number           // every day with checkedIn on or before today,
+  // backfilled days before installDate too (a cleared day no longer counts). Used for every
+  // "total calls" number: Today's call tile and History's first stat.
 ```
 
 ### domain/checkin.ts
@@ -396,7 +400,9 @@ callPhone(phone: string): Promise<boolean>  // Linking.openURL('tel:' + the numb
   `ScreenHeader` — eyebrow, title, subtitle. `MODAL_EDGES` — edges for modal
   routes: iOS `['bottom']` (the sheet sits below the status bar), Android
   `['top', 'bottom']` (modals are full screen).
-- `Card` — surface, border, radius. `StatTile` — History stat, read as one element.
+- `Card` — surface, border, radius. `StatTile` — History stat (`value`, `label`), read as one
+  element ("{value}, {label}"); optional `tone` `'default' | 'accent'` (accent: the Card
+  `variant="accent"` look with the value in accentText; History's call total).
 - `Button` — variants `primary | secondary | outline | ghost | danger`, optional
   icon, `selected`, `disabled`; min height 50 (`size="lg"`: 54, ghost: 44). `BackButton` — "‹ Label" link.
 - `ColorGlyph` — `{ level, size }` circle in level.solid + glyph path; `level = null`
@@ -433,15 +439,31 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   (only once onboarding is done). A timer at the next local midnight → `refreshToday()`.
 - `(tabs)/_layout.tsx` — JS Tabs (`expo-router/js-tabs`): `index` (Today), `history`,
   `settings` (nested Stack). Settings has `popToTopOnBlur`: leaving the tab resets its stack.
-- `(tabs)/index.tsx` — Today: date, greeting, counter card (days since last Red, best), week
-  strip, "Yesterday’s color" card ("Log yesterday’s color" / "Update", both →
-  `/check-in?date=<yesterday>&from=today`; a Red yesterday adds "Your counter restarted. God’s
-  grace doesn’t reset."; on install day (yesterday before installDate) no button and "Tomorrow,
-  log today’s color here."), partner call card OR "Add your partner" card, "{day} isn’t logged"
-  card for the latest unlogged day before yesterday from `recentUnloggedDates` ("Log it" →
-  `/check-in?date=`; hidden when there is none), 30-day backup reminder card (→ Settings).
-- `(tabs)/history.tsx` — stats (current, best, month check-ins), month calendar with month
-  navigation (back to the earlier of installDate and the oldest logged day;
+- `(tabs)/index.tsx` — Today: date, greeting, then cards in this order:
+  - Hero card: a row of two tiles (they stack when the row has no room; the tile basis grows
+    with the system font scale, so large text stacks them), then the week strip
+    and its legend. Call tile on the LEFT, accented (accentSoft background, accent border,
+    accentText, the bigger number): `totalCalls`, captioned "day(s) you’ve shared your color and
+    asked for prayer" and read as "You’ve shared your color and asked for prayer N day(s)"; at 0
+    (also with no partner) "0" and "Make your first call", read as "0 calls. Make your first call".
+    Clean tile on the RIGHT: days since last Red ("Day 0" / "Your counter starts today" with no
+    anchor; read as "N day(s) since last Red" / "Day 0. Your counter starts today."), plus a small
+    rounded "Best · N day(s)" tag (may wrap) inside the tile when best > 0 (read as "Best streak:
+    N day(s)"). Both numbers: tabular-nums, one line, shrink to fit, maxFontSizeMultiplier 1.3.
+  - Partner call card ("Daily call with {name}", call subtitle, primary "Call {name}" with the
+    Phone icon → `/call`) OR the accent "Add your partner" card.
+  - "Yesterday’s color" card ("Log yesterday’s color" (secondary) / "Update" (outline), both →
+    `/check-in?date=<yesterday>&from=today`; a Red yesterday adds "Your counter restarted. God’s
+    grace doesn’t reset."; on install day (yesterday before installDate) no button and "Tomorrow,
+    log today’s color here.").
+  - "{day} isn’t logged" card for the latest unlogged day before yesterday from
+    `recentUnloggedDates` ("Log it" → `/check-in?date=`; hidden when there is none).
+  - 30-day backup reminder card (→ Settings).
+- `(tabs)/history.tsx` — three stats, in order: total calls (`totalCalls`, "Days of prayer" /
+  "Day of prayer", accent `StatTile`), the viewed month's `checkIns/eligibleDays` from
+  `monthSummary` ("Calls this month", or "Calls in {Month}" for another month), current streak
+  (`currentStreak ?? 0`, "Days since last Red"); no best streak (it stays on Today). Month
+  calendar with month navigation (back to the earlier of installDate and the oldest logged day;
   no future months), `ColorTotals`, "Missed a day? Tap it…" hint. Tapping a past/today day
   opens `/day/[date]`.
 - `(tabs)/settings/_layout.tsx` — Stack (no native header, anchor `index`).
@@ -497,14 +519,19 @@ not self-describing, min 44pt targets, text contrast per theme tokens.
   with {partner}" toggle, and for a logged day "Clear this day" → "Clear this day?" alert
   (`clearDayText`) → `clearDay`; the screen stays open, now unlogged. Invalid or future dates
   show a message.
-- `onboarding.tsx` — steps: welcome (privacy promise) → how colors work → counter start
-  ("Count streaks from today" / "The last day I went red was…" date picker; a last Red day is
-  saved as a Red day in the log, via `setLastRedDay`) → partner (most important
-  step; contacts or typed; "Add a friend later" skips) → color lists (Green, Blue, Yellow, Red;
-  Red locked line; "Write examples later" skips to the reminder) → reminder (time or no
-  reminders; this page is the permission pre-prompt; refused → "Did not turn on reminders"
-  alert, reminder off, OK goes on) → done ("Start" → `completeOnboarding()`). Steps 1–6 show
-  "Step n of 6"; Android back goes to the previous step; no swipe-back.
+- `onboarding.tsx` — steps (ORDER): welcome (privacy promise) → how colors work → partner
+  ("Step 3 of 6 · The most important step"; contacts or typed; "Add a friend later" skips to the
+  counter step) → counter start ("Count streaks from today" / "The last day I went red was…"
+  date picker; a last Red day is saved as a Red day in the log, via `setLastRedDay`; a plain
+  bordered preview shows "Days since last Red" / "Day since last Red" over the number, read and
+  announced as "Days since last Red: N" / "Day since last Red: 1") → color lists (Green, Blue,
+  Yellow, Red; Red locked line; "Write examples later" skips to the reminder) → reminder (time or
+  no reminders; this page is the permission pre-prompt; refused → "Did not turn on reminders"
+  alert, reminder off, OK goes on) → done (summary: partner line, "Days since last Red: N"
+  ("Day since last Red: 1"), reminder line; then "Call {name} each day: share your color and ask for prayer. Small honest
+  steps, one day at a time." ("Call your partner each day: …" with no partner); "Start" →
+  `completeOnboarding()`). Steps 1–6 show "Step n of 6"; back (and Android back) goes to the
+  previous step in ORDER; no swipe-back.
 
 Modal screens pass `MODAL_EDGES` to `Screen`.
 

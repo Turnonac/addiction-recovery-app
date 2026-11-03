@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from '@jest/globals';
 
-import { callWindow, FIRST_CALL_MAX_DAYS, inCallWindow } from '@/domain/call';
+import { callWindow, FIRST_CALL_MAX_DAYS, inCallWindow, totalCalls } from '@/domain/call';
 import { datesBetween } from '@/domain/dates';
 import type { CallWindow, ColorLevel, DayLog } from '@/domain/types';
 
@@ -250,5 +250,22 @@ describe('inCallWindow', () => {
   it('is false for every day on install day before the first call', () => {
     expect(inCallWindow([], { installDate: TODAY }, TODAY, YESTERDAY)).toBe(false);
     expect(inCallWindow([], { installDate: TODAY }, TODAY, TODAY)).toBe(false);
+  });
+});
+
+describe('totalCalls', () => {
+  test.each<[string, DayLog[], number]>([
+    ['no days', [], 0],
+    ['colors without calls', [day('2026-10-27', 0), day(YESTERDAY, 1)], 0],
+    [
+      'every checked-in day, logged or not',
+      [day('2026-10-26', 2, true), day('2026-10-27', null, true), day(YESTERDAY, 0)],
+      2,
+    ],
+    ['today counts', [day(TODAY, null, true), day(YESTERDAY, 3, true)], 2],
+    ['days after today are ignored', [day('2026-10-30', 0, true), day(TODAY, null, true)], 1],
+    ['backfilled days long ago count', [day('2025-01-01', 0, true)], 1],
+  ])('%s', (_name, days, expected) => {
+    expect(totalCalls(days, TODAY)).toBe(expected);
   });
 });

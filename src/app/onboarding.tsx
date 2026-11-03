@@ -10,7 +10,7 @@ import { ColorsIntroStep, WelcomeStep } from '@/features/onboarding/IntroSteps';
 import { PartnerStep } from '@/features/onboarding/PartnerStep';
 import { ReminderStep } from '@/features/onboarding/ReminderStep';
 
-type StepId = 'welcome' | 'colors' | 'counter' | 'partner' | 'lists' | 'reminder' | 'done';
+type StepId = 'welcome' | 'colors' | 'partner' | 'counter' | 'lists' | 'reminder' | 'done';
 
 /** Where the user is: a step, plus which color page inside 'lists' (0..3). */
 interface Position {
@@ -21,8 +21,8 @@ interface Position {
 const ORDER: readonly StepId[] = [
   'welcome',
   'colors',
-  'counter',
   'partner',
+  'counter',
   'lists',
   'reminder',
   'done',
@@ -45,7 +45,7 @@ function previousPosition({ step, list }: Position): Position | null {
 }
 
 /**
- * First-run setup. Each step saves as it goes (counter start, partner,
+ * First-run setup. Each step saves as it goes (partner, counter start,
  * behaviors, reminder); "Start" calls completeOnboarding() and opens the tabs.
  */
 export default function OnboardingScreen() {
@@ -71,10 +71,10 @@ export default function OnboardingScreen() {
       return <WelcomeStep key="welcome" onNext={next} />;
     case 'colors':
       return <ColorsIntroStep key="colors" onNext={next} onBack={back} />;
-    case 'counter':
-      return <CounterStep key="counter" onNext={next} onBack={back} />;
     case 'partner':
       return <PartnerStep key="partner" onNext={next} onBack={back} />;
+    case 'counter':
+      return <CounterStep key="counter" onNext={next} onBack={back} />;
     case 'lists': {
       const level = COLOR_LEVELS[pos.list] ?? COLOR_LEVELS[0];
       return (

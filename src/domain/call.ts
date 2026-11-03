@@ -73,3 +73,15 @@ export function inCallWindow(
 ): boolean {
   return callWindow(days, settings, today).days.some((d) => d.date === date);
 }
+
+/**
+ * Every call ever (Today's and History's call total): days marked checked in, on or before
+ * today. Backfilled days before install count too; a cleared day no longer does.
+ */
+export function totalCalls(days: DayLog[], today: LocalDate): number {
+  let count = 0;
+  for (const day of days) {
+    if (day.checkedIn && day.date <= today) count++;
+  }
+  return count;
+}

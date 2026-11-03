@@ -24,7 +24,7 @@ type Choice = 'today' | 'past';
 /** How far back "The last day I went red was…" can go. */
 const MAX_YEARS_BACK = 20;
 
-/** Step 3: where the clean-day counter starts. On Continue a last Red day is saved as a Red day. */
+/** Step 4: where the clean-day counter starts. On Continue a last Red day is saved as a Red day. */
 export function CounterStep({ onNext, onBack }: StepNavProps) {
   const theme = useAppTheme();
   const today = useAppStore((s) => s.today);
@@ -44,8 +44,8 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
 
   const start = choice === 'today' ? today : pastDate;
   const preview = start === null ? null : Math.max(0, diffDays(start, today));
-  const previewLabel =
-    preview === null ? null : `Your counter will show: ${preview} ${preview === 1 ? 'day' : 'days'}`;
+  const previewCaption = preview === 1 ? 'Day since last Red' : 'Days since last Red';
+  const previewLabel = preview === null ? null : `${previewCaption}: ${preview}`;
 
   // The preview's accessibilityLiveRegion only reaches TalkBack; VoiceOver needs an
   // announcement when it changes (iOS only, so TalkBack does not read it twice). Not on
@@ -97,7 +97,7 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
 
   return (
     <StepScreen
-      step={3}
+      step={4}
       onBack={onBack}
       title="Do you remember the last time you went red?"
       subtitle="We'll use it to count your clean day streaks. If you couldn't remember, we can count starting today."
@@ -144,18 +144,16 @@ export function CounterStep({ onNext, onBack }: StepNavProps) {
           style={{
             alignItems: 'center',
             gap: 2,
-            paddingVertical: 18,
+            paddingVertical: 14,
             paddingHorizontal: 16,
-            backgroundColor: theme.accentSoft,
+            backgroundColor: theme.surface,
+            borderWidth: 1,
+            borderColor: theme.line,
             borderRadius: theme.radius,
           }}
         >
-          <Text style={{ color: theme.accentText, fontSize: 14, fontWeight: '600' }}>
-            Your counter will show:
-          </Text>
-          <Text style={{ color: theme.accentText, fontSize: 34, fontWeight: '800', letterSpacing: -0.7 }}>
-            {preview} {preview === 1 ? 'day' : 'days'}
-          </Text>
+          <Text style={{ color: theme.muted, fontSize: 14, fontWeight: '600' }}>{previewCaption}</Text>
+          <Text style={{ color: theme.text, fontSize: 24, fontWeight: '700' }}>{preview}</Text>
         </View>
       ) : null}
 

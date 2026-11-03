@@ -6,7 +6,15 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { router, Stack } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { Alert, AppState, Linking, Text, type AlertButton, type AppStateStatus } from 'react-native';
+import {
+  Alert,
+  AppState,
+  Dimensions,
+  Linking,
+  Text,
+  type AlertButton,
+  type AppStateStatus,
+} from 'react-native';
 
 import RootLayout, { unstable_settings as rootSettings } from '@/app/_layout';
 import TabsLayout from '@/app/(tabs)/_layout';
@@ -30,6 +38,7 @@ import * as backupFiles from '@/services/backupFiles';
 import * as dialer from '@/services/dialer';
 import * as notifications from '@/services/notifications';
 import { useAppStore } from '@/state/store';
+import { lightTheme } from '@/ui/theme';
 
 // Real dates unless a test moves the clock (e.g. past midnight) with mockToday.
 let mockToday: string | null = null;
@@ -946,6 +955,141 @@ describe('settings', () => {
 describe('today', () => {
   const todayRoutes = { ...routes, '(tabs)/index': TodayScreen };
 
+  type Node = { readonly children: readonly (Node | string)[] };
+  const textOf = (node: Node): string =>
+    node.children.map((child) => (typeof child === 'string' ? child : textOf(child))).join('');
+  /** Every header on screen (greeting, then card titles), top to bottom. */
+  const headers = () => screen.getAllByRole('header').map(textOf);
+  /** The hero's tiles and Best pill, in render order: call tile first, clean tile second. */
+  const heroLabels = () =>
+    screen
+      .getAllByLabelText(/asked for prayer|first call|since last Red|counter starts|^Best streak/)
+      .map((element) => element.props.accessibilityLabel as string);
+
+  it('leads with the call total, then days since last Red and the best streak', async () => {
+    await setup({ partner: SAM });
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    // No call yet: a big 0 and an invite to make the first call.
+    expect(screen.getByLabelText('0 calls. Make your first call')).toHaveTextContent(
+      '0Make your first call',
+    );
+    expect(screen.getByLabelText('3 days since last Red')).toHaveTextContent('3days since last Red');
+    expect(screen.getByLabelText('Best streak: 3 days')).toHaveTextContent('Best · 3 days');
+    expect(heroLabels()).toEqual([
+      '0 calls. Make your first call',
+      '3 days since last Red',
+      'Best streak: 3 days',
+    ]);
+    // The call tile is the accented one.
+    expect(screen.getByLabelText('0 calls. Make your first call')).toHaveStyle({
+      backgroundColor: lightTheme.accentSoft,
+      borderColor: lightTheme.accent,
+    });
+  });
+
+  // The hero row wraps on flexBasis, not on text size, so the basis grows with the text size.
+  it.each([
+    [1, 128], // two 128pt tiles + gap fit a phone's card: side by side
+    [2, 256], // two of these don't fit: the tiles stack
+  ])('gives the hero tiles a wider basis at text size %d×: %dpt', async (fontScale, basis) => {
+    jest.spyOn(Dimensions, 'get').mockReturnValue({ width: 375, height: 812, scale: 3, fontScale });
+    await setup({ partner: SAM });
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    expect(screen.getByLabelText('0 calls. Make your first call')).toHaveStyle({ flexBasis: basis });
+  });
+
+  it('counts one call in the singular', async () => {
+    await setup({ partner: SAM }, [{ date: addDays(todayLocal(), -1), color: 0, checkedIn: true }]);
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    expect(
+      screen.getByLabelText('You’ve shared your color and asked for prayer 1 day'),
+    ).toHaveTextContent('1day you’ve shared your color and asked for prayer');
+    expect(screen.queryByText('Make your first call')).toBeNull();
+  });
+
+  it('counts every call, backfilled days before install included', async () => {
+    await setup({ partner: SAM }, [
+      { date: addDays(todayLocal(), -6), color: 1, checkedIn: true },
+      { date: addDays(todayLocal(), -2), color: 0, checkedIn: false },
+      { date: addDays(todayLocal(), -1), color: 0, checkedIn: true },
+      { date: todayLocal(), color: null, checkedIn: true },
+    ]);
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    expect(
+      screen.getByLabelText('You’ve shared your color and asked for prayer 3 days'),
+    ).toHaveTextContent('3days you’ve shared your color and asked for prayer');
+    expect(heroLabels()).toEqual([
+      'You’ve shared your color and asked for prayer 3 days',
+      '3 days since last Red',
+      'Best streak: 3 days',
+    ]);
+  });
+
+  it('shows the call tile and Day 0 without a partner or install date', async () => {
+    await setup({ installDate: null });
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    expect(heroLabels()).toEqual(['0 calls. Make your first call', 'Day 0. Your counter starts today.']);
+    expect(screen.getByLabelText('Day 0. Your counter starts today.')).toHaveTextContent(
+      'Day 0Your counter starts today',
+    );
+    expect(screen.queryByLabelText(/^Best streak/)).toBeNull();
+  });
+
+  it('says 1 day since last Red in the singular, Best included', async () => {
+    await setup({ partner: SAM, installDate: addDays(todayLocal(), -1) });
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    expect(screen.getByLabelText('1 day since last Red')).toHaveTextContent('1day since last Red');
+    expect(screen.getByLabelText('Best streak: 1 day')).toHaveTextContent('Best · 1 day');
+  });
+
+  it('shows no Best pill on install day', async () => {
+    await setup({ partner: SAM, installDate: todayLocal() });
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    expect(screen.getByLabelText('0 days since last Red')).toHaveTextContent('0days since last Red');
+    expect(screen.queryByLabelText(/^Best streak/)).toBeNull();
+    expect(screen.getByLabelText('0 calls. Make your first call')).toBeTruthy();
+  });
+
+  it('puts the daily call first, then yesterday’s color, a missed day and the backup', async () => {
+    const today = await setup({ partner: SAM, installDate: addDays(todayLocal(), -40) }, [
+      { date: addDays(todayLocal(), -1), color: 0, checkedIn: false },
+    ]);
+    const view = await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    expect(headers().slice(1)).toEqual([
+      'Daily call with Sam',
+      'Yesterday’s color',
+      `${formatLong(addDays(today, -2)).split(',')[0]} isn’t logged`,
+      'Back up your history',
+    ]);
+    // The call is the primary button.
+    expect(screen.getByRole('button', { name: 'Call Sam' })).toHaveStyle({
+      backgroundColor: lightTheme.accent,
+    });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Call Sam' }));
+    await waitFor(() => expect(view.getPathname()).toBe('/call'));
+    expect(await screen.findByText('Call with Sam')).toBeTruthy();
+  });
+
+  it('puts Add your partner before yesterday’s color without a partner', async () => {
+    await setup();
+    await renderRouter(todayRoutes, { initialUrl: '/' });
+
+    const titles = headers();
+    expect(titles.indexOf('Add your partner')).toBeGreaterThan(0);
+    expect(titles.indexOf('Add your partner')).toBeLessThan(titles.indexOf('Yesterday’s color'));
+    expect(screen.getByRole('button', { name: 'Add partner' })).toBeTruthy();
+    expect(screen.queryByText(/^Daily call with/)).toBeNull();
+  });
+
   it('asks for yesterday’s color and opens yesterday’s color log', async () => {
     const today = await setup({ partner: SAM });
     const yesterday = addDays(today, -1);
@@ -954,6 +1098,9 @@ describe('today', () => {
     expect(screen.getByText('Yesterday’s color')).toBeTruthy();
     expect(screen.getByText('Not logged yet · pick your lowest color')).toBeTruthy();
     expect(screen.queryByText('Today’s color')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Log yesterday’s color' })).toHaveStyle({
+      backgroundColor: lightTheme.surface2,
+    });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Log yesterday’s color' }));
     await waitFor(() => expect(view.getPathname()).toBe('/check-in'));
@@ -976,6 +1123,10 @@ describe('today', () => {
     expect(screen.getByLabelText('Yesterday: Yellow')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Log yesterday’s color' })).toBeNull();
     expect(screen.queryByText('Your counter restarted. God’s grace doesn’t reset.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Update yesterday’s color' })).toHaveStyle({
+      backgroundColor: 'transparent',
+      borderColor: lightTheme.muted,
+    });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Update yesterday’s color' }));
     await waitFor(() => expect(view.getPathname()).toBe('/check-in'));
@@ -1296,21 +1447,22 @@ describe('onboarding', () => {
     expect(screen.getByText('Missed a day? You can fill it in later.')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
 
+    expect(await screen.findByText('Who can you call each day?')).toBeTruthy();
+    expect(screen.getByText('Step 3 of 6 · The most important step')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Add a friend later' }));
+
     expect(await screen.findByText('Do you remember the last time you went red?')).toBeTruthy();
+    expect(screen.getByText('Step 4 of 6')).toBeTruthy();
     expect(
       screen.getByRole('radio', { name: 'Count streaks from today Your clean day streaks will start counting today.' }),
     ).toBeChecked();
     expect(screen.getByRole('radio', { name: 'The last day I went red was… Pick the date' })).not.toBeChecked();
-    expect(screen.getByLabelText('Your counter will show: 0 days')).toBeTruthy();
+    expect(screen.getByLabelText('Days since last Red: 0')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(await screen.findByText('Who can you call each day?')).toBeTruthy();
-    expect(screen.getByText('Step 4 of 6 · The most important step')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    await fireEvent.press(screen.getByRole('button', { name: 'Add a friend later' }));
-    expect(useAppStore.getState().days).toEqual({}); // "Count streaks from today" logs no Red day
-
     expect(await screen.findByText('What does Green look like for you?')).toBeTruthy();
+    expect(useAppStore.getState().days).toEqual({}); // "Count streaks from today" logs no Red day
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('What does Blue look like for you?')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Write examples later' }));
@@ -1325,8 +1477,20 @@ describe('onboarding', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'No reminders for now' }));
 
     expect(await screen.findByText("You're all set")).toBeTruthy();
+    // Summary order: partner, then days since last Red, then the reminder.
     expect(
-      screen.getByText('Log yesterday’s color each day, then call. Small honest steps, one day at a time.'),
+      screen
+        .getAllByText(/^(No partner yet|You'll call|Days? since last Red|No daily reminder|Daily reminder at)/)
+        .map((line) => line.props.children),
+    ).toEqual([
+      'No partner yet. Today will remind you to add one.',
+      'Days since last Red: 0',
+      'No daily reminder. You can turn it on in Settings.',
+    ]);
+    expect(
+      screen.getByText(
+        'Call your partner each day: share your color and ask for prayer. Small honest steps, one day at a time.',
+      ),
     ).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Start' }));
 
@@ -1339,11 +1503,77 @@ describe('onboarding', () => {
   async function goToReminderStep() {
     await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
-    await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Add a friend later' }));
+    expect(await screen.findByText('Do you remember the last time you went red?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Write examples later' }));
     expect(await screen.findByText('A daily reminder')).toBeTruthy();
   }
+
+  it('goes back through the steps in order: counter → partner, color lists → counter', async () => {
+    await setup({ onboardingDone: false, installDate: null });
+    await renderRouter(routes, { initialUrl: '/onboarding' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add a friend later' }));
+    expect(await screen.findByText('Do you remember the last time you went red?')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Previous step' }));
+    expect(await screen.findByText('Who can you call each day?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Previous step' }));
+    expect(await screen.findByText('How colors work')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add a friend later' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('What does Green look like for you?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Previous step' }));
+    expect(await screen.findByText('Do you remember the last time you went red?')).toBeTruthy();
+  });
+
+  it('names the saved partner on the last page, before days since last Red', async () => {
+    await setup({ onboardingDone: false, installDate: null, partner: SAM });
+    await renderRouter(routes, { initialUrl: '/onboarding' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Who can you call each day?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' })); // Sam is already saved
+    expect(await screen.findByText('Do you remember the last time you went red?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Write examples later' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'No reminders for now' }));
+
+    expect(await screen.findByText("You're all set")).toBeTruthy();
+    expect(
+      screen
+        .getAllByText(/^(No partner yet|You'll call|Days? since last Red|No daily reminder|Daily reminder at)/)
+        .map((line) => line.props.children),
+    ).toEqual([
+      "You'll call Sam each day",
+      'Days since last Red: 0',
+      'No daily reminder. You can turn it on in Settings.',
+    ]);
+    expect(
+      screen.getByText('Call Sam each day: share your color and ask for prayer. Small honest steps, one day at a time.'),
+    ).toBeTruthy();
+  });
+
+  it('says “Day since last Red: 1” when the last Red day was yesterday', async () => {
+    await setup({ onboardingDone: false, installDate: null }, [
+      { date: addDays(todayLocal(), -1), color: 3, checkedIn: false },
+    ]);
+    await renderRouter(routes, { initialUrl: '/onboarding' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Continue' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add a friend later' }));
+    expect(await screen.findByLabelText('Day since last Red: 1')).toHaveTextContent(/Day since last Red/);
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Write examples later' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'No reminders for now' }));
+
+    expect(await screen.findByText("You're all set")).toBeTruthy();
+    expect(screen.getByText('Day since last Red: 1')).toBeTruthy();
+  });
 
   it('cancels the scheduled reminder when the user goes back and opts out', async () => {
     jest.clearAllMocks();

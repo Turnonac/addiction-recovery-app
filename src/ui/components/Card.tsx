@@ -54,21 +54,30 @@ export interface StatTileProps {
   value: string;
   /** Caption under the value, e.g. 'Days since last Red'. */
   label: string;
+  /** default = plain tile; accent = the highlighted stat (accent card, accent value ink). */
+  tone?: 'default' | 'accent';
   style?: StyleProp<ViewStyle>;
 }
 
 /** Compact stat card (History header). Read as one element: "23, Days since last Red". */
-export function StatTile({ value, label, style }: StatTileProps) {
+export function StatTile({ value, label, tone = 'default', style }: StatTileProps) {
   const theme = useAppTheme();
+  const accent = tone === 'accent';
   return (
     <Card
       compact
+      variant={accent ? 'accent' : 'default'}
       accessible
       accessibilityLabel={`${value}, ${label}`}
       style={[{ flex: 1 }, style]}
     >
       <Text
-        style={{ color: theme.text, fontSize: 24, fontWeight: '700', letterSpacing: -0.48 }}
+        style={{
+          color: accent ? theme.accentText : theme.text,
+          fontSize: 24,
+          fontWeight: '700',
+          letterSpacing: -0.48,
+        }}
         maxFontSizeMultiplier={1.6}
       >
         {value}
