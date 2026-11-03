@@ -1,5 +1,5 @@
 /**
- * CounterStep's "Your counter will show" preview: announced to VoiceOver on iOS
+ * CounterStep's "Days since last Red" preview: announced to VoiceOver on iOS
  * when it changes (accessibilityLiveRegion only reaches TalkBack on Android), at
  * high priority so the closing picker sheet can't cut it off.
  */
@@ -62,11 +62,11 @@ afterEach(() => {
 /** Opens the step on 3 days, then switches to today and back. */
 async function switchChoices() {
   await render(<CounterStep onNext={() => undefined} />);
-  expect(screen.getByLabelText('Your counter will show: 3 days')).toBeTruthy();
+  expect(screen.getByLabelText('Days since last Red: 3')).toBeTruthy();
   await fireEvent.press(screen.getByRole('radio', { name: /^Count streaks from today/ }));
-  expect(screen.getByLabelText('Your counter will show: 0 days')).toBeTruthy();
+  expect(screen.getByLabelText('Days since last Red: 0')).toBeTruthy();
   await fireEvent.press(screen.getByRole('radio', { name: /^The last day I went red was…/ }));
-  expect(screen.getByLabelText('Your counter will show: 3 days')).toBeTruthy();
+  expect(screen.getByLabelText('Days since last Red: 3')).toBeTruthy();
 }
 
 describe('CounterStep preview on iOS', () => {
@@ -78,8 +78,8 @@ describe('CounterStep preview on iOS', () => {
     await switchChoices();
     expect(announce.mock.calls).toEqual([[TITLE]]);
     expect(announceWithOptions.mock.calls).toEqual([
-      ['Your counter will show: 0 days', { priority: 'high' }],
-      ['Your counter will show: 3 days', { priority: 'high' }],
+      ['Days since last Red: 0', { priority: 'high' }],
+      ['Days since last Red: 3', { priority: 'high' }],
     ]);
   });
 
@@ -89,9 +89,9 @@ describe('CounterStep preview on iOS', () => {
     // No past date yet, so choosing it opens the sheet; Done picks yesterday.
     await fireEvent.press(screen.getByRole('radio', { name: /^The last day I went red was…/ }));
     await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
-    expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
+    expect(screen.getByLabelText('Day since last Red: 1')).toBeTruthy();
     expect(announceWithOptions.mock.calls).toEqual([
-      ['Your counter will show: 1 day', { priority: 'high' }],
+      ['Day since last Red: 1', { priority: 'high' }],
     ]);
   });
 });
@@ -128,7 +128,7 @@ describe('CounterStep saving', () => {
     await render(<CounterStep onNext={onNext} />);
     await fireEvent.press(screen.getByRole('radio', { name: /^The last day I went red was…/ }));
     await fireEvent.press(screen.getByRole('button', { name: 'Done' })); // picks yesterday
-    expect(screen.getByLabelText('Your counter will show: 1 day')).toBeTruthy();
+    expect(screen.getByLabelText('Day since last Red: 1')).toBeTruthy();
 
     // The phone moves to an earlier time zone: the store's today becomes yesterday, the pick.
     await act(async () => useAppStore.setState({ today: addDays(today, -1) }));
@@ -136,7 +136,7 @@ describe('CounterStep saving', () => {
     // The footer button (disabled) and the date button both read "Enter the last day you went red".
     expect(screen.getAllByRole('button', { name: 'Enter the last day you went red' })).toHaveLength(2);
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
-    expect(screen.queryByLabelText(/Your counter will show/)).toBeNull();
+    expect(screen.queryByLabelText(/since last Red/)).toBeNull();
     expect(onNext).not.toHaveBeenCalled();
   });
 

@@ -14,11 +14,13 @@ import {
   Screen,
   SettingsGroup,
   SettingsRow,
+  StatTile,
   ToggleRow,
   WeekStrip,
   type MonthCalendarCell,
 } from '@/ui/components';
 import { TabIcon } from '@/ui/icons';
+import { lightTheme } from '@/ui/theme';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -333,5 +335,22 @@ describe('Settings rows, totals, screen and tab icon', () => {
     await fireEvent.press(screen.getByRole('button', { name: /My colors/ }));
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: /Time/ })).toBeDisabled();
+  });
+});
+
+describe('StatTile', () => {
+  it('reads as one element and stays plain by default', async () => {
+    await render(<StatTile value="23" label="Days since last Red" />);
+    const tile = screen.getByLabelText('23, Days since last Red');
+    expect(tile).toHaveStyle({ backgroundColor: lightTheme.surface, borderColor: lightTheme.line });
+    expect(screen.getByText('23')).toHaveStyle({ color: lightTheme.text });
+  });
+
+  it('highlights the accent tone without changing the label', async () => {
+    await render(<StatTile value="12" label="Days of prayer" tone="accent" />);
+    const tile = screen.getByLabelText('12, Days of prayer');
+    expect(tile).toHaveStyle({ backgroundColor: lightTheme.accentSoft, borderColor: lightTheme.accent });
+    expect(screen.getByText('12')).toHaveStyle({ color: lightTheme.accentText });
+    expect(screen.getByText('Days of prayer')).toBeOnTheScreen();
   });
 });

@@ -1,8 +1,8 @@
 # Light2Life
 
-A free, private daily recovery app for iOS and Android. Each day you log yesterday's
-lowest color, keep a clean-day counter, and make one short call with your partner. There is no
-account, server or analytics; everything stays on the phone.
+A free, private daily recovery app for iOS and Android. Each day you make one short call with
+your partner, log yesterday's lowest color, and keep a clean-day counter. There is no account,
+server or analytics; everything stays on the phone.
 
 Built with Expo SDK 58, React Native 0.88, TypeScript, Expo Router, expo-sqlite and Zustand.
 App ID `com.turnonac.light2life`, URL scheme `light2life://`, Expo project `@turnonac/light2life`.

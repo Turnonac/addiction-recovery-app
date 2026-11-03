@@ -13,7 +13,7 @@ import { StepScreen, TextLink } from '@/features/onboarding/StepLayout';
 import { useAppStore } from '@/state/store';
 import { Button } from '@/ui/components';
 
-/** Step 4 (the most important step, but skippable): who the user calls each day. */
+/** Step 3 (the most important step, but skippable): who the user calls each day. */
 export function PartnerStep({ onNext, onBack }: StepNavProps) {
   const saved = useAppStore((s) => s.settings.partner);
   const setPartner = useAppStore((s) => s.setPartner);
@@ -37,8 +37,8 @@ export function PartnerStep({ onNext, onBack }: StepNavProps) {
 
   return (
     <StepScreen
-      step={4}
-      caption="Step 4 of 6 · The most important step"
+      step={3}
+      caption="Step 3 of 6 · The most important step"
       onBack={onBack}
       avoidKeyboard
       title="Who can you call each day?"

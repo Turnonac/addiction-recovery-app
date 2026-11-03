@@ -2,9 +2,10 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { totalCalls } from '@/domain/call';
 import { formatMonthYear } from '@/domain/dates';
 import { monthGrid, monthSummary } from '@/domain/history';
-import { bestStreak, currentStreak } from '@/domain/streak';
+import { currentStreak } from '@/domain/streak';
 import { COLOR_LEVELS, type LocalDate } from '@/domain/types';
 import { useAppStore } from '@/state/store';
 import {
@@ -57,8 +58,8 @@ export default function HistoryScreen() {
   const viewIndex = Math.min(Math.max(pickedMonth ?? currentIndex, minIndex), currentIndex);
   const { year, month } = monthFromIndex(viewIndex);
 
+  const calls = totalCalls(dayList, today);
   const streak = currentStreak(dayList, settings.installDate, today) ?? 0;
-  const best = bestStreak(dayList, settings.installDate, today) ?? 0;
   const summary = monthSummary(dayList, year, month, today, settings.installDate);
   const monthLogged = COLOR_LEVELS.some((level) => summary.counts[level] > 0);
   const anyLogged = dayList.some((d) => d.color !== null);
@@ -79,6 +80,9 @@ export default function HistoryScreen() {
   });
 
   const monthTitle = formatMonthYear(year, month);
+  // 'October 2026' → 'October'.
+  const monthName = monthTitle.slice(0, monthTitle.lastIndexOf(' '));
+  const monthCallsLabel = viewIndex === currentIndex ? 'Calls this month' : `Calls in ${monthName}`;
   const note = { color: theme.muted, fontSize: 13, lineHeight: 18 } as const;
 
   return (
@@ -86,12 +90,13 @@ export default function HistoryScreen() {
       <ScreenHeader title="History" />
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <StatTile value={String(streak)} label="Days since last Red" />
-        <StatTile value={String(best)} label="Best streak, days" />
         <StatTile
-          value={`${summary.checkIns}/${summary.eligibleDays}`}
-          label={`Days checked in with ${partnerName}`}
+          value={String(calls)}
+          label={calls === 1 ? 'Day of prayer' : 'Days of prayer'}
+          tone="accent"
         />
+        <StatTile value={`${summary.checkIns}/${summary.eligibleDays}`} label={monthCallsLabel} />
+        <StatTile value={String(streak)} label="Days since last Red" />
       </View>
 
       {!anyLogged ? (

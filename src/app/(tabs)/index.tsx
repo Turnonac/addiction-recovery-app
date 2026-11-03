@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { AppState, Text, View } from 'react-native';
+import { AppState, Text, useWindowDimensions, View } from 'react-native';
 
-import { callWindow } from '@/domain/call';
+import { callWindow, totalCalls } from '@/domain/call';
 import { addDays, diffDays, formatLong, formatShort } from '@/domain/dates';
 import { backupNudgeDue, recentUnloggedDates, weekStrip } from '@/domain/history';
 import { bestStreak, currentStreak } from '@/domain/streak';
@@ -47,6 +47,17 @@ function relativeDay(date: LocalDate, today: LocalDate): string {
   return formatShort(date);
 }
 
+/** Call tile: "{n} day(s) you’ve shared your color and asked for prayer", or the invite at 0. */
+function callTileText(calls: number): { caption: string; label: string } {
+  if (calls === 0) {
+    return { caption: 'Make your first call', label: '0 calls. Make your first call' };
+  }
+  return {
+    caption: `${calls === 1 ? 'day' : 'days'} you’ve shared your color and asked for prayer`,
+    label: `You’ve shared your color and asked for prayer ${daysText(calls)}`,
+  };
+}
+
 function callSubtitle(call: CallWindow, today: LocalDate): string {
   if (call.checkedInToday) return 'You talked today';
   const lowest = call.lowest === null ? 'nothing logged' : COLOR_NAMES[call.lowest];
@@ -63,6 +74,7 @@ export default function TodayScreen() {
   const today = useAppStore((s) => s.today);
   const days = useAppStore((s) => s.days);
   const settings = useAppStore((s) => s.settings);
+  const { fontScale } = useWindowDimensions();
 
   const dayList = Object.values(days);
   const partner = settings.partner;
@@ -72,13 +84,15 @@ export default function TodayScreen() {
   const best = bestStreak(dayList, settings.installDate, today);
   const week = weekStrip(dayList, today, settings.installDate);
   const call = callWindow(dayList, settings, today);
+  const calls = totalCalls(dayList, today);
+  const callTile = callTileText(calls);
   // The daily log records yesterday, a finished day. On install day there is no yesterday to log.
   const yesterday = addDays(today, -1);
   const installDay = settings.installDate === null || yesterday < settings.installDate;
   const yesterdayColor = days[yesterday]?.color ?? null;
   const logYesterday = () =>
     router.push({ pathname: '/check-in', params: { date: yesterday, from: 'today' } });
-  // The most recent missed day before yesterday (yesterday is the main action above).
+  // The most recent missed day before yesterday (yesterday has its own card above).
   const earlierUnlogged =
     recentUnloggedDates(dayList, settings.installDate, today)
       .filter((date) => date < yesterday)
@@ -87,68 +101,108 @@ export default function TodayScreen() {
 
   const cardTitle = { color: theme.text, fontSize: 17, fontWeight: '700' } as const;
   const cardBody = { color: theme.muted, fontSize: 14, lineHeight: 20 } as const;
+  // Hero tiles sit side by side and stack when the row has no room for both. The row wraps on
+  // flexBasis, not on text size, so the basis grows with the system text size: large text stacks.
+  const tile = {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 128 * Math.max(1, fontScale),
+    gap: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: theme.cardRadius,
+  } as const;
 
   return (
     <Screen>
       <ScreenHeader eyebrow={formatLong(today)} title={greetingFor(hour)} />
 
-      {/* Clean-day counter + last 7 days */}
+      {/* Calls first (accented), then the clean-day counter; last 7 days below */}
       <Card gap={18} style={{ paddingVertical: 20 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           <View
             accessible
-            accessibilityLabel={
-              streak === null
-                ? 'Day 0. Your counter starts today.'
-                : `${daysText(streak)} since last Red`
-            }
-            style={{ gap: 4, flexShrink: 1 }}
+            accessibilityLabel={callTile.label}
+            style={[
+              tile,
+              { backgroundColor: theme.accentSoft, borderWidth: 1.5, borderColor: theme.accent },
+            ]}
           >
             <Text
               maxFontSizeMultiplier={1.3}
               numberOfLines={1}
               adjustsFontSizeToFit
               style={{
-                color: theme.text,
-                fontSize: 68,
-                lineHeight: 72,
-                fontWeight: '700',
-                letterSpacing: -1.36,
+                color: theme.accentText,
+                fontSize: 56,
+                lineHeight: 60,
+                fontWeight: '800',
+                letterSpacing: -1.12,
                 fontVariant: ['tabular-nums'],
               }}
             >
-              {streak === null ? 'Day 0' : String(streak)}
+              {String(calls)}
             </Text>
-            <Text style={{ color: theme.muted, fontSize: 15, fontWeight: '500' }}>
-              {streak === null
-                ? 'Your counter starts today'
-                : `${streak === 1 ? 'day' : 'days'} since last Red`}
+            <Text
+              style={{ color: theme.accentText, fontSize: 14, lineHeight: 19, fontWeight: '600' }}
+            >
+              {callTile.caption}
             </Text>
           </View>
-          {best !== null && best > 0 ? (
+
+          <View style={[tile, { borderWidth: 1, borderColor: theme.line }]}>
             <View
               accessible
-              accessibilityLabel={`Best streak: ${daysText(best)}`}
-              style={{
-                paddingVertical: 6,
-                paddingHorizontal: 12,
-                borderRadius: 999,
-                backgroundColor: theme.accentSoft,
-              }}
+              accessibilityLabel={
+                streak === null
+                  ? 'Day 0. Your counter starts today.'
+                  : `${daysText(streak)} since last Red`
+              }
+              style={{ gap: 4 }}
             >
-              <Text style={{ color: theme.accentText, fontSize: 13, fontWeight: '700' }}>
-                Best · {daysText(best)}
+              <Text
+                maxFontSizeMultiplier={1.3}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{
+                  color: theme.text,
+                  fontSize: 40,
+                  lineHeight: 44,
+                  fontWeight: '700',
+                  letterSpacing: -0.8,
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {streak === null ? 'Day 0' : String(streak)}
+              </Text>
+              <Text
+                style={{ color: theme.muted, fontSize: 14, lineHeight: 19, fontWeight: '500' }}
+              >
+                {streak === null
+                  ? 'Your counter starts today'
+                  : `${streak === 1 ? 'day' : 'days'} since last Red`}
               </Text>
             </View>
-          ) : null}
+            {best !== null && best > 0 ? (
+              <View
+                accessible
+                accessibilityLabel={`Best streak: ${daysText(best)}`}
+                style={{
+                  alignSelf: 'flex-start',
+                  marginTop: 6,
+                  paddingVertical: 4,
+                  paddingHorizontal: 10,
+                  // A tag, not a full pill: in the narrow tile the text can wrap to two lines.
+                  borderRadius: 8,
+                  backgroundColor: theme.surface2,
+                }}
+              >
+                <Text style={{ color: theme.text, fontSize: 12, fontWeight: '700' }}>
+                  Best · {daysText(best)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <WeekStrip
@@ -162,6 +216,39 @@ export default function TodayScreen() {
           </Text>
         ) : null}
       </Card>
+
+      {/* Partner call, or the nudge to add one */}
+      {partner !== null ? (
+        <Card>
+          <View style={{ gap: 2 }}>
+            <Text accessibilityRole="header" style={cardTitle}>
+              Daily call with {partnerName}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {call.checkedInToday ? (
+                <Check size={16} color={theme.accentText} strokeWidth={3} />
+              ) : null}
+              <Text style={[cardBody, { flexShrink: 1 }]}>{callSubtitle(call, today)}</Text>
+            </View>
+          </View>
+          <Button title={`Call ${partnerName}`} icon={Phone} onPress={() => router.push('/call')} />
+        </Card>
+      ) : (
+        <Card variant="accent">
+          <View style={{ gap: 4 }}>
+            <Text accessibilityRole="header" style={cardTitle}>
+              Add your partner
+            </Text>
+            <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>
+              A daily call with someone who prays for you is the key piece of recovery.
+            </Text>
+          </View>
+          <Button
+            title="Add partner"
+            onPress={() => router.navigate('/settings/partner', { withAnchor: true })}
+          />
+        </Card>
+      )}
 
       {/* Yesterday's color: the daily log */}
       <Card>
@@ -178,7 +265,7 @@ export default function TodayScreen() {
           </Text>
         </View>
         {installDay ? null : yesterdayColor === null ? (
-          <Button title="Log yesterday’s color" onPress={logYesterday} />
+          <Button title="Log yesterday’s color" variant="secondary" onPress={logYesterday} />
         ) : (
           <View
             style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}
@@ -218,44 +305,6 @@ export default function TodayScreen() {
           <Text style={cardBody}>Your counter restarted. God’s grace doesn’t reset.</Text>
         ) : null}
       </Card>
-
-      {/* Partner call, or the nudge to add one */}
-      {partner !== null ? (
-        <Card>
-          <View style={{ gap: 2 }}>
-            <Text accessibilityRole="header" style={cardTitle}>
-              Daily call with {partnerName}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {call.checkedInToday ? (
-                <Check size={16} color={theme.accentText} strokeWidth={3} />
-              ) : null}
-              <Text style={[cardBody, { flexShrink: 1 }]}>{callSubtitle(call, today)}</Text>
-            </View>
-          </View>
-          <Button
-            title={`Call ${partnerName}`}
-            variant="secondary"
-            icon={Phone}
-            onPress={() => router.push('/call')}
-          />
-        </Card>
-      ) : (
-        <Card variant="accent">
-          <View style={{ gap: 4 }}>
-            <Text accessibilityRole="header" style={cardTitle}>
-              Add your partner
-            </Text>
-            <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>
-              A daily call with someone who prays for you is the key piece of recovery.
-            </Text>
-          </View>
-          <Button
-            title="Add partner"
-            onPress={() => router.navigate('/settings/partner', { withAnchor: true })}
-          />
-        </Card>
-      )}
 
       {/* An earlier missed day (within the last week) */}
       {earlierUnlogged !== null ? (
